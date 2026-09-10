@@ -40,6 +40,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). Until keys are set you will land on `/setup`.
 
+## 4. Vercel
+
+Import the GitHub repo as a **Next.js** project. In Project Settings → Build and Development:
+
+- Framework Preset: **Next.js**
+- Build Command: `npm run build`
+- Output Directory: leave **empty** (do not set `public`)
+
+Add the same three env vars under Settings → Environment Variables, using your live site URL for `NEXT_PUBLIC_APP_URL`.
+
 ## Offer letters
 
 1. **Offers → New offer** — save a draft. Nothing is emailed or finalized.
