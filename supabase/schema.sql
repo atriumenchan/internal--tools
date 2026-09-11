@@ -144,6 +144,8 @@ create table if not exists public.employees (
   department text,
   designation text,
   joining_date date,
+  user_id uuid unique references auth.users (id) on delete set null,
+  ignored boolean not null default false,
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -44,6 +44,8 @@ export type Employee = {
   department: string | null;
   designation: string | null;
   joining_date: string | null;
+  user_id?: string | null;
+  ignored?: boolean;
   is_active: boolean;
 };
 

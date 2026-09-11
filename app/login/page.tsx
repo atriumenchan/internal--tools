@@ -1,10 +1,12 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { isSupabaseConfigured } from "@/lib/utils";
+import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import { LoginForm } from "./login-form";
 
-export default function LoginPage() {
+export default async function LoginPage() {
   if (!isSupabaseConfigured()) redirect("/setup");
+  await ensureAdminFromEnv();
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
+import { isIgnoredEmployee } from "@/lib/admin";
 import type { Employee } from "@/lib/types";
 
 export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
@@ -14,10 +15,16 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
     e.preventDefault();
     setError(null);
     const form = new FormData(e.currentTarget);
+    const employee_code = String(form.get("employee_code") || "").trim();
+    const full_name = String(form.get("full_name") || "").trim();
+    if (isIgnoredEmployee(employee_code, full_name)) {
+      setError("Ryan Ray is excluded and cannot be added.");
+      return;
+    }
     const supabase = createClient();
     const { error: err } = await supabase.from("employees").insert({
-      employee_code: String(form.get("employee_code") || "").trim(),
-      full_name: String(form.get("full_name") || "").trim(),
+      employee_code,
+      full_name,
       email: String(form.get("email") || "").trim() || null,
       department: String(form.get("department") || "").trim() || null,
       designation: String(form.get("designation") || "").trim() || null,
@@ -68,8 +75,9 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
             <tr>
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Team</th>
-              <th className="px-4 py-3"></th>
+                <th className="px-4 py-3">Team</th>
+                <th className="px-4 py-3">Login</th>
+                <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -83,6 +91,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
                 <td className="px-4 py-3 text-ink-soft">
                   {[employee.designation, employee.department].filter(Boolean).join(" · ") || "—"}
                 </td>
+                <td className="px-4 py-3 text-xs text-ink-soft">{employee.user_id ? "Has login" : "No login yet"}</td>
                 <td className="px-4 py-3 text-right">
                   <button className="text-xs text-terracotta" onClick={() => toggle(employee)}>
                     {employee.is_active ? "Deactivate" : "Reactivate"}

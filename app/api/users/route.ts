@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminUser } from "@/lib/admin";
+import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
 
 async function requireAdmin() {
+  await ensureAdminFromEnv();
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,18 +32,26 @@ export async function GET() {
     const { data: profiles } = await admin.from("profiles").select("id, full_name, role, email");
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
+    const { data: employees } = await admin
+      .from("employees")
+      .select("*")
+      .order("employee_code");
+
     return NextResponse.json({
       users: data.users.map((u) => {
         const profile = profileMap.get(u.id);
+        const employee = (employees ?? []).find((e) => e.user_id === u.id);
         return {
           id: u.id,
           email: u.email,
           full_name: profile?.full_name || u.user_metadata?.full_name || "",
           role: (profile?.role as AppRole) || "hr",
+          employee_code: employee?.employee_code ?? null,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
         };
       }),
+      employees: (employees ?? []).filter((e) => !e.ignored && e.is_active !== false),
     });
   } catch (err) {
     return NextResponse.json(
@@ -60,20 +70,42 @@ export async function POST(request: Request) {
     .trim()
     .toLowerCase();
   const password = String(body.password || "");
-  const fullName = String(body.full_name || "").trim();
-  const role: AppRole = body.role === "admin" ? "admin" : "hr";
+  const employeeId = String(body.employee_id || "").trim();
+  const role: AppRole = "hr";
 
-  if (!email || password.length < 6) {
-    return NextResponse.json({ error: "Email and a 6+ character password are required" }, { status: 400 });
+  if (!email || password.length < 6 || !employeeId) {
+    return NextResponse.json(
+      { error: "Pick a person, then email and a 6+ character password" },
+      { status: 400 }
+    );
   }
 
   try {
     const admin = createAdminClient();
+    const { data: employee, error: empErr } = await admin
+      .from("employees")
+      .select("*")
+      .eq("id", employeeId)
+      .maybeSingle();
+    if (empErr || !employee) {
+      return NextResponse.json({ error: "Employee not found in Supabase" }, { status: 404 });
+    }
+    if (employee.ignored || isIgnoredEmployee(employee.employee_code, employee.full_name)) {
+      return NextResponse.json({ error: "This person is excluded and cannot have a login" }, { status: 400 });
+    }
+    if (employee.user_id) {
+      return NextResponse.json({ error: "This person already has a login" }, { status: 400 });
+    }
+
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: fullName || email.split("@")[0], role },
+      user_metadata: {
+        full_name: employee.full_name,
+        role,
+        employee_code: employee.employee_code,
+      },
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
 
@@ -81,13 +113,19 @@ export async function POST(request: Request) {
       await admin
         .from("profiles")
         .update({
-          full_name: fullName || data.user.email?.split("@")[0] || "",
+          full_name: employee.full_name,
           role,
+          email,
         })
         .eq("id", data.user.id);
+      await admin.from("employees").update({ user_id: data.user.id, email }).eq("id", employee.id);
     }
 
-    return NextResponse.json({ id: data.user?.id, email: data.user?.email, role });
+    return NextResponse.json({
+      id: data.user?.id,
+      email: data.user?.email,
+      employee_code: employee.employee_code,
+    });
   } catch (err) {
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Could not create user" },

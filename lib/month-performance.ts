@@ -1,6 +1,7 @@
 import * as XLSX from "xlsx";
 import type { CompanySettings, DayStatus, Employee } from "@/lib/types";
 import type { ComputedDay, ComputedSummary } from "@/lib/attendance";
+import { isIgnoredEmployee } from "@/lib/admin";
 
 export type MonthPerformanceReport = {
   company: string;
@@ -180,9 +181,16 @@ export function parseMonthPerformanceMatrix(matrix: string[][]): MonthPerformanc
       });
     }
 
+    const employee_code = valueAfter(header, "Empcode");
+    const employee_name = valueAfter(header, "Name");
+    if (isIgnoredEmployee(employee_code, employee_name)) {
+      i += 8;
+      continue;
+    }
+
     people.push({
-      employee_code: valueAfter(header, "Empcode"),
-      employee_name: valueAfter(header, "Name"),
+      employee_code,
+      employee_name,
       department: valueAfter(matrix[i - 1] ?? [], "Dept. Name"),
       present: Number(valueAfter(header, "Present") || 0),
       week_offs: Number(valueAfter(header, "WO") || 0),
@@ -225,6 +233,7 @@ export function monthPerformanceToAttendance(
   const summaries: ComputedSummary[] = [];
 
   for (const person of report.people) {
+    if (isIgnoredEmployee(person.employee_code, person.employee_name)) continue;
     const employee =
       employees.find((e) => codesMatch(e.employee_code, person.employee_code)) ||
       employees.find((e) => e.full_name.trim().toLowerCase() === person.employee_name.trim().toLowerCase()) ||

@@ -1,6 +1,7 @@
 import { format, getDay, getDaysInMonth } from "date-fns";
 import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
 import type { RawDayRow, RawPunch } from "@/lib/excel";
+import { isIgnoredEmployee } from "@/lib/admin";
 
 export type ComputedDay = {
   employee_code: string | null;
@@ -164,6 +165,7 @@ export function computeAttendance(options: {
   const days: ComputedDay[] = [];
 
   grouped.forEach((person) => {
+    if (isIgnoredEmployee(person.code, person.name)) return;
     const employee = matchEmployee(person.code, person.name, employees);
     const dim = getDaysInMonth(new Date(year, month - 1, 1));
     for (let d = 1; d <= dim; d++) {

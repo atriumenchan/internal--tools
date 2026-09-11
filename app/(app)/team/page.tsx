@@ -3,8 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import { TeamPanel } from "./team-panel";
 import { isAdminUser } from "@/lib/admin";
+import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 
 export default async function TeamPage() {
+  await ensureAdminFromEnv();
   const supabase = await createClient();
   const {
     data: { user },

@@ -55,6 +55,9 @@ Add env vars under Settings → Environment Variables:
 - `NEXT_PUBLIC_APP_URL` as **Config** (your live site URL)
 - `NEXT_PUBLIC_ADMIN_EMAIL` as **Config** (`ryan@admexo.com`)
 - `SUPABASE_SERVICE_ROLE_KEY` as **Secret** (Settings → API → service_role)
+- `ADMIN_PASSWORD` as **Secret** (creates that admin login in Supabase if it does not exist)
+
+Then run [`supabase/seed.sql`](supabase/seed.sql) in the SQL editor. Ryan Ray (0003) is stored as ignored and dropped from attendance and logins.
 
 ## Offer letters
 

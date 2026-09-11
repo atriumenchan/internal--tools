@@ -18,6 +18,7 @@ import {
   type MonthPerformanceReport,
 } from "@/lib/month-performance";
 import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
+import { isIgnoredEmployee } from "@/lib/admin";
 import { Button, Field, Input } from "@/components/ui";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
@@ -111,7 +112,9 @@ export function AttendanceUploader({
     try {
       const employeeList = [...employees];
       if (createMissing) {
-        const missing = preview.summaries.filter((s) => !s.employee_id);
+        const missing = preview.summaries.filter(
+          (s) => !s.employee_id && !isIgnoredEmployee(s.employee_code, s.employee_name)
+        );
         for (const person of missing) {
           const fromFile = report?.people.find(
             (p) =>

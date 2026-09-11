@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
+import { isIgnoredEmployee } from "@/lib/admin";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 export default async function AttendancePage() {
@@ -26,7 +27,9 @@ export default async function AttendancePage() {
       />
       <AttendanceUploader
         settings={settings as CompanySettings}
-        employees={(employees ?? []) as Employee[]}
+        employees={((employees ?? []) as Employee[]).filter(
+          (e) => !e.ignored && !isIgnoredEmployee(e.employee_code, e.full_name)
+        )}
         holidays={(holidays ?? []) as Holiday[]}
         userId={user!.id}
       />
