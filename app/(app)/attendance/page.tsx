@@ -1,30 +1,27 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
-import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { isIgnoredEmployee } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { ensureHandbookCalendar } from "@/lib/ensure-handbook";
+import { getAppShell, getServerSupabase } from "@/lib/app-shell-data";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 export default async function AttendancePage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("role, email").eq("id", user!.id).maybeSingle();
-  const { data: linked } = await supabase.from("employees").select("id").eq("user_id", user!.id).maybeSingle();
-  const operator = isAdminUser({ email: user?.email, role: profile?.role }) || !linked;
-  if (!operator) redirect("/dashboard");
-  await ensureHandbookCalendar(supabase);
-  const [{ data: settings }, { data: employees }, { data: holidays }, { data: uploads }] = await Promise.all([
-    supabase.from("company_settings").select("*").eq("id", 1).single(),
+  const supabase = await getServerSupabase();
+  const dataPromise = Promise.all([
+    supabase.from("company_settings").select("*").eq("id", 1).maybeSingle(),
     supabase.from("employees").select("*").eq("is_active", true),
     supabase.from("holidays").select("*"),
-    supabase.from("attendance_uploads").select("*").order("created_at", { ascending: false }).limit(12),
+    supabase.from("attendance_uploads").select("id, file_name, period_month, period_year").order("created_at", { ascending: false }).limit(12),
   ]);
+  const shell = await getAppShell();
+  if (!shell?.operator) redirect("/dashboard");
+  void ensureHandbookCalendar(supabase);
+
+  const [{ data: settings }, { data: employees }, { data: holidays }, { data: uploads }] = await dataPromise;
 
   return (
     <div>
@@ -39,7 +36,7 @@ export default async function AttendancePage() {
           (e) => !e.ignored && !isIgnoredEmployee(e.employee_code, e.full_name)
         )}
         holidays={(holidays ?? []) as Holiday[]}
-        userId={user!.id}
+        userId={shell.user.id}
       />
 
       <section className="mt-12">

@@ -6,7 +6,7 @@ import { LoginForm } from "./login-form";
 
 export default async function LoginPage() {
   if (!isSupabaseConfigured()) redirect("/setup");
-  await ensureAdminFromEnv();
+  void ensureAdminFromEnv();
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
