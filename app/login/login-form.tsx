@@ -14,25 +14,40 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const authError = params.get("error") || params.get("error_description");
+  const errorCode = params.get("error_code");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
+    setInfo(null);
     const supabase = createClient();
+    const origin = window.location.origin;
     try {
       if (mode === "signup") {
-        const { error: err } = await supabase.auth.signUp({
+        const { data, error: err } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { full_name: fullName } },
+          options: {
+            data: { full_name: fullName },
+            emailRedirectTo: `${origin}/auth/callback`,
+          },
         });
         if (err) throw err;
-      } else {
-        const { error: err } = await supabase.auth.signInWithPassword({ email, password });
-        if (err) throw err;
+        if (data.session) {
+          router.push(next);
+          router.refresh();
+          return;
+        }
+        setInfo("Check your inbox if confirmation is enabled. Prefer: in Supabase, turn off Confirm email, then sign in here.");
+        setMode("signin");
+        return;
       }
+      const { error: err } = await supabase.auth.signInWithPassword({ email, password });
+      if (err) throw err;
       router.push(next);
       router.refresh();
     } catch (err) {
@@ -41,6 +56,11 @@ export function LoginForm() {
       setBusy(false);
     }
   }
+
+  const linkExpired =
+    errorCode === "otp_expired" ||
+    (authError ?? "").toLowerCase().includes("expired") ||
+    (authError ?? "").toLowerCase().includes("invalid");
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
@@ -55,7 +75,16 @@ export function LoginForm() {
       <Field label="Password">
         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
       </Field>
+      {linkExpired ? (
+        <p className="text-sm text-red-800">
+          That email link has expired or already been used, and it pointed at localhost. Ignore it.
+          Turn off Confirm email in Supabase, then sign in with your password on this page.
+        </p>
+      ) : authError ? (
+        <p className="text-sm text-red-800">{authError.replace(/\+/g, " ")}</p>
+      ) : null}
       {error ? <p className="text-sm text-red-800">{error}</p> : null}
+      {info ? <p className="text-sm text-sage">{info}</p> : null}
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
       </Button>
