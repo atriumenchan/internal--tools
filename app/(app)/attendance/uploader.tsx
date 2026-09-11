@@ -4,21 +4,17 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
-  downloadSampleWorkbook,
   extractDailyRows,
   extractPunches,
-  parseWorkbook,
   type ColumnKey,
   type ColumnMapping,
   type ParsedSheet,
-} from "@/lib/excel";
-import {
-  monthPerformanceToAttendance,
-  parseMonthPerformanceBuffer,
-  type MonthPerformanceReport,
-} from "@/lib/month-performance";
+} from "@/lib/excel-rows";
+import { monthPerformanceToAttendance, type MonthPerformanceReport } from "@/lib/month-performance";
 import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { normalizeSettings } from "@/lib/settings";
+import { hoursLabel } from "@/lib/datetime";
 import { Button, Field, Input } from "@/components/ui";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
@@ -44,6 +40,7 @@ export function AttendanceUploader({
   userId: string;
 }) {
   const router = useRouter();
+  const resolvedSettings = normalizeSettings(settings);
   const now = new Date();
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
@@ -56,46 +53,56 @@ export function AttendanceUploader({
   const [createMissing, setCreateMissing] = useState(true);
 
   const preview = useMemo(() => {
-    if (report) {
-      return monthPerformanceToAttendance(report, employees, settings);
-    }
-    if (!sheet || !mapping.employee_name) return null;
     try {
+      if (report) {
+        return monthPerformanceToAttendance(report, employees, resolvedSettings);
+      }
+      if (!sheet || !mapping.employee_name) return null;
       const punches = mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet, mapping);
       const daily = mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet, mapping) : [];
       return computeAttendance({
         month,
         year,
-        settings,
+        settings: resolvedSettings,
         employees,
         holidays,
         punches,
         daily,
       });
-    } catch {
+    } catch (err) {
+      console.error(err);
       return null;
     }
-  }, [report, sheet, mapping, month, year, settings, employees, holidays]);
+  }, [report, sheet, mapping, month, year, resolvedSettings, employees, holidays]);
 
   async function onFile(file: File) {
     setError(null);
     setFileName(file.name);
     setReport(null);
     setSheet(null);
-    const buffer = await file.arrayBuffer();
     try {
-      const monthReport = parseMonthPerformanceBuffer(buffer);
-      setReport(monthReport);
-      setMonth(monthReport.month);
-      setYear(monthReport.year);
-      return;
-    } catch {
-      // Fall through to generic punch / daily mapping.
-    }
-    try {
-      const parsed = parseWorkbook(buffer);
-      setSheet(parsed);
-      setMapping(parsed.suggested);
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/attendance/parse", { method: "POST", body: form });
+      const data = (await res.json()) as {
+        kind?: "month-performance" | "sheet";
+        report?: MonthPerformanceReport;
+        sheet?: ParsedSheet;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(data.error || "Could not read this file");
+      if (data.kind === "month-performance" && data.report) {
+        setReport(data.report);
+        setMonth(data.report.month);
+        setYear(data.report.year);
+        return;
+      }
+      if (data.kind === "sheet" && data.sheet) {
+        setSheet(data.sheet);
+        setMapping(data.sheet.suggested);
+        return;
+      }
+      throw new Error("Could not read this file");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not read this file");
     }
@@ -140,11 +147,11 @@ export function AttendanceUploader({
       }
 
       const recomputed = report
-        ? monthPerformanceToAttendance(report, employeeList, settings)
+        ? monthPerformanceToAttendance(report, employeeList, resolvedSettings)
         : computeAttendance({
             month: periodMonth,
             year: periodYear,
-            settings,
+            settings: resolvedSettings,
             employees: employeeList,
             holidays,
             punches: mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet!, mapping),
@@ -210,7 +217,14 @@ export function AttendanceUploader({
             }}
           />
         </Field>
-        <Button type="button" variant="secondary" onClick={downloadSampleWorkbook}>
+        <Button
+          type="button"
+          variant="secondary"
+          onClick={async () => {
+            const { downloadSampleWorkbook } = await import("@/lib/excel");
+            downloadSampleWorkbook();
+          }}
+        >
           Sample punch log
         </Button>
       </div>
@@ -284,13 +298,13 @@ export function AttendanceUploader({
                       {row.employee_name}
                       {!row.employee_id ? <span className="ml-2 text-xs text-terracotta">new</span> : null}
                     </td>
-                    <td>{formatHours(row.total_hours)}</td>
+                    <td>{hoursLabel(row.total_hours)}</td>
                     <td>{row.present_days}</td>
                     <td>{row.absent_days}</td>
                     <td>{row.leave_days}</td>
                     <td>{row.week_offs}</td>
                     <td>{row.late_days}</td>
-                    <td>{formatHours(row.overtime_hours)}</td>
+                    <td>{hoursLabel(row.overtime_hours)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -305,12 +319,6 @@ export function AttendanceUploader({
       {error ? <p className="text-sm text-red-800">{error}</p> : null}
     </div>
   );
-}
-
-function formatHours(value: number) {
-  const hours = Math.floor(value);
-  const minutes = Math.round((value - hours) * 60);
-  return `${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
 function chunk<T>(items: T[], size: number) {

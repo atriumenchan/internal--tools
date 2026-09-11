@@ -1,4 +1,3 @@
-import * as XLSX from "xlsx";
 import type { CompanySettings, DayStatus, Employee } from "@/lib/types";
 import type { ComputedDay, ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
@@ -61,10 +60,6 @@ const MONTH_NAMES: Record<string, number> = {
   december: 12,
 };
 
-function cells(row: unknown[] | undefined): string[] {
-  return (row ?? []).map((c) => String(c ?? "").replace(/\s+/g, " ").trim());
-}
-
 function valueAfter(row: string[], label: string): string {
   const target = label.toLowerCase();
   const i = row.findIndex((c) => c.toLowerCase() === target);
@@ -121,17 +116,6 @@ function rowLabel(row: string[]): string {
 export function isMonthPerformanceGrid(matrix: string[][]): boolean {
   const labels = matrix.slice(0, 25).map((r) => rowLabel(r));
   return labels.includes("empcode") && labels.includes("in") && labels.includes("status");
-}
-
-export function parseMonthPerformanceBuffer(buffer: ArrayBuffer): MonthPerformanceReport {
-  const workbook = XLSX.read(buffer, { type: "array", cellDates: true });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  if (!sheet) throw new Error("The workbook has no sheets.");
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "", raw: false }).map(cells);
-  if (!isMonthPerformanceGrid(matrix)) {
-    throw new Error("This is not a month-performance IN/OUT report.");
-  }
-  return parseMonthPerformanceMatrix(matrix);
 }
 
 export function parseMonthPerformanceMatrix(matrix: string[][]): MonthPerformanceReport {
@@ -208,10 +192,12 @@ export function parseMonthPerformanceMatrix(matrix: string[][]): MonthPerformanc
   return { company, month: period.month, year: period.year, people };
 }
 
-function codesMatch(a: string, b: string) {
-  const na = a.trim().replace(/^0+/, "") || "0";
-  const nb = b.trim().replace(/^0+/, "") || "0";
-  return a.trim().toLowerCase() === b.trim().toLowerCase() || na === nb;
+function codesMatch(a: string | null | undefined, b: string | null | undefined) {
+  const left = (a || "").trim();
+  const right = (b || "").trim();
+  const na = left.replace(/^0+/, "") || "0";
+  const nb = right.replace(/^0+/, "") || "0";
+  return left.toLowerCase() === right.toLowerCase() || na === nb;
 }
 
 function ymd(year: number, month: number, day: number) {
@@ -236,7 +222,9 @@ export function monthPerformanceToAttendance(
     if (isIgnoredEmployee(person.employee_code, person.employee_name)) continue;
     const employee =
       employees.find((e) => codesMatch(e.employee_code, person.employee_code)) ||
-      employees.find((e) => e.full_name.trim().toLowerCase() === person.employee_name.trim().toLowerCase()) ||
+      employees.find(
+        (e) => (e.full_name || "").trim().toLowerCase() === (person.employee_name || "").trim().toLowerCase()
+      ) ||
       null;
 
     let lateDays = 0;
@@ -245,7 +233,7 @@ export function monthPerformanceToAttendance(
     for (const day of person.days) {
       const workDate = new Date(report.year, report.month - 1, day.day);
       const start = new Date(workDate);
-      const [sh, sm] = (settings.work_start || "10:00").split(":").map(Number);
+      const [sh, sm] = String(settings?.work_start || "10:00").split(":").map(Number);
       start.setHours(sh || 10, sm || 0, 0, 0);
       const grace = new Date(start.getTime() + (settings.late_grace_minutes || 0) * 60_000);
       const punchIn = day.inTime
@@ -287,16 +275,16 @@ export function monthPerformanceToAttendance(
       employee_name: employee?.full_name ?? person.employee_name,
       period_month: report.month,
       period_year: report.year,
-      working_days: person.present + person.absent + person.leave_days,
-      present_days: person.present,
-      absent_days: person.absent,
-      leave_days: person.leave_days,
+      working_days: Number(person.present || 0) + Number(person.absent || 0) + Number(person.leave_days || 0),
+      present_days: Number(person.present) || 0,
+      absent_days: Number(person.absent) || 0,
+      leave_days: Number(person.leave_days) || 0,
       half_days: halfDays,
-      week_offs: person.week_offs,
-      holidays: person.holidays,
+      week_offs: Number(person.week_offs) || 0,
+      holidays: Number(person.holidays) || 0,
       late_days: lateDays,
-      total_hours: person.total_hours,
-      overtime_hours: person.overtime_hours,
+      total_hours: Number(person.total_hours) || 0,
+      overtime_hours: Number(person.overtime_hours) || 0,
     });
   }
 

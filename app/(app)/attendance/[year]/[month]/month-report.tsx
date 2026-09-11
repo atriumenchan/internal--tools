@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { exportSummariesWorkbook } from "@/lib/excel";
 import { Badge, Button, Card, Input } from "@/components/ui";
+import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type MonthlySummary } from "@/lib/types";
-import { format } from "date-fns";
 
 const TONE: Record<DayStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
   present: "ok",
@@ -33,7 +32,7 @@ export function MonthReport({
     if (!q) return summaries;
     return summaries.filter(
       (s) =>
-        s.employee_name.toLowerCase().includes(q) ||
+        (s.employee_name || "").toLowerCase().includes(q) ||
         (s.employee_code ?? "").toLowerCase().includes(q)
     );
   }, [summaries, query]);
@@ -45,11 +44,12 @@ export function MonthReport({
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(day);
     }
-    map.forEach((list) => list.sort((a, b) => a.work_date.localeCompare(b.work_date)));
+    map.forEach((list) => list.sort((a, b) => (a.work_date || "").localeCompare(b.work_date || "")));
     return map;
   }, [days]);
 
-  function exportFile() {
+  async function exportFile() {
+    const { exportSummariesWorkbook } = await import("@/lib/excel");
     exportSummariesWorkbook(
       `attendance-${monthLabel.replace(/\s+/g, "-")}.xlsx`,
       filtered.map((s) => ({
@@ -76,7 +76,7 @@ export function MonthReport({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
-        <Button variant="secondary" onClick={exportFile}>
+        <Button variant="secondary" onClick={() => void exportFile()}>
           Export Excel
         </Button>
       </div>
@@ -96,12 +96,12 @@ export function MonthReport({
                   <p className="text-xs text-ink-soft">{summary.employee_code || "No code"}</p>
                 </div>
                 <dl className="grid grid-cols-3 gap-x-6 gap-y-1 text-sm md:grid-cols-6">
-                  <Metric label="Hours" value={summary.total_hours} />
+                  <Metric label="Hours" value={hoursLabel(summary.total_hours)} />
                   <Metric label="Present" value={summary.present_days} />
                   <Metric label="Absent" value={summary.absent_days} />
                   <Metric label="Leave" value={summary.leave_days} />
                   <Metric label="Late" value={summary.late_days} />
-                  <Metric label="OT" value={summary.overtime_hours} />
+                  <Metric label="OT" value={hoursLabel(summary.overtime_hours)} />
                 </dl>
               </button>
               {expanded ? (
@@ -119,13 +119,13 @@ export function MonthReport({
                     <tbody>
                       {personDays.map((day) => (
                         <tr key={day.id} className="border-t border-rule/60">
-                          <td className="py-1.5">{format(new Date(day.work_date), "EEE d MMM")}</td>
-                          <td>{day.punch_in ? format(new Date(day.punch_in), "HH:mm") : "—"}</td>
-                          <td>{day.punch_out ? format(new Date(day.punch_out), "HH:mm") : "—"}</td>
-                          <td>{day.hours_worked || "—"}</td>
+                          <td className="py-1.5">{formatWorkDate(day.work_date)}</td>
+                          <td>{formatClock(day.punch_in)}</td>
+                          <td>{formatClock(day.punch_out)}</td>
+                          <td>{day.hours_worked ? hoursLabel(day.hours_worked) : "—"}</td>
                           <td>
-                            <Badge tone={TONE[day.status]}>
-                              {DAY_STATUS_LABELS[day.status]}
+                            <Badge tone={TONE[day.status] ?? "neutral"}>
+                              {DAY_STATUS_LABELS[day.status] ?? day.status}
                               {day.is_late ? " · late" : ""}
                             </Badge>
                           </td>
@@ -143,7 +143,7 @@ export function MonthReport({
   );
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function Metric({ label, value }: { label: string; value: string | number }) {
   return (
     <div>
       <dt className="text-[11px] uppercase tracking-wide text-ink-soft">{label}</dt>

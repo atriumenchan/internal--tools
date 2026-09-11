@@ -1,6 +1,6 @@
 import { format, getDay, getDaysInMonth } from "date-fns";
 import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
-import type { RawDayRow, RawPunch } from "@/lib/excel";
+import type { RawDayRow, RawPunch } from "@/lib/excel-rows";
 import { isIgnoredEmployee } from "@/lib/admin";
 
 export type ComputedDay = {
@@ -57,13 +57,13 @@ function classifyStatusToken(value?: string): DayStatus | null {
 }
 
 function matchEmployee(code: string, name: string, employees: Employee[]) {
-  const codeNorm = code.trim().toLowerCase();
-  const nameNorm = name.trim().toLowerCase();
+  const codeNorm = (code || "").trim().toLowerCase();
+  const nameNorm = (name || "").trim().toLowerCase();
   if (codeNorm) {
-    const byCode = employees.find((e) => e.employee_code.trim().toLowerCase() === codeNorm);
+    const byCode = employees.find((e) => (e.employee_code || "").trim().toLowerCase() === codeNorm);
     if (byCode) return byCode;
   }
-  return employees.find((e) => e.full_name.trim().toLowerCase() === nameNorm) ?? null;
+  return employees.find((e) => (e.full_name || "").trim().toLowerCase() === nameNorm) ?? null;
 }
 
 function hoursBetween(start: Date, end: Date) {
@@ -84,7 +84,7 @@ function dayFromPunches(
 ): ComputedDay {
   const workDate = new Date(`${dateKey}T00:00:00`);
   const weekday = getDay(workDate);
-  const isOff = settings.weekly_offs.includes(weekday);
+  const isOff = (settings.weekly_offs ?? []).includes(weekday);
   punches.sort((a, b) => a.getTime() - b.getTime());
   const first = punches[0] ?? null;
   const last = punches.length > 1 ? punches[punches.length - 1] : null;

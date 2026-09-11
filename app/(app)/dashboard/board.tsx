@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { format, parseISO } from "date-fns";
 import { Badge, Card, Input } from "@/components/ui";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type Employee, type MonthlySummary } from "@/lib/types";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
 
 const TONE: Record<DayStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
   present: "ok",
@@ -15,19 +15,6 @@ const TONE: Record<DayStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
   holiday: "neutral",
   unmatched: "warn",
 };
-
-function hoursLabel(value: number) {
-  const h = Math.floor(value);
-  const m = Math.round((value - h) * 60);
-  return `${h}:${String(m).padStart(2, "0")}`;
-}
-
-function clock(value: string | null) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return "—";
-  return format(d, "HH:mm");
-}
 
 export function AttendanceBoard({
   employees,
@@ -72,7 +59,7 @@ export function AttendanceBoard({
       const q = query.trim().toLowerCase();
       if (
         q &&
-        !day.employee_name.toLowerCase().includes(q) &&
+        !(day.employee_name || "").toLowerCase().includes(q) &&
         !(day.employee_code ?? "").toLowerCase().includes(q)
       ) {
         return false;
@@ -92,7 +79,7 @@ export function AttendanceBoard({
       const q = query.trim().toLowerCase();
       if (
         q &&
-        !row.employee_name.toLowerCase().includes(q) &&
+        !(row.employee_name || "").toLowerCase().includes(q) &&
         !(row.employee_code ?? "").toLowerCase().includes(q)
       ) {
         return false;
@@ -233,13 +220,13 @@ export function AttendanceBoard({
                     <tbody>
                       {personDays.map((day) => (
                         <tr key={day.id} className="border-t border-rule/60">
-                          <td className="py-1.5">{format(parseISO(day.work_date.slice(0, 10)), "EEE d MMM")}</td>
-                          <td>{clock(day.punch_in)}</td>
-                          <td>{clock(day.punch_out)}</td>
+                          <td className="py-1.5">{formatWorkDate(day.work_date)}</td>
+                          <td>{formatClock(day.punch_in)}</td>
+                          <td>{formatClock(day.punch_out)}</td>
                           <td>{day.hours_worked ? hoursLabel(Number(day.hours_worked)) : "—"}</td>
                           <td>
-                            <Badge tone={TONE[day.status]}>
-                              {DAY_STATUS_LABELS[day.status]}
+                            <Badge tone={TONE[day.status] ?? "neutral"}>
+                              {DAY_STATUS_LABELS[day.status] ?? day.status}
                               {day.is_late ? " · late" : ""}
                             </Badge>
                           </td>
@@ -257,7 +244,7 @@ export function AttendanceBoard({
         <div className="space-y-4">
           {daysByDate.map(([date, rows]) => (
             <Card key={date}>
-              <h3 className="font-serif text-lg">{format(parseISO(date.slice(0, 10)), "EEEE d MMMM yyyy")}</h3>
+              <h3 className="font-serif text-lg">{formatWorkDate(date, "long")}</h3>
               <table className="mt-3 w-full text-sm">
                 <thead className="text-left text-xs uppercase text-ink-soft">
                   <tr>
@@ -272,17 +259,17 @@ export function AttendanceBoard({
                 <tbody>
                   {rows
                     .slice()
-                    .sort((a, b) => a.employee_name.localeCompare(b.employee_name))
+                    .sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""))
                     .map((day) => (
                       <tr key={day.id} className="border-t border-rule/60">
                         <td className="py-1.5 font-mono text-xs">{day.employee_code}</td>
                         <td>{day.employee_name}</td>
-                        <td>{clock(day.punch_in)}</td>
-                        <td>{clock(day.punch_out)}</td>
+                        <td>{formatClock(day.punch_in)}</td>
+                        <td>{formatClock(day.punch_out)}</td>
                         <td>{day.hours_worked ? hoursLabel(Number(day.hours_worked)) : "—"}</td>
                         <td>
-                          <Badge tone={TONE[day.status]}>
-                            {DAY_STATUS_LABELS[day.status]}
+                          <Badge tone={TONE[day.status] ?? "neutral"}>
+                            {DAY_STATUS_LABELS[day.status] ?? day.status}
                             {day.is_late ? " · late" : ""}
                           </Badge>
                         </td>

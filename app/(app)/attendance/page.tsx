@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/ui";
 import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
 import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { normalizeSettings } from "@/lib/settings";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 export default async function AttendancePage() {
@@ -31,7 +32,7 @@ export default async function AttendancePage() {
         description="Drop the weekly month-performance .xls here. It overwrites that month in Supabase. The live board on Home always reads from the database."
       />
       <AttendanceUploader
-        settings={settings as CompanySettings}
+        settings={normalizeSettings(settings as CompanySettings | null)}
         employees={((employees ?? []) as Employee[]).filter(
           (e) => !e.ignored && !isIgnoredEmployee(e.employee_code, e.full_name)
         )}
