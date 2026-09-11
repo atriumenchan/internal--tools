@@ -2,28 +2,31 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FileSignature, LayoutDashboard, LogOut, Shield, Timer, Users, Settings } from "lucide-react";
+import { BookOpen, FileSignature, LayoutDashboard, LogOut, Shield, Timer, Users, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard, adminOnly: false },
-  { href: "/offers", label: "Offer letters", icon: FileSignature, adminOnly: false },
-  { href: "/attendance", label: "Attendance", icon: Timer, adminOnly: false },
-  { href: "/employees", label: "People", icon: Users, adminOnly: false },
-  { href: "/team", label: "Staff", icon: Shield, adminOnly: true },
-  { href: "/settings", label: "Settings", icon: Settings, adminOnly: false },
+  { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: false },
+  { href: "/handbook", label: "Handbook", icon: BookOpen, adminOnly: false, operatorOnly: false },
+  { href: "/attendance", label: "Upload", icon: Timer, adminOnly: false, operatorOnly: true },
+  { href: "/offers", label: "Offer letters", icon: FileSignature, adminOnly: false, operatorOnly: true },
+  { href: "/employees", label: "People", icon: Users, adminOnly: false, operatorOnly: true },
+  { href: "/team", label: "Staff", icon: Shield, adminOnly: true, operatorOnly: true },
+  { href: "/settings", label: "Settings", icon: Settings, adminOnly: false, operatorOnly: true },
 ];
 
 export function AppShell({
   profile,
   companyName,
+  operator,
   children,
 }: {
   profile: Profile;
   companyName: string;
+  operator: boolean;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -53,7 +56,11 @@ export function AppShell({
           </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:px-3">
-          {NAV.filter((item) => !item.adminOnly || profile.role === "admin" || isAdminEmail(profile.email)).map((item) => {
+          {NAV.filter((item) => {
+            if (item.adminOnly && !(profile.role === "admin" || isAdminEmail(profile.email))) return false;
+            if (item.operatorOnly && !operator) return false;
+            return true;
+          }).map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return (

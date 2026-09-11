@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
-import { isIgnoredEmployee } from "@/lib/admin";
+import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 export default async function AttendancePage() {
@@ -11,6 +12,10 @@ export default async function AttendancePage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const { data: profile } = await supabase.from("profiles").select("role, email").eq("id", user!.id).maybeSingle();
+  const { data: linked } = await supabase.from("employees").select("id").eq("user_id", user!.id).maybeSingle();
+  const operator = isAdminUser({ email: user?.email, role: profile?.role }) || !linked;
+  if (!operator) redirect("/dashboard");
   const [{ data: settings }, { data: employees }, { data: holidays }, { data: uploads }] = await Promise.all([
     supabase.from("company_settings").select("*").eq("id", 1).single(),
     supabase.from("employees").select("*").eq("is_active", true),
@@ -23,7 +28,7 @@ export default async function AttendancePage() {
       <PageHeader
         eyebrow="Time"
         title="Attendance from Excel"
-        description="Upload the biometric month-performance .xls (Empcode blocks with IN / OUT / WORK / Status). More or fewer people is fine — the layout stays the same."
+        description="Drop the weekly month-performance .xls here. It overwrites that month in Supabase. The live board on Home always reads from the database."
       />
       <AttendanceUploader
         settings={settings as CompanySettings}

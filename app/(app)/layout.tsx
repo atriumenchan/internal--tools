@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 import { AppShell } from "@/components/app-shell";
 import { createClient } from "@/lib/supabase/server";
-import { isAdminEmail } from "@/lib/admin";
+import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { isSupabaseConfigured } from "@/lib/utils";
 import type { CompanySettings, Profile } from "@/lib/types";
 
@@ -27,6 +27,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     profile.role = "admin";
   }
 
+  const { data: linked } = await supabase.from("employees").select("id").eq("user_id", user.id).maybeSingle();
+  const operator = isAdminUser({ email: user.email, role: profile?.role }) || !linked;
+
   const { data: settings } = await supabase
     .from("company_settings")
     .select("company_name")
@@ -44,6 +47,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <AppShell
       profile={resolved}
       companyName={(settings as Pick<CompanySettings, "company_name"> | null)?.company_name ?? "Atrium"}
+      operator={operator}
     >
       {children}
     </AppShell>
