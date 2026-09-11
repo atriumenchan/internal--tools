@@ -14,7 +14,7 @@ import { monthPerformanceToAttendance, type MonthPerformanceReport } from "@/lib
 import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
-import { hoursLabel } from "@/lib/datetime";
+import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
 import { Button, Field, Input } from "@/components/ui";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
@@ -233,7 +233,8 @@ export function AttendanceUploader({
         <p className="rounded-2xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
           Detected biometric <strong>month performance</strong> report
           {report.company ? ` for ${report.company}` : ""}. {report.people.length} people · IN / OUT / WORK /
-          Status blocks. Extra or fewer people in later files are fine — the layout is what matters.
+          Status blocks. The machine fills the rest of the month as absent — we only count through{" "}
+          {formatWorkDate(kolkataTodayKey())}.
         </p>
       ) : null}
 
@@ -269,7 +270,9 @@ export function AttendanceUploader({
       {preview ? (
         <div className="rounded-2xl border border-rule bg-white p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-serif text-xl">Preview · {preview.summaries.length} people</h3>
+            <h3 className="font-serif text-xl">
+              Preview · {preview.summaries.length} people · through {formatWorkDate(kolkataTodayKey())}
+            </h3>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} />
               Create people who are not in the directory yet

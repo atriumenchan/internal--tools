@@ -1,5 +1,14 @@
 const TZ = "Asia/Kolkata";
 
+export function kolkataTodayKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 function dateOnly(value: string | null | undefined) {
   if (!value) return null;
   const key = String(value).slice(0, 10);

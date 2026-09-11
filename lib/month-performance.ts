@@ -1,6 +1,7 @@
 import type { CompanySettings, DayStatus, Employee } from "@/lib/types";
-import type { ComputedDay, ComputedSummary } from "@/lib/attendance";
+import { summarizeDays, type ComputedDay } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { kolkataTodayKey } from "@/lib/datetime";
 
 export type MonthPerformanceReport = {
   company: string;
@@ -214,9 +215,9 @@ export function monthPerformanceToAttendance(
   report: MonthPerformanceReport,
   employees: Employee[],
   settings: CompanySettings
-): { days: ComputedDay[]; summaries: ComputedSummary[] } {
+) {
   const days: ComputedDay[] = [];
-  const summaries: ComputedSummary[] = [];
+  const todayKey = kolkataTodayKey();
 
   for (const person of report.people) {
     if (isIgnoredEmployee(person.employee_code, person.employee_name)) continue;
@@ -227,10 +228,10 @@ export function monthPerformanceToAttendance(
       ) ||
       null;
 
-    let lateDays = 0;
-    let halfDays = 0;
-
     for (const day of person.days) {
+      const dateKey = ymd(report.year, report.month, day.day);
+      if (dateKey > todayKey) continue;
+
       const workDate = new Date(report.year, report.month - 1, day.day);
       const start = new Date(workDate);
       const [sh, sm] = String(settings?.work_start || "10:00").split(":").map(Number);
@@ -239,11 +240,7 @@ export function monthPerformanceToAttendance(
       const punchIn = day.inTime
         ? new Date(report.year, report.month - 1, day.day, Number(day.inTime.slice(0, 2)), Number(day.inTime.slice(3, 5)))
         : null;
-      const isLate = Boolean(
-        punchIn && day.status === "present" && punchIn.getTime() > grace.getTime()
-      );
-      if (isLate) lateDays += 1;
-      if (day.status === "half_day") halfDays += 1;
+      const isLate = Boolean(punchIn && day.status === "present" && punchIn.getTime() > grace.getTime());
 
       const notes = [
         day.rawStatus ? `Status ${day.rawStatus}` : "",
@@ -257,37 +254,17 @@ export function monthPerformanceToAttendance(
         employee_code: employee?.employee_code ?? person.employee_code,
         employee_name: employee?.full_name ?? person.employee_name,
         employee_id: employee?.id ?? null,
-        work_date: ymd(report.year, report.month, day.day),
+        work_date: dateKey,
         punch_in: combine(report.year, report.month, day.day, day.inTime),
         punch_out: combine(report.year, report.month, day.day, day.outTime),
-        hours_worked: day.workHours,
+        hours_worked: Math.round((day.workHours + day.otHours) * 100) / 100,
         is_late: isLate,
-        late_by_minutes:
-          isLate && punchIn ? Math.round((punchIn.getTime() - start.getTime()) / 60000) : 0,
+        late_by_minutes: isLate && punchIn ? Math.round((punchIn.getTime() - start.getTime()) / 60000) : 0,
         status: day.status,
         source_note: notes || null,
       });
     }
-
-    summaries.push({
-      employee_id: employee?.id ?? null,
-      employee_code: employee?.employee_code ?? person.employee_code,
-      employee_name: employee?.full_name ?? person.employee_name,
-      period_month: report.month,
-      period_year: report.year,
-      working_days: Number(person.present || 0) + Number(person.absent || 0) + Number(person.leave_days || 0),
-      present_days: Number(person.present) || 0,
-      absent_days: Number(person.absent) || 0,
-      leave_days: Number(person.leave_days) || 0,
-      half_days: halfDays,
-      week_offs: Number(person.week_offs) || 0,
-      holidays: Number(person.holidays) || 0,
-      late_days: lateDays,
-      total_hours: Number(person.total_hours) || 0,
-      overtime_hours: Number(person.overtime_hours) || 0,
-    });
   }
 
-  summaries.sort((a, b) => a.employee_name.localeCompare(b.employee_name));
-  return { days, summaries };
+  return { days, summaries: summarizeDays(days, report.month, report.year, settings) };
 }

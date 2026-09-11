@@ -2,6 +2,7 @@ import { format, getDay, getDaysInMonth } from "date-fns";
 import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
 import type { RawDayRow, RawPunch } from "@/lib/excel-rows";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { kolkataTodayKey } from "@/lib/datetime";
 
 export type ComputedDay = {
   employee_code: string | null;
@@ -168,9 +169,11 @@ export function computeAttendance(options: {
     if (isIgnoredEmployee(person.code, person.name)) return;
     const employee = matchEmployee(person.code, person.name, employees);
     const dim = getDaysInMonth(new Date(year, month - 1, 1));
+    const todayKey = kolkataTodayKey();
     for (let d = 1; d <= dim; d++) {
       const date = new Date(year, month - 1, d);
       const dateKey = ymd(date);
+      if (dateKey > todayKey) break;
       const bucket = person.dates.get(dateKey);
       days.push(
         dayFromPunches(
