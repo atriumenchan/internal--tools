@@ -6,6 +6,7 @@ import { FileSignature, LayoutDashboard, LogOut, Shield, Timer, Users, Settings 
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
+import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard, adminOnly: false },
@@ -52,7 +53,7 @@ export function AppShell({
           </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:px-3">
-          {NAV.filter((item) => !item.adminOnly || profile.role === "admin").map((item) => {
+          {NAV.filter((item) => !item.adminOnly || profile.role === "admin" || isAdminEmail(profile.email)).map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return (

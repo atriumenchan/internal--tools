@@ -53,6 +53,7 @@ Add env vars under Settings → Environment Variables:
 
 - `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as **Config**
 - `NEXT_PUBLIC_APP_URL` as **Config** (your live site URL)
+- `NEXT_PUBLIC_ADMIN_EMAIL` as **Config** (`ryan@admexo.com`)
 - `SUPABASE_SERVICE_ROLE_KEY` as **Secret** (Settings → API → service_role)
 
 ## Offer letters

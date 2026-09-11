@@ -2,14 +2,17 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PageHeader } from "@/components/ui";
 import { TeamPanel } from "./team-panel";
+import { isAdminUser } from "@/lib/admin";
 
 export default async function TeamPage() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user!.id).maybeSingle();
-  if (profile?.role !== "admin") redirect("/dashboard");
+  const { data: profile } = await supabase.from("profiles").select("role, email").eq("id", user!.id).maybeSingle();
+  if (!isAdminUser({ email: user?.email ?? profile?.email, role: profile?.role })) {
+    redirect("/dashboard");
+  }
 
   return (
     <div>

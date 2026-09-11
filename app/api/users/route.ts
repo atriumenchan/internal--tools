@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAdminUser } from "@/lib/admin";
 import type { AppRole } from "@/lib/types";
 
 async function requireAdmin() {
@@ -10,8 +11,8 @@ async function requireAdmin() {
   } = await supabase.auth.getUser();
   if (!user) return { error: NextResponse.json({ error: "Not signed in" }, { status: 401 }) };
 
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (profile?.role !== "admin") {
+  const { data: profile } = await supabase.from("profiles").select("role, email").eq("id", user.id).maybeSingle();
+  if (!isAdminUser({ email: user.email ?? profile?.email, role: profile?.role })) {
     return { error: NextResponse.json({ error: "Admin only" }, { status: 403 }) };
   }
   return { user };
