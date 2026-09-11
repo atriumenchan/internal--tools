@@ -13,11 +13,9 @@ Repo: [github.com/atriumenchan/internal--tools](https://github.com/atriumenchan/
 2. Open **SQL Editor** → New query.
 3. Paste everything in [`supabase/schema.sql`](supabase/schema.sql) and run it.
 4. Authentication → Providers → enable **Email**.
-5. Settings → API → copy **Project URL** and **anon public** key.
+5. Settings → API → copy **Project URL**, **anon public** key, and **service_role** key (server only).
 
-The first account you sign up in the app becomes **admin**. Later signups are HR.
-
-For a private HR tool, turn **off** “Confirm email” under Authentication → Providers → Email so the first account can sign in immediately.
+The first account in `profiles` is **admin**. Later staff are created from **Staff** in the app (same pattern as the invoice admin portal). Turn off public sign-ups and Confirm email under Authentication.
 
 ## 2. Environment
 
@@ -27,9 +25,12 @@ Copy `.env.example` to `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key_here
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 ```
 
 `NEXT_PUBLIC_APP_URL` is used when copying the candidate signing link. In production set it to your deployed origin.
+
+`SUPABASE_SERVICE_ROLE_KEY` stays on the server. It lets an admin create logins from **Staff**. Never name it `NEXT_PUBLIC_`. On Vercel, add it as **Secret**.
 
 ## 3. Run
 
@@ -48,7 +49,11 @@ Import the GitHub repo as a **Next.js** project. In Project Settings → Build a
 - Build Command: `npm run build`
 - Output Directory: leave **empty** (do not set `public`)
 
-Add the same three env vars under Settings → Environment Variables, using your live site URL for `NEXT_PUBLIC_APP_URL`.
+Add env vars under Settings → Environment Variables:
+
+- `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` as **Config**
+- `NEXT_PUBLIC_APP_URL` as **Config** (your live site URL)
+- `SUPABASE_SERVICE_ROLE_KEY` as **Secret** (Settings → API → service_role)
 
 ## Offer letters
 

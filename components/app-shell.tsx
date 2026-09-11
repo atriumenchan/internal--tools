@@ -2,17 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { FileSignature, LayoutDashboard, LogOut, Timer, Users, Settings } from "lucide-react";
+import { FileSignature, LayoutDashboard, LogOut, Shield, Timer, Users, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 
 const NAV = [
-  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-  { href: "/offers", label: "Offer letters", icon: FileSignature },
-  { href: "/attendance", label: "Attendance", icon: Timer },
-  { href: "/employees", label: "People", icon: Users },
-  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard, adminOnly: false },
+  { href: "/offers", label: "Offer letters", icon: FileSignature, adminOnly: false },
+  { href: "/attendance", label: "Attendance", icon: Timer, adminOnly: false },
+  { href: "/employees", label: "People", icon: Users, adminOnly: false },
+  { href: "/team", label: "Staff", icon: Shield, adminOnly: true },
+  { href: "/settings", label: "Settings", icon: Settings, adminOnly: false },
 ];
 
 export function AppShell({
@@ -51,7 +52,7 @@ export function AppShell({
           </button>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:px-3">
-          {NAV.map((item) => {
+          {NAV.filter((item) => !item.adminOnly || profile.role === "admin").map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const Icon = item.icon;
             return (
