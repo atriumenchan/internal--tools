@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import { WEEKDAYS } from "@/lib/utils";
+import { HANDBOOK_WEEKLY_OFFS } from "@/lib/handbook-calendar";
 import type { CompanySettings, Holiday } from "@/lib/types";
 
 export function SettingsForm({ settings, holidays }: { settings: CompanySettings; holidays: Holiday[] }) {
   const router = useRouter();
-  const [offs, setOffs] = useState<number[]>(settings.weekly_offs ?? [0]);
+  const [offs, setOffs] = useState<number[]>(settings.weekly_offs ?? [0, 6]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         expected_hours: Number(form.get("expected_hours") || 9),
         late_grace_minutes: Number(form.get("late_grace_minutes") || 15),
         half_day_hours: Number(form.get("half_day_hours") || 4),
-        weekly_offs: offs,
+        weekly_offs: [...new Set([...HANDBOOK_WEEKLY_OFFS, ...offs])],
         offer_validity_days: Number(form.get("offer_validity_days") || 7),
         offer_footer: String(form.get("offer_footer") || ""),
       })
@@ -123,11 +124,12 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
                   key={day.value}
                   type="button"
                   className={`rounded-full px-3 py-1 text-sm ${on ? "bg-ink text-cream" : "border border-rule"}`}
-                  onClick={() =>
+                  onClick={() => {
+                    if ((HANDBOOK_WEEKLY_OFFS as number[]).includes(day.value)) return;
                     setOffs((prev) =>
                       prev.includes(day.value) ? prev.filter((d) => d !== day.value) : [...prev, day.value]
-                    )
-                  }
+                    );
+                  }}
                 >
                   {day.label}
                 </button>
@@ -142,7 +144,11 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
 
       <div className="rounded-2xl border border-rule bg-cream p-5">
         <h2 className="font-serif text-xl">Holidays</h2>
-        <p className="mt-1 text-sm text-ink-soft">These dates count as holiday, not absence.</p>
+        <p className="mt-1 text-sm text-ink-soft">
+          Saturday and Sunday cannot be turned off. Fixed Noida 2026 holidays from the handbook count as holiday, not
+          absence. Optional handbook holidays (Eid, Good Friday, Guru Nanak Jayanti) are chosen per person — add one
+          here only if the whole office takes it.
+        </p>
         <form onSubmit={addHoliday} className="mt-4 grid grid-cols-[1fr_1fr_auto] gap-2">
           <Input name="holiday_date" type="date" required />
           <Input name="name" placeholder="Name" required />

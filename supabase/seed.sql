@@ -69,3 +69,22 @@ insert into public.employees (employee_code, full_name, department, ignored, is_
 values ('0003', 'Ryan Ray', 'Operations', true, false)
 on conflict (employee_code) do update
 set ignored = true, is_active = false;
+
+update public.company_settings
+set weekly_offs = '{0,6}'
+where id = 1;
+
+insert into public.holidays (holiday_date, name)
+values
+  ('2026-01-26', 'Republic Day'),
+  ('2026-03-04', 'Holi'),
+  ('2026-03-26', 'Ram Navami'),
+  ('2026-08-15', 'Independence Day'),
+  ('2026-08-28', 'Raksha Bandhan'),
+  ('2026-09-04', 'Janmashtami'),
+  ('2026-10-02', 'Gandhi Jayanti'),
+  ('2026-10-20', 'Dussehra'),
+  ('2026-11-08', 'Diwali'),
+  ('2026-12-25', 'Christmas')
+on conflict (holiday_date) do update
+set name = excluded.name;

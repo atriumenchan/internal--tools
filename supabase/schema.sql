@@ -117,7 +117,7 @@ create table if not exists public.company_settings (
   expected_hours numeric(4,2) not null default 9,
   late_grace_minutes int not null default 15,
   half_day_hours numeric(4,2) not null default 4,
-  weekly_offs int[] not null default '{0}', -- 0=Sun … 6=Sat
+  weekly_offs int[] not null default '{0,6}', -- 0=Sun, 6=Sat; handbook working days are Mon–Fri
   offer_validity_days int not null default 7,
   offer_footer text not null default 'This offer is confidential and intended only for the named candidate.',
   created_at timestamptz not null default now(),

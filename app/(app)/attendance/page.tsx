@@ -6,6 +6,7 @@ import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
 import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
+import { ensureHandbookCalendar } from "@/lib/ensure-handbook";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 export default async function AttendancePage() {
@@ -17,6 +18,7 @@ export default async function AttendancePage() {
   const { data: linked } = await supabase.from("employees").select("id").eq("user_id", user!.id).maybeSingle();
   const operator = isAdminUser({ email: user?.email, role: profile?.role }) || !linked;
   if (!operator) redirect("/dashboard");
+  await ensureHandbookCalendar(supabase);
   const [{ data: settings }, { data: employees }, { data: holidays }, { data: uploads }] = await Promise.all([
     supabase.from("company_settings").select("*").eq("id", 1).single(),
     supabase.from("employees").select("*").eq("is_active", true),
@@ -29,7 +31,7 @@ export default async function AttendancePage() {
       <PageHeader
         eyebrow="Time"
         title="Attendance from Excel"
-        description="Drop the weekly month-performance .xls here. It overwrites that month in Supabase. The live board on Home always reads from the database."
+        description="Drop the weekly month-performance .xls here. Saturday, Sunday, and handbook holidays count as offs. It overwrites that month in Supabase."
       />
       <AttendanceUploader
         settings={normalizeSettings(settings as CompanySettings | null)}

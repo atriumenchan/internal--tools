@@ -1,8 +1,9 @@
-import { format, getDay, getDaysInMonth } from "date-fns";
+import { format, getDaysInMonth } from "date-fns";
 import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
 import type { RawDayRow, RawPunch } from "@/lib/excel-rows";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { kolkataTodayKey } from "@/lib/datetime";
+import { fixedHolidayName, resolveHandbookStatus, HANDBOOK_HOLIDAYS_2026 } from "@/lib/handbook-calendar";
 
 export type ComputedDay = {
   employee_code: string | null;
@@ -83,26 +84,29 @@ function dayFromPunches(
   employee: Employee | null,
   holidayName?: string
 ): ComputedDay {
-  const workDate = new Date(`${dateKey}T00:00:00`);
-  const weekday = getDay(workDate);
-  const isOff = (settings.weekly_offs ?? []).includes(weekday);
+  const workDate = new Date(Number(dateKey.slice(0, 4)), Number(dateKey.slice(5, 7)) - 1, Number(dateKey.slice(8, 10)));
   punches.sort((a, b) => a.getTime() - b.getTime());
   const first = punches[0] ?? null;
   const last = punches.length > 1 ? punches[punches.length - 1] : null;
   const hours = first && last ? hoursBetween(first, last) : 0;
   const marked = classifyStatusToken(token);
+  let fileStatus: DayStatus = marked ?? "absent";
+  if (!marked && hours > 0 && hours < settings.half_day_hours) fileStatus = "half_day";
+  else if (!marked && hours > 0) fileStatus = "present";
 
-  let status: DayStatus = "absent";
-  if (holidayName) status = "holiday";
-  else if (isOff) status = "week_off";
-  else if (marked) status = marked;
-  else if (hours > 0 && hours < settings.half_day_hours) status = "half_day";
-  else if (hours > 0) status = "present";
-  else status = isOff ? "week_off" : "absent";
+  const resolved = resolveHandbookStatus({
+    dateKey,
+    fileStatus,
+    hasWork: hours > 0,
+    extraOffs: settings.weekly_offs,
+    extraHolidays: holidayName ? [{ holiday_date: dateKey, name: holidayName }] : [],
+  });
+  const status = resolved.status;
+  const offDay = status === "week_off" || status === "holiday";
 
   const start = parseTimeOnDate(workDate, settings.work_start);
   const grace = new Date(start.getTime() + settings.late_grace_minutes * 60_000);
-  const isLate = Boolean(first && !isOff && !holidayName && status !== "leave" && first > grace);
+  const isLate = Boolean(first && !offDay && status !== "leave" && first > grace);
   const lateBy = isLate && first ? Math.round((first.getTime() - start.getTime()) / 60000) : 0;
 
   return {
@@ -116,7 +120,7 @@ function dayFromPunches(
     is_late: isLate,
     late_by_minutes: lateBy,
     status,
-    source_note: holidayName ? `Holiday: ${holidayName}` : token || null,
+    source_note: resolved.holidayName ? `Holiday: ${resolved.holidayName}` : token || null,
   };
 }
 
@@ -130,7 +134,13 @@ export function computeAttendance(options: {
   daily?: RawDayRow[];
 }) {
   const { month, year, settings, employees, holidays } = options;
-  const holidayMap = new Map(holidays.map((h) => [h.holiday_date, h.name]));
+  const holidayMap = new Map<string, string>();
+  for (const h of HANDBOOK_HOLIDAYS_2026.filter((item) => item.type === "fixed")) {
+    holidayMap.set(h.date, h.name);
+  }
+  for (const h of holidays) {
+    holidayMap.set((h.holiday_date || "").slice(0, 10), h.name);
+  }
   const grouped = new Map<
     string,
     { name: string; code: string; dates: Map<string, { punches: Date[]; token?: string }> }
@@ -184,7 +194,7 @@ export function computeAttendance(options: {
           bucket?.token,
           settings,
           employee,
-          holidayMap.get(dateKey)
+          holidayMap.get(dateKey) || fixedHolidayName(dateKey) || undefined
         )
       );
     }

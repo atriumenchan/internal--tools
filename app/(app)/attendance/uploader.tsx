@@ -55,7 +55,7 @@ export function AttendanceUploader({
   const preview = useMemo(() => {
     try {
       if (report) {
-        return monthPerformanceToAttendance(report, employees, resolvedSettings);
+        return monthPerformanceToAttendance(report, employees, resolvedSettings, holidays);
       }
       if (!sheet || !mapping.employee_name) return null;
       const punches = mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet, mapping);
@@ -147,7 +147,7 @@ export function AttendanceUploader({
       }
 
       const recomputed = report
-        ? monthPerformanceToAttendance(report, employeeList, resolvedSettings)
+        ? monthPerformanceToAttendance(report, employeeList, resolvedSettings, holidays)
         : computeAttendance({
             month: periodMonth,
             year: periodYear,
@@ -233,8 +233,8 @@ export function AttendanceUploader({
         <p className="rounded-2xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
           Detected biometric <strong>month performance</strong> report
           {report.company ? ` for ${report.company}` : ""}. {report.people.length} people · IN / OUT / WORK /
-          Status blocks. The machine fills the rest of the month as absent — we only count through{" "}
-          {formatWorkDate(kolkataTodayKey())}.
+          Status blocks. Counted through {formatWorkDate(kolkataTodayKey())}. Saturday, Sunday, and handbook
+          holidays are offs — not absences.
         </p>
       ) : null}
 
@@ -289,6 +289,7 @@ export function AttendanceUploader({
                   <th>Absent</th>
                   <th>Leave</th>
                   <th>WO</th>
+                  <th>Holiday</th>
                   <th>Late</th>
                   <th>OT</th>
                 </tr>
@@ -306,6 +307,7 @@ export function AttendanceUploader({
                     <td>{row.absent_days}</td>
                     <td>{row.leave_days}</td>
                     <td>{row.week_offs}</td>
+                    <td>{row.holidays}</td>
                     <td>{row.late_days}</td>
                     <td>{hoursLabel(row.overtime_hours)}</td>
                   </tr>

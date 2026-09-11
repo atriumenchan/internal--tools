@@ -1,7 +1,8 @@
-import type { CompanySettings, DayStatus, Employee } from "@/lib/types";
+import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
 import { summarizeDays, type ComputedDay } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { kolkataTodayKey } from "@/lib/datetime";
+import { resolveHandbookStatus } from "@/lib/handbook-calendar";
 
 export type MonthPerformanceReport = {
   company: string;
@@ -214,7 +215,8 @@ function combine(year: number, month: number, day: number, hhmm: string | null):
 export function monthPerformanceToAttendance(
   report: MonthPerformanceReport,
   employees: Employee[],
-  settings: CompanySettings
+  settings: CompanySettings,
+  holidays: Holiday[] = []
 ) {
   const days: ComputedDay[] = [];
   const todayKey = kolkataTodayKey();
@@ -240,9 +242,19 @@ export function monthPerformanceToAttendance(
       const punchIn = day.inTime
         ? new Date(report.year, report.month - 1, day.day, Number(day.inTime.slice(0, 2)), Number(day.inTime.slice(3, 5)))
         : null;
-      const isLate = Boolean(punchIn && day.status === "present" && punchIn.getTime() > grace.getTime());
+      const resolved = resolveHandbookStatus({
+        dateKey,
+        fileStatus: day.status,
+        hasWork: Boolean(day.inTime || day.outTime || day.workHours > 0),
+        extraOffs: settings.weekly_offs,
+        extraHolidays: holidays,
+      });
+      const isLate = Boolean(
+        punchIn && resolved.status === "present" && punchIn.getTime() > grace.getTime()
+      );
 
       const notes = [
+        resolved.holidayName ? `Holiday: ${resolved.holidayName}` : "",
         day.rawStatus ? `Status ${day.rawStatus}` : "",
         day.breakHours ? `Break ${day.breakHours}h` : "",
         person.department ? person.department : "",
@@ -260,7 +272,7 @@ export function monthPerformanceToAttendance(
         hours_worked: Math.round((day.workHours + day.otHours) * 100) / 100,
         is_late: isLate,
         late_by_minutes: isLate && punchIn ? Math.round((punchIn.getTime() - start.getTime()) / 60000) : 0,
-        status: day.status,
+        status: resolved.status,
         source_note: notes || null,
       });
     }
