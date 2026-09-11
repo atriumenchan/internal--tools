@@ -22,7 +22,7 @@ export default async function AttendancePage() {
       <PageHeader
         eyebrow="Time"
         title="Attendance from Excel"
-        description="Upload the biometric in/out export. We rebuild the month for every person: hours, leaves, absences, late marks, overtime."
+        description="Upload the biometric month-performance .xls (Empcode blocks with IN / OUT / WORK / Status). More or fewer people is fine — the layout stays the same."
       />
       <AttendanceUploader
         settings={settings as CompanySettings}

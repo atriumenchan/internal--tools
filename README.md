@@ -66,27 +66,11 @@ Add env vars under Settings → Environment Variables:
 
 ## Attendance Excel
 
-Accepted shapes:
+Primary format is the biometric **month performance** `.xls` (the `monthperformance…` export). Each person is a 10-row block:
 
-**Punch log (typical biometric export)**
+- Header: Dept, Empcode, Name, Present, WO, HL, LV, Absent, Tot. Work+OT, Total OT
+- Grid: days 1–31, then IN, OUT, WORK, Break, OT, Status (`P` / `A` / `WO` / `HL` / `LV`)
 
-| Emp Code | Name | Date | Time |
-| --- | --- | --- | --- |
-| A001 | Riya Shah | 2026-09-01 | 09:52 |
-| A001 | Riya Shah | 2026-09-01 | 19:08 |
+Headcount can change. The block layout must stay the same. Upload it on Attendance — the app detects it and uses the file’s own totals.
 
-First punch of the day is in, last is out.
-
-**Daily in/out**
-
-| Emp Code | Name | Date | In | Out | Status |
-| --- | --- | --- | --- | --- | --- |
-| A001 | Riya Shah | 2026-09-01 | 09:52 | 19:08 | P |
-
-Status tokens: `CL` / `SL` / `EL` / `Leave`, `WO`, `HO`, `AB`, `HD`, `P`.
-
-The uploader maps columns if the headers differ. After save, open the month to see each person’s days. Export Excel from that view.
-
-Match people by employee code or exact name. Unknown names can be created automatically.
-
-Working hours, late grace, half-day threshold, weekly offs, and holidays live under **Settings**.
+Other sheets (punch log or daily in/out) still work via column mapping.

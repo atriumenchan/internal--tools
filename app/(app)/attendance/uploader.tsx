@@ -12,7 +12,12 @@ import {
   type ColumnMapping,
   type ParsedSheet,
 } from "@/lib/excel";
-import { computeAttendance } from "@/lib/attendance";
+import {
+  monthPerformanceToAttendance,
+  parseMonthPerformanceBuffer,
+  type MonthPerformanceReport,
+} from "@/lib/month-performance";
+import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
 import { Button, Field, Input } from "@/components/ui";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
@@ -42,6 +47,7 @@ export function AttendanceUploader({
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [fileName, setFileName] = useState("");
+  const [report, setReport] = useState<MonthPerformanceReport | null>(null);
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [busy, setBusy] = useState(false);
@@ -49,6 +55,9 @@ export function AttendanceUploader({
   const [createMissing, setCreateMissing] = useState(true);
 
   const preview = useMemo(() => {
+    if (report) {
+      return monthPerformanceToAttendance(report, employees, settings);
+    }
     if (!sheet || !mapping.employee_name) return null;
     try {
       const punches = mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet, mapping);
@@ -65,12 +74,23 @@ export function AttendanceUploader({
     } catch {
       return null;
     }
-  }, [sheet, mapping, month, year, settings, employees, holidays]);
+  }, [report, sheet, mapping, month, year, settings, employees, holidays]);
 
   async function onFile(file: File) {
     setError(null);
     setFileName(file.name);
+    setReport(null);
+    setSheet(null);
     const buffer = await file.arrayBuffer();
+    try {
+      const monthReport = parseMonthPerformanceBuffer(buffer);
+      setReport(monthReport);
+      setMonth(monthReport.month);
+      setYear(monthReport.year);
+      return;
+    } catch {
+      // Fall through to generic punch / daily mapping.
+    }
     try {
       const parsed = parseWorkbook(buffer);
       setSheet(parsed);
@@ -81,16 +101,23 @@ export function AttendanceUploader({
   }
 
   async function save() {
-    if (!preview || !sheet) return;
+    if (!preview) return;
     setBusy(true);
     setError(null);
     const supabase = createClient();
+    const periodMonth = report?.month ?? month;
+    const periodYear = report?.year ?? year;
 
     try {
       const employeeList = [...employees];
       if (createMissing) {
         const missing = preview.summaries.filter((s) => !s.employee_id);
         for (const person of missing) {
+          const fromFile = report?.people.find(
+            (p) =>
+              p.employee_code === person.employee_code ||
+              p.employee_name.toLowerCase() === person.employee_name.toLowerCase()
+          );
           const code =
             person.employee_code ||
             `E${Date.now().toString(36).slice(-6)}${Math.floor(Math.random() * 900 + 100)}`;
@@ -99,6 +126,7 @@ export function AttendanceUploader({
             .insert({
               employee_code: code,
               full_name: person.employee_name,
+              department: fromFile?.department || null,
               is_active: true,
             })
             .select("*")
@@ -108,37 +136,37 @@ export function AttendanceUploader({
         }
       }
 
-      const punches = mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet, mapping);
-      const daily = mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet, mapping) : [];
-      const recomputed = computeAttendance({
-        month,
-        year,
-        settings,
-        employees: employeeList,
-        holidays,
-        punches,
-        daily,
-      });
+      const recomputed = report
+        ? monthPerformanceToAttendance(report, employeeList, settings)
+        : computeAttendance({
+            month: periodMonth,
+            year: periodYear,
+            settings,
+            employees: employeeList,
+            holidays,
+            punches: mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet!, mapping),
+            daily: mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet!, mapping) : [],
+          });
 
       const { data: upload, error: upErr } = await supabase
         .from("attendance_uploads")
         .insert({
           uploaded_by: userId,
           file_name: fileName,
-          period_month: month,
-          period_year: year,
+          period_month: periodMonth,
+          period_year: periodYear,
           row_count: recomputed.days.length,
         })
         .select("id")
         .single();
       if (upErr) throw upErr;
 
-      const start = `${year}-${String(month).padStart(2, "0")}-01`;
-      const endDate = new Date(year, month, 0).getDate();
-      const end = `${year}-${String(month).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
+      const start = `${periodYear}-${String(periodMonth).padStart(2, "0")}-01`;
+      const endDate = new Date(periodYear, periodMonth, 0).getDate();
+      const end = `${periodYear}-${String(periodMonth).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
 
       await supabase.from("attendance_days").delete().gte("work_date", start).lte("work_date", end);
-      await supabase.from("monthly_summaries").delete().eq("period_month", month).eq("period_year", year);
+      await supabase.from("monthly_summaries").delete().eq("period_month", periodMonth).eq("period_year", periodYear);
 
       const dayChunks = chunk(
         recomputed.days.map((d) => ({ ...d, upload_id: upload.id })),
@@ -152,7 +180,7 @@ export function AttendanceUploader({
       const { error: sumErr } = await supabase.from("monthly_summaries").insert(recomputed.summaries);
       if (sumErr) throw sumErr;
 
-      router.push(`/attendance/${year}/${month}`);
+      router.push(`/attendance/${periodYear}/${periodMonth}`);
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -180,15 +208,23 @@ export function AttendanceUploader({
           />
         </Field>
         <Button type="button" variant="secondary" onClick={downloadSampleWorkbook}>
-          Sample Excel
+          Sample punch log
         </Button>
       </div>
 
-      {sheet ? (
+      {report ? (
+        <p className="rounded-2xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
+          Detected biometric <strong>month performance</strong> report
+          {report.company ? ` for ${report.company}` : ""}. {report.people.length} people · IN / OUT / WORK /
+          Status blocks. Extra or fewer people in later files are fine — the layout is what matters.
+        </p>
+      ) : null}
+
+      {sheet && !report ? (
         <div className="rounded-2xl border border-rule bg-cream p-5">
           <h3 className="font-serif text-xl">Map columns</h3>
           <p className="mt-1 text-sm text-ink-soft">
-            Detected {sheet.rows.length} rows. Punch-log files use Date + Time; daily sheets use In and Out.
+            This file is not the month-performance layout. Map Emp Code, Name, Date, and Time (or In / Out).
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {FIELDS.map((field) => (
@@ -210,42 +246,48 @@ export function AttendanceUploader({
               </Field>
             ))}
           </div>
-          <label className="mt-4 flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} />
-            Create people who are not in the directory yet
-          </label>
         </div>
       ) : null}
 
       {preview ? (
         <div className="rounded-2xl border border-rule bg-white p-5">
-          <h3 className="font-serif text-xl">Preview · {preview.summaries.length} people</h3>
-          <div className="mt-3 overflow-x-auto">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+            <h3 className="font-serif text-xl">Preview · {preview.summaries.length} people</h3>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} />
+              Create people who are not in the directory yet
+            </label>
+          </div>
+          <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase tracking-wide text-ink-soft">
                 <tr>
-                  <th className="py-2">Name</th>
+                  <th className="py-2">Code</th>
+                  <th>Name</th>
                   <th>Hours</th>
                   <th>Present</th>
                   <th>Absent</th>
                   <th>Leave</th>
+                  <th>WO</th>
                   <th>Late</th>
                   <th>OT</th>
                 </tr>
               </thead>
               <tbody>
-                {preview.summaries.map((row) => (
+                {preview.summaries.map((row: ComputedSummary) => (
                   <tr key={`${row.employee_code}-${row.employee_name}`} className="border-t border-rule">
-                    <td className="py-2">
+                    <td className="py-2 font-mono text-xs">{row.employee_code}</td>
+                    <td>
                       {row.employee_name}
                       {!row.employee_id ? <span className="ml-2 text-xs text-terracotta">new</span> : null}
                     </td>
-                    <td>{row.total_hours}</td>
+                    <td>{formatHours(row.total_hours)}</td>
                     <td>{row.present_days}</td>
                     <td>{row.absent_days}</td>
                     <td>{row.leave_days}</td>
+                    <td>{row.week_offs}</td>
                     <td>{row.late_days}</td>
-                    <td>{row.overtime_hours}</td>
+                    <td>{formatHours(row.overtime_hours)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -260,6 +302,12 @@ export function AttendanceUploader({
       {error ? <p className="text-sm text-red-800">{error}</p> : null}
     </div>
   );
+}
+
+function formatHours(value: number) {
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  return `${hours}:${String(minutes).padStart(2, "0")}`;
 }
 
 function chunk<T>(items: T[], size: number) {
