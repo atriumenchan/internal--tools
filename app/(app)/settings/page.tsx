@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/dashboard");
+    if (app && !app.operator) router.replace("/spaces");
   }, [app, router]);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Settings"
-        description="Company details appear on offer letters. Saturday and Sunday are always weekly offs. Fixed Noida holidays come from the handbook."
+        description="Company details appear on offer letters. Control who can create Spaces and which handbook version everyone must sign."
       />
       {settings ? <SettingsForm settings={settings} holidays={holidays} /> : <PageFallback />}
     </div>

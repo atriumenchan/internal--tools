@@ -31,7 +31,7 @@ export default function OfferDetailPage() {
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/dashboard");
+    if (app && !app.operator) router.replace("/spaces");
   }, [app, router]);
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function OfferDetailPage() {
       <OfferDocument
         offer={{
           ...row,
-          company_name: company?.company_name ?? "Atrium",
+          company_name: company?.company_name ?? "ADMEXO",
           legal_name: company?.legal_name,
           address: company?.address,
           city: company?.city,

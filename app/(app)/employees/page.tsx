@@ -16,7 +16,7 @@ export default function EmployeesPage() {
   const [people, setPeople] = useState<Employee[] | null>(null);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/dashboard");
+    if (app && !app.operator) router.replace("/spaces");
   }, [app, router]);
 
   useEffect(() => {

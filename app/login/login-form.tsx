@@ -8,7 +8,7 @@ import { Button, Field, Input } from "@/components/ui";
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/dashboard";
+  const next = params.get("next") || "/spaces";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +24,8 @@ export function LoginForm() {
     try {
       const { error: err } = await supabase.auth.signInWithPassword({ email, password });
       if (err) throw err;
+      sessionStorage.removeItem("it-shell-v1");
+      sessionStorage.removeItem("it-shell-v2");
       router.push(next);
       router.refresh();
     } catch (err) {

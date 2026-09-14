@@ -15,6 +15,68 @@ export type Profile = {
   email: string;
   full_name: string;
   role: AppRole;
+  handbook_version?: string | null;
+  handbook_acknowledged_at?: string | null;
+};
+
+export type TaskStatus = "open" | "in_progress" | "done";
+export type ConversationType = "dm" | "group" | "space";
+
+export type Space = {
+  id: string;
+  name: string;
+  color: string | null;
+  created_by: string;
+  created_at: string;
+};
+
+export type SpaceMember = {
+  space_id: string;
+  user_id: string;
+  created_at?: string;
+};
+
+export type Task = {
+  id: string;
+  space_id: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  assignee_id: string | null;
+  created_by: string;
+  due_date: string | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type TaskComment = {
+  id: string;
+  task_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
+};
+
+export type Conversation = {
+  id: string;
+  type: ConversationType;
+  space_id: string | null;
+  name: string | null;
+  created_at: string;
+};
+
+export type ConversationMember = {
+  conversation_id: string;
+  user_id: string;
+  last_read_at: string | null;
+};
+
+export type ChatMessage = {
+  id: string;
+  conversation_id: string;
+  author_id: string;
+  body: string;
+  created_at: string;
 };
 
 export type CompanySettings = {
@@ -34,6 +96,8 @@ export type CompanySettings = {
   weekly_offs: number[];
   offer_validity_days: number;
   offer_footer: string;
+  handbook_version: string;
+  anyone_can_create_spaces: boolean;
 };
 
 export type Employee = {

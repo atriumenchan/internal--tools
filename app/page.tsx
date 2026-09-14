@@ -16,7 +16,7 @@ export default async function Home({
   }
 
   if (!isSupabaseConfigured()) redirect("/setup");
-  redirect("/dashboard");
+  redirect("/spaces");
 }
 
 function first(value: string | string[] | undefined) {

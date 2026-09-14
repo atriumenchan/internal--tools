@@ -1,0 +1,149 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { Button, Field, Input } from "@/components/ui";
+import { SignaturePad } from "@/components/signature-pad";
+import { handbookIsCurrent, HANDBOOK_PDF } from "@/lib/handbook";
+
+export default function AcknowledgePage() {
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [signature, setSignature] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState("2.0");
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const supabase = createClient();
+    void (async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const user = session?.user;
+      if (!user) {
+        router.replace("/login?next=/acknowledge");
+        return;
+      }
+      const [{ data: profile }, { data: settings }] = await Promise.all([
+        supabase.from("profiles").select("full_name, handbook_version").eq("id", user.id).maybeSingle(),
+        supabase.from("company_settings").select("handbook_version").eq("id", 1).maybeSingle(),
+      ]);
+      const required = (settings as { handbook_version?: string } | null)?.handbook_version || "2.0";
+      setVersion(required);
+      setName((profile as { full_name?: string } | null)?.full_name || "");
+      if (handbookIsCurrent((profile as { handbook_version?: string } | null)?.handbook_version, required)) {
+        router.replace("/spaces");
+        return;
+      }
+      setReady(true);
+    })();
+  }, [router]);
+
+  async function signOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    sessionStorage.removeItem("it-shell-v2");
+    router.push("/login");
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!signature) {
+      setError("Please draw your signature.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    const supabase = createClient();
+    let ip: string | null = null;
+    try {
+      const res = await fetch("/api/client-ip");
+      if (res.ok) {
+        const body = (await res.json()) as { ip?: string | null };
+        ip = body.ip ?? null;
+      }
+    } catch {
+      ip = null;
+    }
+    const { data, error: err } = await supabase.rpc("acknowledge_handbook", {
+      p_signer_name: name,
+      p_signature_data: signature,
+      p_ip: ip,
+    });
+    if (err) {
+      setError(
+        err.message.includes("could not find") || err.message.includes("schema cache")
+          ? "Handbook signing is not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      setBusy(false);
+      return;
+    }
+    if (data && (data as { ok?: boolean }).ok === false) {
+      setError("Could not save your acknowledgement.");
+      setBusy(false);
+      return;
+    }
+    sessionStorage.removeItem("it-shell-v2");
+    router.replace("/spaces");
+    router.refresh();
+  }
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-paper text-sm text-ink-soft">
+        Loading handbook…
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-paper">
+      <header className="flex items-center justify-between border-b border-rule px-5 py-4">
+        <div>
+          <p className="text-xl font-semibold tracking-tight">ADMEXO</p>
+          <p className="text-[11px] uppercase tracking-[0.22em] text-ink-soft">Handbook v{version}</p>
+        </div>
+        <button onClick={signOut} className="text-sm text-ink-soft hover:text-ink">
+          Sign out
+        </button>
+      </header>
+      <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-terracotta">Required</p>
+          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Read and sign the handbook</h1>
+          <p className="mt-2 text-sm text-ink-soft">
+            Everyone signs once for this version before Spaces, Chat, and the rest of the internal tools.
+          </p>
+          <iframe
+            title="ADMEXO handbook"
+            src={HANDBOOK_PDF}
+            className="mt-6 min-h-[70vh] w-full rounded-2xl border border-rule bg-white"
+          />
+          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-terracotta">
+            Open PDF in a new tab
+          </a>
+        </div>
+        <form onSubmit={submit} className="h-fit space-y-4 rounded-2xl border border-rule bg-cream p-5">
+          <h2 className="text-xl font-semibold">Confirm</h2>
+          <p className="text-sm text-ink-soft">
+            I have read the ADMEXO employee & intern handbook v{version} and agree to follow it.
+          </p>
+          <Field label="Full name">
+            <Input value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
+          </Field>
+          <Field label="Signature">
+            <SignaturePad onChange={setSignature} />
+          </Field>
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          <Button type="submit" disabled={busy}>
+            {busy ? "Saving…" : "Sign and continue"}
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+}

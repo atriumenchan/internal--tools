@@ -36,6 +36,8 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         weekly_offs: [...new Set([...HANDBOOK_WEEKLY_OFFS, ...offs])],
         offer_validity_days: Number(form.get("offer_validity_days") || 7),
         offer_footer: String(form.get("offer_footer") || ""),
+        handbook_version: String(form.get("handbook_version") || "2.0").trim() || "2.0",
+        anyone_can_create_spaces: form.get("anyone_can_create_spaces") === "on",
       })
       .eq("id", 1);
     if (err) {
@@ -43,6 +45,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
       return;
     }
     setMessage("Saved company settings.");
+    sessionStorage.removeItem("it-shell-v2");
     router.refresh();
   }
 
@@ -71,7 +74,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
   return (
     <div className="grid gap-8 lg:grid-cols-2">
       <form onSubmit={saveCompany} className="space-y-4 rounded-2xl border border-rule bg-cream p-5">
-        <h2 className="font-serif text-xl">Company & letters</h2>
+        <h2 className="text-xl font-semibold">Company & letters</h2>
         <Field label="Company name">
           <Input name="company_name" defaultValue={settings.company_name} required />
         </Field>
@@ -96,7 +99,23 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         <Field label="Letter footer">
           <Textarea name="offer_footer" rows={3} defaultValue={settings.offer_footer} />
         </Field>
-        <h3 className="pt-2 font-serif text-lg">Working hours</h3>
+        <h3 className="pt-2 text-lg font-semibold">Spaces & handbook</h3>
+        <Field label="Current handbook version">
+          <Input name="handbook_version" defaultValue={settings.handbook_version || "2.0"} />
+        </Field>
+        <p className="text-xs text-ink-soft">
+          Bump this (for example 2.1) after you upload a new PDF. Everyone must sign again before they can use the app.
+        </p>
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="anyone_can_create_spaces"
+            defaultChecked={settings.anyone_can_create_spaces !== false}
+            className="h-4 w-4 accent-terracotta"
+          />
+          Anyone who has signed the handbook can create Spaces
+        </label>
+        <h3 className="pt-2 text-lg font-semibold">Working hours</h3>
         <div className="grid grid-cols-2 gap-3">
           <Field label="Start">
             <Input name="work_start" type="time" defaultValue={settings.work_start?.slice(0, 5)} />
@@ -123,7 +142,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
                 <button
                   key={day.value}
                   type="button"
-                  className={`rounded-full px-3 py-1 text-sm ${on ? "bg-ink text-cream" : "border border-rule"}`}
+                  className={`rounded-full px-3 py-1 text-sm ${on ? "bg-terracotta text-white" : "border border-rule"}`}
                   onClick={() => {
                     if ((HANDBOOK_WEEKLY_OFFS as number[]).includes(day.value)) return;
                     setOffs((prev) =>
@@ -143,7 +162,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
       </form>
 
       <div className="rounded-2xl border border-rule bg-cream p-5">
-        <h2 className="font-serif text-xl">Holidays</h2>
+        <h2 className="text-xl font-semibold">Holidays</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Saturday and Sunday cannot be turned off. Fixed Noida 2026 holidays from the handbook count as holiday, not
           absence. Optional handbook holidays (Eid, Good Friday, Guru Nanak Jayanti) are chosen per person — add one

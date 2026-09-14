@@ -9,8 +9,9 @@ export default function SetupPage() {
       <p className="text-xs uppercase tracking-[0.2em] text-terracotta">Setup</p>
       <h1 className="mt-2 font-serif text-4xl">Connect Supabase, then come back</h1>
       <p className="mt-3 text-ink-soft">
-        The app is ready. Create a Supabase project, run <code className="text-ink">supabase/schema.sql</code>,
-        then put the project URL and anon key in <code className="text-ink">.env.local</code>.
+        The app is ready. Create a Supabase project, run <code className="text-ink">supabase/schema.sql</code> then{" "}
+        <code className="text-ink">supabase/spaces.sql</code>, then put the project URL and anon key in{" "}
+        <code className="text-ink">.env.local</code>.
       </p>
 
       {configured ? (
@@ -28,7 +29,8 @@ export default function SetupPage() {
           </li>
           <li>
             Open <strong>SQL Editor</strong>, paste the entire contents of{" "}
-            <code className="text-ink">supabase/schema.sql</code>, and run it.
+            <code className="text-ink">supabase/schema.sql</code>, run it, then do the same with{" "}
+            <code className="text-ink">supabase/spaces.sql</code>.
           </li>
           <li>
             Copy Project URL and anon public key from Settings → API into{" "}

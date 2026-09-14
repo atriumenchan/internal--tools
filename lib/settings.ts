@@ -4,7 +4,7 @@ import { mergedWeeklyOffs } from "@/lib/handbook-calendar";
 
 export const DEFAULT_SETTINGS: CompanySettings = {
   id: 1,
-  company_name: "Atrium",
+  company_name: "ADMEXO",
   legal_name: "",
   address: "",
   city: "",
@@ -19,6 +19,8 @@ export const DEFAULT_SETTINGS: CompanySettings = {
   weekly_offs: [0, 6],
   offer_validity_days: 7,
   offer_footer: "",
+  handbook_version: "2.0",
+  anyone_can_create_spaces: true,
 };
 
 export function normalizeSettings(raw: Partial<CompanySettings> | null | undefined): CompanySettings {
@@ -33,5 +35,7 @@ export function normalizeSettings(raw: Partial<CompanySettings> | null | undefin
     expected_hours: Number(s.expected_hours) || DEFAULT_SETTINGS.expected_hours,
     late_grace_minutes: Number(s.late_grace_minutes) || DEFAULT_SETTINGS.late_grace_minutes,
     half_day_hours: Number(s.half_day_hours) || DEFAULT_SETTINGS.half_day_hours,
+    handbook_version: String(s.handbook_version || DEFAULT_SETTINGS.handbook_version),
+    anyone_can_create_spaces: s.anyone_can_create_spaces !== false,
   };
 }

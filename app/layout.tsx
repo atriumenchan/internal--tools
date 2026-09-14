@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Fraunces, Instrument_Sans } from "next/font/google";
+import { Instrument_Sans } from "next/font/google";
 import "./globals.css";
 
 const sans = Instrument_Sans({
@@ -7,20 +7,15 @@ const sans = Instrument_Sans({
   variable: "--font-sans-face",
 });
 
-const serif = Fraunces({
-  subsets: ["latin"],
-  variable: "--font-serif-face",
-});
-
 export const metadata: Metadata = {
-  title: "Atrium — Internal tools",
-  description: "Offer letters and attendance for the Atrium team.",
+  title: "ADMEXO — Internal",
+  description: "Spaces, chat, attendance, and offer letters for the ADMEXO team.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className={`${sans.variable} ${serif.variable} ${sans.className} antialiased`}>{children}</body>
+      <body className={`${sans.variable} ${sans.className} antialiased`}>{children}</body>
     </html>
   );
 }

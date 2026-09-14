@@ -2,13 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, FileSignature, LayoutDashboard, LogOut, Shield, Timer, Users, Settings } from "lucide-react";
+import { BookOpen, FileSignature, LayoutDashboard, LogOut, MessageSquare, Shield, SquareKanban, Timer, Users, Settings } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
+  { href: "/spaces", label: "Spaces", icon: SquareKanban, adminOnly: false, operatorOnly: false },
+  { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
   { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: false },
   { href: "/handbook", label: "Handbook", icon: BookOpen, adminOnly: false, operatorOnly: false },
   { href: "/attendance", label: "Upload", icon: Timer, adminOnly: false, operatorOnly: true },
@@ -22,10 +24,12 @@ export function AppNav({
   profile,
   companyName,
   operator,
+  chatUnread = 0,
 }: {
   profile: Profile;
   companyName: string;
   operator: boolean;
+  chatUnread?: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -33,20 +37,22 @@ export function AppNav({
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    sessionStorage.removeItem("it-shell-v1");
+    sessionStorage.removeItem("it-shell-v2");
     router.push("/login");
     router.refresh();
   }
 
   return (
-    <aside className="no-print flex flex-col border-b border-rule bg-ink text-cream lg:min-h-screen lg:border-b-0 lg:border-r lg:border-ink">
+    <aside className="no-print flex flex-col border-b border-rule bg-black text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between px-5 py-5 lg:block">
         <div>
-          <p className="font-serif text-xl tracking-tight">{companyName || "Atrium"}</p>
-          <p className="mt-0.5 text-[11px] uppercase tracking-[0.22em] text-cream/50">Internal tools</p>
+          <p className="text-xl font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
+          <p className="mt-0.5 text-[11px] uppercase tracking-[0.22em] text-ink-soft">Internal</p>
         </div>
         <button
           onClick={signOut}
-          className="rounded-full p-2 text-cream/70 hover:bg-white/10 lg:hidden"
+          className="rounded-full p-2 text-ink-soft hover:bg-white/10 lg:hidden"
           aria-label="Sign out"
         >
           <LogOut size={16} />
@@ -67,19 +73,29 @@ export function AppNav({
               prefetch
               className={cn(
                 "flex items-center gap-2 rounded-full px-3 py-2 text-sm whitespace-nowrap",
-                active ? "bg-cream text-ink" : "text-cream/70 hover:bg-white/10 hover:text-cream"
+                active ? "bg-terracotta text-white" : "text-ink-soft hover:bg-white/5 hover:text-ink"
               )}
             >
               <Icon size={16} />
               {item.label}
+              {item.href === "/chat" && chatUnread > 0 ? (
+                <span
+                  className={cn(
+                    "ml-auto rounded-full px-1.5 text-[10px]",
+                    active ? "bg-white text-terracotta" : "bg-terracotta text-white"
+                  )}
+                >
+                  {chatUnread > 99 ? "99+" : chatUnread}
+                </span>
+              ) : null}
             </Link>
           );
         })}
       </nav>
       <div className="mt-auto hidden px-5 py-5 lg:block">
-        <p className="truncate text-sm text-cream">{profile.full_name || profile.email}</p>
-        <p className="text-xs capitalize text-cream/50">{profile.role}</p>
-        <button onClick={signOut} className="mt-3 flex items-center gap-2 text-xs text-cream/60 hover:text-cream">
+        <p className="truncate text-sm">{profile.full_name || profile.email}</p>
+        <p className="text-xs capitalize text-ink-soft">{profile.role}</p>
+        <button onClick={signOut} className="mt-3 flex items-center gap-2 text-xs text-ink-soft hover:text-ink">
           <LogOut size={14} /> Sign out
         </button>
       </div>
@@ -88,17 +104,15 @@ export function AppNav({
 }
 
 export function SidebarFallback() {
-  return (
-    <aside className="no-print min-h-[4.5rem] border-b border-rule bg-ink lg:min-h-screen lg:border-b-0 lg:border-r lg:border-ink" />
-  );
+  return <aside className="no-print min-h-[4.5rem] border-b border-rule bg-black lg:min-h-screen lg:border-b-0 lg:border-r" />;
 }
 
 export function PageFallback() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-3 w-24 rounded bg-rule/70" />
-      <div className="h-8 w-64 rounded bg-rule/70" />
-      <div className="h-4 w-full max-w-xl rounded bg-rule/50" />
+      <div className="h-3 w-24 rounded bg-rule" />
+      <div className="h-8 w-64 rounded bg-rule" />
+      <div className="h-4 w-full max-w-xl rounded bg-rule/80" />
       <div className="mt-8 h-48 rounded-2xl border border-rule bg-cream" />
     </div>
   );

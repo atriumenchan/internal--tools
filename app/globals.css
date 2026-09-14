@@ -2,17 +2,17 @@
 
 @theme {
   --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-serif-face), ui-serif, Georgia, serif;
-  --color-ink: #161410;
-  --color-ink-soft: #3b342c;
-  --color-paper: #f4efe6;
-  --color-cream: #fbf8f2;
-  --color-rule: #ddd4c6;
-  --color-terracotta: #c24d2c;
-  --color-terracotta-dark: #9a391d;
-  --color-sage: #3f5c4a;
-  --color-sage-soft: #e4eee7;
-  --color-gold: #c9a227;
+  --font-serif: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
+  --color-ink: #f4f4f5;
+  --color-ink-soft: #a1a1aa;
+  --color-paper: #0b0b0b;
+  --color-cream: #161616;
+  --color-rule: #2a2a2a;
+  --color-terracotta: #ff5a1f;
+  --color-terracotta-dark: #e04a12;
+  --color-sage: #7dcc9a;
+  --color-sage-soft: #14261c;
+  --color-gold: #ffb020;
 }
 
 html,
@@ -28,9 +28,10 @@ body {
 
 .letter-sheet {
   background: #fffdf8;
+  color: #161410;
   box-shadow:
-    0 1px 0 rgba(22, 20, 16, 0.04),
-    0 24px 60px rgba(22, 20, 16, 0.08);
+    0 1px 0 rgba(0, 0, 0, 0.04),
+    0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
 .watermark {
@@ -39,17 +40,18 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 4.5rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(194, 77, 44, 0.08);
+  color: rgba(255, 90, 31, 0.08);
   transform: rotate(-18deg);
 }
 
 @media print {
   body {
     background: white;
+    color: #161410;
   }
   .no-print {
     display: none !important;

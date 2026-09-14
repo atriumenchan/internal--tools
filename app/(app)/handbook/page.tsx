@@ -1,6 +1,5 @@
 import { Button } from "@/components/ui";
-
-const HANDBOOK = "/handbook/ADMEXO-Employee-Intern-Handbook-v2.0.pdf";
+import { HANDBOOK_PDF } from "@/lib/handbook";
 
 export default function HandbookPage() {
   return (
@@ -8,14 +7,14 @@ export default function HandbookPage() {
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.2em] text-terracotta">Everyone</p>
-          <h1 className="font-serif text-3xl">Employee & intern handbook</h1>
-          <p className="mt-1 text-sm text-ink-soft">ADMEXO handbook v2.0 — visible to every signed-in person.</p>
+          <h1 className="text-3xl font-semibold tracking-tight">Employee & intern handbook</h1>
+          <p className="mt-1 text-sm text-ink-soft">ADMEXO handbook — visible after you sign. Download anytime.</p>
         </div>
-        <a href={HANDBOOK} target="_blank" rel="noreferrer">
+        <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer">
           <Button>Download PDF</Button>
         </a>
       </div>
-      <iframe title="ADMEXO handbook" src={HANDBOOK} className="min-h-0 w-full flex-1 rounded-2xl border border-rule bg-white" />
+      <iframe title="ADMEXO handbook" src={HANDBOOK_PDF} className="min-h-0 w-full flex-1 rounded-2xl border border-rule bg-white" />
     </div>
   );
 }

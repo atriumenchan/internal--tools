@@ -1,7 +1,9 @@
-# Atrium Internal Tools
+# ADMEXO Internal Tools
 
-HR tools for **offer letters** and **attendance**.
+Spaces, chat, handbook acknowledgement, offer letters, and attendance for the ADMEXO team.
 
+- After login, everyone reads and signs the handbook before they see the rest of the app.
+- **Spaces** hold assignable tasks. **Chat** has DMs, groups, and a channel per Space.
 - Draft an offer, share a private signing link. The letter is **not sent** until the candidate signs.
 - Upload a biometric Excel (in/out punches). Each person gets a month of hours, leaves, absences, late marks, and overtime.
 
@@ -12,8 +14,9 @@ Repo: [github.com/atriumenchan/internal--tools](https://github.com/atriumenchan/
 1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
 2. Open **SQL Editor** → New query.
 3. Paste everything in [`supabase/schema.sql`](supabase/schema.sql) and run it.
-4. Authentication → Providers → enable **Email**.
-5. Settings → API → copy **Project URL**, **anon public** key, and **service_role** key (server only).
+4. Paste everything in [`supabase/spaces.sql`](supabase/spaces.sql) and run it (Spaces, Chat, handbook gate).
+5. Authentication → Providers → enable **Email**.
+6. Settings → API → copy **Project URL**, **anon public** key, and **service_role** key (server only).
 
 The first account in `profiles` is **admin**. Later staff are created from **Staff** in the app (same pattern as the invoice admin portal). Turn off public sign-ups and Confirm email under Authentication.
 
@@ -57,7 +60,7 @@ Add env vars under Settings → Environment Variables:
 - `SUPABASE_SERVICE_ROLE_KEY` as **Secret** (Settings → API → service_role)
 - `ADMIN_PASSWORD` as **Secret** (creates that admin login in Supabase if it does not exist)
 
-Then run [`supabase/seed.sql`](supabase/seed.sql) in the SQL editor. Ryan Ray (0003) is stored as ignored and dropped from attendance and logins.
+Then run [`supabase/seed.sql`](supabase/seed.sql) in the SQL editor. Ryan Ray (0003) is stored as ignored and dropped from attendance and logins. If the app already exists, also run [`supabase/spaces.sql`](supabase/spaces.sql) — that adds Spaces, Chat, and the handbook gate. Every current login must sign the handbook once after that.
 
 ## Offer letters
 
