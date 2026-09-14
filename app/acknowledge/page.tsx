@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
 import { SignaturePad } from "@/components/signature-pad";
-import { handbookIsCurrent, HANDBOOK_PDF } from "@/lib/handbook";
+import { isAdminEmail } from "@/lib/admin";
+import { mustSignHandbook, HANDBOOK_PDF } from "@/lib/handbook";
 
 export default function AcknowledgePage() {
   const router = useRouter();
@@ -28,13 +29,27 @@ export default function AcknowledgePage() {
         return;
       }
       const [{ data: profile }, { data: settings }] = await Promise.all([
-        supabase.from("profiles").select("full_name, handbook_version").eq("id", user.id).maybeSingle(),
+        supabase.from("profiles").select("full_name, handbook_version, role, email").eq("id", user.id).maybeSingle(),
         supabase.from("company_settings").select("handbook_version").eq("id", 1).maybeSingle(),
       ]);
       const required = (settings as { handbook_version?: string } | null)?.handbook_version || "2.0";
       setVersion(required);
-      setName((profile as { full_name?: string } | null)?.full_name || "");
-      if (handbookIsCurrent((profile as { handbook_version?: string } | null)?.handbook_version, required)) {
+      const row = profile as {
+        full_name?: string;
+        handbook_version?: string;
+        role?: string;
+        email?: string;
+      } | null;
+      setName(row?.full_name || "");
+      if (
+        !mustSignHandbook({
+          role: row?.role,
+          email: row?.email || user.email,
+          handbookVersion: row?.handbook_version,
+          requiredVersion: required,
+        }) ||
+        isAdminEmail(user.email)
+      ) {
         router.replace("/spaces");
         return;
       }
@@ -46,13 +61,14 @@ export default function AcknowledgePage() {
     const supabase = createClient();
     await supabase.auth.signOut();
     sessionStorage.removeItem("it-shell-v2");
+    sessionStorage.removeItem("it-shell-v3");
     router.push("/login");
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!signature) {
-      setError("Please draw your signature.");
+      setError("Type your name and pick a signature style.");
       return;
     }
     setBusy(true);
@@ -88,6 +104,7 @@ export default function AcknowledgePage() {
       return;
     }
     sessionStorage.removeItem("it-shell-v2");
+    sessionStorage.removeItem("it-shell-v3");
     router.replace("/spaces");
     router.refresh();
   }
@@ -132,11 +149,11 @@ export default function AcknowledgePage() {
           <p className="text-sm text-ink-soft">
             I have read the ADMEXO employee & intern handbook v{version} and agree to follow it.
           </p>
-          <Field label="Full name">
+          <Field label="Type your name as you spell it">
             <Input value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />
           </Field>
-          <Field label="Signature">
-            <SignaturePad onChange={setSignature} />
+          <Field label="Signature style">
+            <SignaturePad name={name} onChange={setSignature} />
           </Field>
           {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <Button type="submit" disabled={busy}>

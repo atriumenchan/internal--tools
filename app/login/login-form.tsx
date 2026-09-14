@@ -26,6 +26,7 @@ export function LoginForm() {
       if (err) throw err;
       sessionStorage.removeItem("it-shell-v1");
       sessionStorage.removeItem("it-shell-v2");
+      sessionStorage.removeItem("it-shell-v3");
       router.push(next);
       router.refresh();
     } catch (err) {

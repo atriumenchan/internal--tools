@@ -46,6 +46,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
     }
     setMessage("Saved company settings.");
     sessionStorage.removeItem("it-shell-v2");
+    sessionStorage.removeItem("it-shell-v3");
     router.refresh();
   }
 

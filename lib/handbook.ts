@@ -9,3 +9,16 @@ export function handbookIsCurrent(
   const signed = (profileVersion || "").trim();
   return Boolean(signed) && signed === required;
 }
+
+/** Staff must sign. Admin (role or ryan@admexo.com) skips the handbook gate. */
+export function mustSignHandbook(input: {
+  role?: string | null;
+  email?: string | null;
+  handbookVersion?: string | null;
+  requiredVersion?: string | null;
+}) {
+  if (input.role === "admin") return false;
+  const email = (input.email || "").trim().toLowerCase();
+  if (email === "ryan@admexo.com") return false;
+  return !handbookIsCurrent(input.handbookVersion, input.requiredVersion);
+}

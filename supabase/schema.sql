@@ -451,7 +451,8 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+    where id = auth.uid()
+      and (role = 'admin' or lower(email) = 'ryan@admexo.com')
   );
 $$;
 

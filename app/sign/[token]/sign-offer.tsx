@@ -28,7 +28,7 @@ export function SignOffer({
       return;
     }
     if (!signature) {
-      setError("Please draw your signature.");
+      setError("Type your name and pick a signature style.");
       return;
     }
     setBusy(true);
@@ -85,13 +85,12 @@ export function SignOffer({
       ) : (
         <form onSubmit={submit} className="no-print mt-10 space-y-5 rounded-2xl border border-rule bg-cream p-6">
           <h2 className="font-serif text-2xl">Sign to send</h2>
-          <Field label="Full legal name">
+          <Field label="Type your name as you spell it">
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </Field>
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Signature</p>
-            <SignaturePad onChange={setSignature} />
-          </div>
+          <Field label="Signature style">
+            <SignaturePad name={name} onChange={setSignature} />
+          </Field>
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"
@@ -102,7 +101,7 @@ export function SignOffer({
             I have read this offer and accept its terms. Signing sends the executed letter to{" "}
             {preview.company_name}.
           </label>
-          {error ? <p className="text-sm text-red-800">{error}</p> : null}
+          {error ? <p className="text-sm text-red-400">{error}</p> : null}
           <Button type="submit" disabled={busy}>
             {busy ? "Sending…" : "Sign and send offer"}
           </Button>

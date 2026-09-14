@@ -146,15 +146,16 @@ stable
 security definer
 set search_path = public
 as $$
-  select exists (
-    select 1
-    from public.profiles p
-    cross join public.company_settings s
-    where p.id = auth.uid()
-      and s.id = 1
-      and p.handbook_version is not null
-      and p.handbook_version = s.handbook_version
-  );
+  select public.is_admin()
+    or exists (
+      select 1
+      from public.profiles p
+      cross join public.company_settings s
+      where p.id = auth.uid()
+        and s.id = 1
+        and p.handbook_version is not null
+        and p.handbook_version = s.handbook_version
+    );
 $$;
 
 create or replace function public.can_create_spaces()

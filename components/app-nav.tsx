@@ -39,6 +39,7 @@ export function AppNav({
     await supabase.auth.signOut();
     sessionStorage.removeItem("it-shell-v1");
     sessionStorage.removeItem("it-shell-v2");
+    sessionStorage.removeItem("it-shell-v3");
     router.push("/login");
     router.refresh();
   }

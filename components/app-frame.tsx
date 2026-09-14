@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { AppNav, SidebarFallback } from "@/components/app-nav";
-import { handbookIsCurrent } from "@/lib/handbook";
+import { mustSignHandbook } from "@/lib/handbook";
 import type { Profile } from "@/lib/types";
 
 export type AppState = {
@@ -18,7 +18,7 @@ export type AppState = {
 };
 
 const AppStateContext = createContext<AppState | null>(null);
-const CACHE_KEY = "it-shell-v2";
+const CACHE_KEY = "it-shell-v3";
 
 function readCache(): AppState | null {
   try {
@@ -86,16 +86,20 @@ export function AppFrame({ children }: { children: ReactNode }) {
       } | null;
 
       const schemaReady = !profileFull.error && !settingsFull.error;
-      const acknowledged = schemaReady
-        ? handbookIsCurrent(profileRow?.handbook_version, settingsRow?.handbook_version)
-        : true;
-
       const resolved: Profile = profileRow ?? {
         id: user.id,
         email: user.email ?? "",
         full_name: "",
         role: isAdminEmail(user.email) ? "admin" : "hr",
       };
+      const acknowledged =
+        !schemaReady ||
+        !mustSignHandbook({
+          role: resolved.role,
+          email: resolved.email || user.email,
+          handbookVersion: resolved.handbook_version,
+          requiredVersion: settingsRow?.handbook_version,
+        });
 
       const next: AppState = {
         userId: user.id,
