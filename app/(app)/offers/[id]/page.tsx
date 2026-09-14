@@ -1,9 +1,14 @@
-import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 import { Badge, PageHeader } from "@/components/ui";
 import { OfferDocument } from "@/components/offer-document";
 import { OfferActions } from "./offer-actions";
 import { formatDate } from "@/lib/utils";
+import { useAppState } from "@/components/app-frame";
+import { PageFallback } from "@/components/app-nav";
 import { STATUS_LABELS, type CompanySettings, type OfferLetter, type OfferStatus } from "@/lib/types";
 
 const TONE: Record<OfferStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
@@ -14,22 +19,44 @@ const TONE: Record<OfferStatus, "neutral" | "warn" | "ok" | "danger" | "info"> =
   expired: "warn",
 };
 
-export default async function OfferDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const supabase = await createClient();
-  const { data: offer } = await supabase.from("offer_letters").select("*").eq("id", id).maybeSingle();
-  if (!offer) notFound();
-  const row = offer as OfferLetter;
-  const { data: settings } = await supabase.from("company_settings").select("*").eq("id", 1).maybeSingle();
-  const company = settings as CompanySettings | null;
-  const { data: events } = await supabase
-    .from("offer_events")
-    .select("*")
-    .eq("offer_id", id)
-    .order("created_at", { ascending: false });
+type OfferEvent = { id: string; event_type: string; created_at: string; note: string | null };
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  const signingUrl = `${appUrl}/sign/${row.signing_token}`;
+export default function OfferDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const app = useAppState();
+  const router = useRouter();
+  const [row, setRow] = useState<OfferLetter | null>(null);
+  const [company, setCompany] = useState<CompanySettings | null>(null);
+  const [events, setEvents] = useState<OfferEvent[]>([]);
+  const [missing, setMissing] = useState(false);
+
+  useEffect(() => {
+    if (app && !app.operator) router.replace("/dashboard");
+  }, [app, router]);
+
+  useEffect(() => {
+    if (!id) return;
+    const supabase = createClient();
+    void Promise.all([
+      supabase.from("offer_letters").select("*").eq("id", id).maybeSingle(),
+      supabase.from("company_settings").select("*").eq("id", 1).maybeSingle(),
+      supabase.from("offer_events").select("*").eq("offer_id", id).order("created_at", { ascending: false }),
+    ]).then(([offerRes, settingsRes, eventsRes]) => {
+      if (!offerRes.data) {
+        setMissing(true);
+        return;
+      }
+      setRow(offerRes.data as OfferLetter);
+      setCompany(settingsRes.data as CompanySettings | null);
+      setEvents((eventsRes.data ?? []) as OfferEvent[]);
+    });
+  }, [id]);
+
+  if (app && !app.operator) return <PageFallback />;
+  if (missing) return <p className="text-sm text-ink-soft">Offer not found.</p>;
+  if (!row) return <PageFallback />;
+
+  const signingUrl = `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/sign/${row.signing_token}`;
 
   return (
     <div>
@@ -79,9 +106,10 @@ export default async function OfferDetailPage({ params }: { params: Promise<{ id
       <section className="no-print mt-10">
         <h2 className="font-serif text-xl">Activity</h2>
         <ul className="mt-3 space-y-2 text-sm text-ink-soft">
-          {(events ?? []).map((event) => (
+          {events.map((event) => (
             <li key={event.id}>
-              <span className="font-medium text-ink">{event.event_type}</span> · {formatDate(event.created_at, { hour: "2-digit", minute: "2-digit" })}
+              <span className="font-medium text-ink">{event.event_type}</span> ·{" "}
+              {formatDate(event.created_at, { hour: "2-digit", minute: "2-digit" })}
               {event.note ? ` — ${event.note}` : ""}
             </li>
           ))}

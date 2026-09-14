@@ -1,14 +1,25 @@
-import { redirect } from "next/navigation";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { TeamPanel } from "./team-panel";
-import { getAppShell } from "@/lib/app-shell-data";
+import { useAppState } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
+import { PageFallback } from "@/components/app-nav";
 
-export default async function TeamPage() {
-  const shell = await getAppShell();
-  if (!shell || !isAdminUser({ email: shell.user.email, role: shell.profile.role })) {
-    redirect("/dashboard");
-  }
+export default function TeamPage() {
+  const app = useAppState();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (app && !isAdminUser({ email: app.profile.email, role: app.profile.role })) {
+      router.replace("/dashboard");
+    }
+  }, [app, router]);
+
+  if (!app) return <PageFallback />;
+  if (!isAdminUser({ email: app.profile.email, role: app.profile.role })) return <PageFallback />;
 
   return (
     <div>

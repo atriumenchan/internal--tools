@@ -1,17 +1,21 @@
-import { createClient } from "@/lib/supabase/server";
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui";
 import { OfferForm } from "./offer-form";
+import { useAppState } from "@/components/app-frame";
+import { PageFallback } from "@/components/app-nav";
 
-export default async function NewOfferPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: settings } = await supabase
-    .from("company_settings")
-    .select("offer_validity_days")
-    .eq("id", 1)
-    .maybeSingle();
+export default function NewOfferPage() {
+  const app = useAppState();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (app && !app.operator) router.replace("/dashboard");
+  }, [app, router]);
+
+  if (!app?.operator) return <PageFallback />;
 
   return (
     <div>
@@ -20,7 +24,7 @@ export default async function NewOfferPage() {
         title="Draft an offer"
         description="Save the letter first. You will get a signing link on the next screen — the offer is sent only after they sign."
       />
-      <OfferForm createdBy={user!.id} validityDays={settings?.offer_validity_days ?? 7} />
+      <OfferForm createdBy={app.userId} validityDays={7} />
     </div>
   );
 }
