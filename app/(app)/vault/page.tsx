@@ -68,7 +68,7 @@ export default function VaultPage() {
       />
       <p className="mb-6 rounded-2xl border border-rule bg-cream px-4 py-3 text-sm text-ink-soft">
         Use this for logins you personally need (TeamOffice, ads accounts, domain panels). Do not put personal banking
-        passwords here. The DeepSeek key for Mind is not stored here — that goes in Vercel as a server env var.
+        passwords here.
       </p>
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
       <div className="grid gap-8 lg:grid-cols-[340px_1fr]">

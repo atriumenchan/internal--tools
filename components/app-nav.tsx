@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Brain,
   Bell,
   BookOpen,
   FileSignature,
@@ -25,7 +24,6 @@ import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home, adminOnly: false, operatorOnly: false },
-  { href: "/mind", label: "Mind", icon: Brain, adminOnly: false, operatorOnly: false },
   { href: "/spaces", label: "Spaces", icon: SquareKanban, adminOnly: false, operatorOnly: false },
   { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
   { href: "/notifications", label: "Notifications", icon: Bell, adminOnly: false, operatorOnly: false },
