@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, Textarea } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Input, Textarea } from "@/components/ui";
 import { missingSpacesSchema } from "@/lib/spaces";
 import type { Announcement } from "@/lib/types";
 
@@ -69,16 +69,16 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
   }
 
   return (
-    <section className="rounded-2xl border border-rule bg-cream p-4">
+    <Card className="p-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold">Announcements</h2>
+        <h2 className="text-xl font-semibold tracking-tight">Announcements</h2>
         {operator ? (
           <Button type="button" size="sm" variant={compose ? "secondary" : "primary"} onClick={() => setCompose((v) => !v)}>
             {compose ? "Cancel" : "Post"}
           </Button>
         ) : null}
       </div>
-      {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
+      <ErrorText className="mt-2">{error}</ErrorText>
       {operator && compose ? (
         <form onSubmit={post} className="mt-3 space-y-2">
           <Field label="Title">
@@ -103,7 +103,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
       ) : (
         <ul className="mt-4 space-y-3">
           {rows.map((row) => (
-            <li key={row.id} className="rounded-xl border border-rule bg-paper px-4 py-3">
+            <li key={row.id} className="rounded-[12px] border border-rule bg-surface px-4 py-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-medium">
@@ -123,6 +123,6 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

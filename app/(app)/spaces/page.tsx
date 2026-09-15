@@ -81,9 +81,9 @@ export default function SpacesPage() {
           ) : null
         }
       />
-      {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
       {allowCreate && creating ? (
-        <form onSubmit={create} className="mb-8 flex flex-wrap items-end gap-3 rounded-2xl border border-rule bg-cream p-4">
+        <form onSubmit={create} className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-rule bg-cream p-4 shadow-card">
           <Field label="Board name" className="min-w-[16rem] flex-1">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ops, Hiring, Launch…" required autoFocus />
           </Field>
@@ -110,7 +110,7 @@ export default function SpacesPage() {
       {spaces === null ? (
         <PageFallback />
       ) : spaces.length === 0 ? (
-        <p className="rounded-2xl border border-dashed border-rule px-4 py-12 text-center text-sm text-ink-soft">
+        <p className="rounded-xl border border-dashed border-rule bg-surface px-4 py-12 text-center text-sm text-ink-soft">
           No boards yet. Create one to start assigning work.
         </p>
       ) : (
@@ -122,14 +122,14 @@ export default function SpacesPage() {
                 <button
                   type="button"
                   onClick={() => router.push(`/spaces/${space.id}`)}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-rule bg-cream p-4 text-left transition hover:border-white/20"
+                  className="flex w-full items-center gap-3 rounded-xl border border-rule bg-cream p-4 text-left shadow-card transition duration-200 hover:border-line-hover"
                 >
                   <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
                   <span className="min-w-0 flex-1">
                     <span className="block font-medium">{space.name}</span>
                     <span className="text-xs text-ink-soft">
                       {c.open} open
-                      {c.overdue ? <span className="text-red-400"> · {c.overdue} overdue</span> : null}
+                      {c.overdue ? <span className="text-danger"> · {c.overdue} overdue</span> : null}
                     </span>
                   </span>
                 </button>

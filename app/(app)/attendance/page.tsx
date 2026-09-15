@@ -63,8 +63,8 @@ export default function AttendancePage() {
       <AttendanceUploader settings={settings} employees={employees} holidays={holidays} userId={app.userId} />
 
       <section className="mt-12">
-        <h2 className="font-serif text-2xl">Past uploads</h2>
-        <ul className="mt-4 divide-y divide-rule rounded-2xl border border-rule bg-cream">
+        <h2 className="font-semibold tracking-tight text-2xl">Past uploads</h2>
+        <ul className="mt-4 divide-y divide-rule rounded-xl border border-rule bg-cream shadow-card">
           {uploads.length === 0 ? (
             <li className="px-4 py-8 text-sm text-ink-soft">No files yet.</li>
           ) : (
@@ -74,7 +74,7 @@ export default function AttendancePage() {
                   <p className="font-medium">{upload.file_name}</p>
                   <p className="text-xs text-ink-soft">{monthLabel(upload.period_month, upload.period_year)}</p>
                 </div>
-                <Link className="text-terracotta" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
+                <Link className="text-sm font-medium text-blue-soft hover:text-blue" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
                   Open month
                 </Link>
               </li>

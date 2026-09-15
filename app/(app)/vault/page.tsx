@@ -66,13 +66,13 @@ export default function VaultPage() {
         title="Your credentials"
         description="Only you can see what you save here. Other staff cannot, and admin cannot see your rows in the app."
       />
-      <p className="mb-6 rounded-2xl border border-rule bg-cream px-4 py-3 text-sm text-ink-soft">
+      <p className="mb-6 rounded-xl border border-rule bg-cream shadow-card px-4 py-3 text-sm text-ink-soft">
         Use this for logins you personally need (TeamOffice, ads accounts, domain panels). Do not put personal banking
         passwords here.
       </p>
-      {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
       <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
-        <form onSubmit={add} className="space-y-3 rounded-2xl border border-rule bg-cream p-5">
+        <form onSubmit={add} className="space-y-3 rounded-xl border border-rule bg-cream shadow-card p-5">
           <h2 className="text-lg font-semibold">Add a record</h2>
           <Field label="What is this">
             <Input name="title" required placeholder="Meta ads, Google Workspace…" />
@@ -98,18 +98,18 @@ export default function VaultPage() {
             <p className="text-sm text-ink-soft">No credentials saved yet.</p>
           ) : (
             rows.map((row) => (
-              <article key={row.id} className="rounded-2xl border border-rule bg-cream p-4">
+              <article key={row.id} className="rounded-xl border border-rule bg-cream shadow-card p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <h3 className="font-medium">{row.title}</h3>
                     {row.username ? <p className="text-sm text-ink-soft">{row.username}</p> : null}
                     {row.url ? (
-                      <a href={row.url} className="text-sm text-terracotta" target="_blank" rel="noreferrer">
+                      <a href={row.url} className="text-sm font-medium text-blue-soft hover:text-blue" target="_blank" rel="noreferrer">
                         {row.url}
                       </a>
                     ) : null}
                   </div>
-                  <button className="text-xs text-terracotta" onClick={() => void remove(row.id)}>
+                  <button className="text-xs font-medium text-danger hover:underline" onClick={() => void remove(row.id)}>
                     Remove
                   </button>
                 </div>
@@ -118,7 +118,7 @@ export default function VaultPage() {
                     {shown[row.id] ? row.secret : "••••••••"}{" "}
                     <button
                       type="button"
-                      className="text-xs text-terracotta"
+                      className="text-xs font-medium text-blue-soft hover:text-blue"
                       onClick={() => setShown((s) => ({ ...s, [row.id]: !s[row.id] }))}
                     >
                       {shown[row.id] ? "Hide" : "Show"}

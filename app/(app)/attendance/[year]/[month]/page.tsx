@@ -39,7 +39,7 @@ export default function MonthPage() {
         title={monthLabel(m, y)}
         description="Hours, leaves, absences and late marks for everyone in the file. Open a person for the day-by-day sheet."
         actions={
-          <Link href="/attendance" className="text-sm text-terracotta">
+          <Link href="/attendance" className="text-sm font-medium text-blue-soft hover:text-blue">
             Upload another file
           </Link>
         }

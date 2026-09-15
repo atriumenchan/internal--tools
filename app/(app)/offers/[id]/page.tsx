@@ -78,13 +78,13 @@ export default function OfferDetailPage() {
       />
 
       {row.status === "awaiting_signature" ? (
-        <p className="mb-6 rounded-2xl border border-terracotta/30 bg-orange-50 px-4 py-3 text-sm">
+        <p className="mb-6 rounded-xl border border-blue/25 bg-blue/10 px-4 py-3 text-sm text-ink">
           Share this private link. The offer is <strong>not sent</strong> until they sign:{" "}
           <code className="break-all text-xs">{signingUrl}</code>
         </p>
       ) : null}
       {row.status === "signed" ? (
-        <p className="mb-6 rounded-2xl bg-sage-soft px-4 py-3 text-sm text-sage">
+        <p className="mb-6 rounded-xl bg-sage-soft px-4 py-3 text-sm text-sage">
           Signed {formatDate(row.signed_at, { hour: "2-digit", minute: "2-digit" })} by {row.signer_name}. The
           letter is now the official sent offer.
         </p>
@@ -104,7 +104,7 @@ export default function OfferDetailPage() {
       />
 
       <section className="no-print mt-10">
-        <h2 className="font-serif text-xl">Activity</h2>
+        <h2 className="font-semibold tracking-tight text-xl">Activity</h2>
         <ul className="mt-3 space-y-2 text-sm text-ink-soft">
           {events.map((event) => (
             <li key={event.id}>

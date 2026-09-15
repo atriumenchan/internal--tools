@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader } from "@/components/ui";
+import { Button, ErrorText, Field, Input, PageHeader } from "@/components/ui";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PeoplePicker } from "@/components/people-picker";
 import { Avatar } from "@/components/avatar";
@@ -222,8 +222,12 @@ function ChatApp() {
                 <button
                   type="button"
                   onClick={() => router.push(`/chat?c=${convo.id}`)}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left ${
-                    active ? "bg-terracotta text-white" : convo.unread > 0 ? "bg-white/5 text-ink" : "text-ink-soft hover:bg-white/5 hover:text-ink"
+                  className={`flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200 ${
+                    active
+                      ? "bg-terracotta/12 text-ink"
+                      : convo.unread > 0
+                        ? "bg-blue/5 text-ink"
+                        : "text-ink-soft hover:bg-white/[0.04] hover:text-ink"
                   }`}
                 >
                   <Avatar name={label} size="sm" className={active ? "bg-white/20" : undefined} />
@@ -231,7 +235,7 @@ function ChatApp() {
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{label}</span>
                       {convo.unread > 0 ? (
-                        <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-white text-terracotta" : "bg-terracotta text-white"}`}>
+                        <span className={`rounded-md px-1.5 text-[10px] font-semibold ${active ? "bg-terracotta/20 text-terracotta" : "bg-blue/15 text-blue-soft"}`}>
                           {convo.unread}
                         </span>
                       ) : null}
@@ -254,8 +258,8 @@ function ChatApp() {
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
       <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
-      {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-rule bg-cream lg:grid-cols-[280px_1fr]">
+      <ErrorText className="mb-3">{error}</ErrorText>
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-rule bg-cream shadow-card lg:grid-cols-[280px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-b border-rule p-3 lg:border-b-0 lg:border-r">
           <div className="mb-3 grid grid-cols-2 gap-2">
             <Button type="button" size="sm" variant={compose === "dm" ? "primary" : "secondary"} onClick={() => setCompose(compose === "dm" ? "idle" : "dm")}>
@@ -266,7 +270,7 @@ function ChatApp() {
             </Button>
           </div>
           {compose === "dm" ? (
-            <div className="mb-4 rounded-xl border border-rule p-2">
+            <div className="mb-4 rounded-[12px] border border-rule bg-surface p-2">
               <p className="px-1 pb-2 text-xs text-ink-soft">Pick a person</p>
               <ul className="max-h-56 overflow-y-auto">
                 {others.map((p) => (
@@ -285,7 +289,7 @@ function ChatApp() {
             </div>
           ) : null}
           {compose === "group" ? (
-            <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-xl border border-rule p-3">
+            <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-[12px] border border-rule bg-surface p-3">
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
               </Field>
@@ -307,19 +311,28 @@ function ChatApp() {
                 <p className="text-xs capitalize text-ink-soft">{selected.type === "dm" ? "Direct message" : selected.type}</p>
               </div>
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                {messages.map((message) => (
-                  <div key={message.id} className={message.author_id === myId ? "ml-8 text-right" : "mr-8"}>
-                    <p className="text-[11px] text-ink-soft">
-                      {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
-                    </p>
-                    <p className="mt-1 inline-block whitespace-pre-wrap rounded-2xl bg-paper px-3 py-2 text-sm">
-                      <MentionBody text={message.body} people={people} />
-                    </p>
-                  </div>
-                ))}
+                {messages.map((message) => {
+                  const mine = message.author_id === myId;
+                  return (
+                    <div key={message.id} className={mine ? "ml-8 text-right" : "mr-8"}>
+                      <p className="text-[11px] text-muted">
+                        {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
+                      </p>
+                      <p
+                        className={`mt-1 inline-block whitespace-pre-wrap rounded-[12px] px-3 py-2 text-sm ${
+                          mine
+                            ? "bg-terracotta/15 text-ink ring-1 ring-terracotta/25"
+                            : "bg-elevated text-ink ring-1 ring-rule"
+                        }`}
+                      >
+                        <MentionBody text={message.body} people={people} />
+                      </p>
+                    </div>
+                  );
+                })}
                 <div ref={bottom} />
               </div>
-              <form onSubmit={send} className="border-t border-rule p-3">
+              <form onSubmit={send} className="border-t border-rule bg-surface p-3">
                 <MentionField
                   value={body}
                   onChange={setBody}

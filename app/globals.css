@@ -3,18 +3,42 @@
 @theme {
   --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
-  --color-ink: #f4f4f5;
-  --color-ink-soft: #a1a1aa;
-  --color-paper: #0b0b0b;
-  --color-cream: #161616;
-  --color-rule: #2a2a2a;
+
+  --color-ink: #f5f7fa;
+  --color-ink-soft: #aab4c2;
+  --color-muted: #707b8c;
+  --color-disabled: #4b5563;
+  --color-paper: #0b0f14;
+  --color-sidebar: #080b10;
+  --color-surface: #10151c;
+  --color-cream: #141a22;
+  --color-elevated: #181f29;
+  --color-input: #0f141b;
+  --color-rule: #242c38;
+  --color-line-hover: #344052;
   --color-terracotta: #ff5a1f;
-  --color-terracotta-dark: #e04a12;
-  --color-sage: #7dcc9a;
-  --color-sage-soft: #14261c;
-  --color-gold: #ffb020;
-  --color-sky: #7eb6e0;
-  --color-sky-soft: #132033;
+  --color-terracotta-hover: #ff6b32;
+  --color-terracotta-dark: #e94d17;
+  --color-blue: #4f8cff;
+  --color-blue-soft: #6ea0ff;
+  --color-sage: #32d583;
+  --color-sage-soft: #0f2318;
+  --color-success: #32d583;
+  --color-warning: #f7b955;
+  --color-gold: #f7b955;
+  --color-danger: #f97066;
+  --color-sky: #4f8cff;
+  --color-sky-soft: #101a2e;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.28), 0 8px 24px rgb(0 0 0 / 0.16);
+  --shadow-elevated: 0 2px 8px rgb(0 0 0 / 0.32), 0 16px 40px rgb(0 0 0 / 0.22);
+
+  --radius-control: 10px;
+  --radius-card: 12px;
+}
+
+html {
+  color-scheme: dark;
 }
 
 html,
@@ -26,6 +50,34 @@ body {
 body {
   font-family: var(--font-sans);
   min-height: 100vh;
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.011em;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-terracotta) 35%, transparent);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--color-blue) 70%, white);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-rule);
+  border-radius: 999px;
+  border: 2px solid var(--color-paper);
 }
 
 .letter-sheet {

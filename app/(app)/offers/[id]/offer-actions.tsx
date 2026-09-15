@@ -80,7 +80,7 @@ export function OfferActions({
           <Button variant="secondary" onClick={() => window.open(signingUrl, "_blank")}>
             Preview link
           </Button>
-          <Button variant="ghost" onClick={revoke}>
+          <Button variant="danger" onClick={revoke}>
             Revoke
           </Button>
         </>
@@ -90,7 +90,7 @@ export function OfferActions({
           Print / save PDF
         </Button>
       ) : null}
-      {error ? <p className="w-full text-sm text-red-800">{error}</p> : null}
+      {error ? <p className="w-full text-sm text-danger">{error}</p> : null}
     </div>
   );
 }

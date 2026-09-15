@@ -121,8 +121,8 @@ export function TeamPanel() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
-      <form onSubmit={createUser} className="space-y-3 rounded-2xl border border-rule bg-cream p-5">
-        <h2 className="font-serif text-xl">Give someone a login</h2>
+      <form onSubmit={createUser} className="space-y-3 rounded-xl border border-rule bg-cream shadow-card p-5">
+        <h2 className="font-semibold tracking-tight text-xl">Give someone a login</h2>
         <p className="text-sm text-ink-soft">
           People come from Supabase. Pick one, set email and password. Ryan Ray cannot be given a login.
         </p>
@@ -143,13 +143,13 @@ export function TeamPanel() {
           <Input value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
         {msg ? <p className="text-sm text-sage">{msg}</p> : null}
-        {err ? <p className="text-sm text-red-400">{err}</p> : null}
+        {err ? <p className="text-sm text-danger">{err}</p> : null}
         <Button type="submit" disabled={busy || password.length < 6 || !employeeId}>
           {busy ? "Creating…" : "Create login"}
         </Button>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-rule bg-cream">
+      <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
         {loading ? (
           <p className="px-4 py-10 text-center text-sm text-ink-soft">Loading from Supabase…</p>
         ) : (

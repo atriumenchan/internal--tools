@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, ErrorText, Field, Input } from "@/components/ui";
 
 export function LoginForm() {
   const router = useRouter();
@@ -50,13 +50,13 @@ export function LoginForm() {
         <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
       </Field>
       {linkExpired ? (
-        <p className="text-sm text-red-800">
+        <ErrorText>
           That email link has expired. Ask an admin to create your account, then sign in here with the password they gave you.
-        </p>
+        </ErrorText>
       ) : authError ? (
-        <p className="text-sm text-red-800">{authError.replace(/\+/g, " ")}</p>
+        <ErrorText>{authError.replace(/\+/g, " ")}</ErrorText>
       ) : null}
-      {error ? <p className="text-sm text-red-800">{error}</p> : null}
+      <ErrorText>{error}</ErrorText>
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Please wait…" : "Sign in"}
       </Button>

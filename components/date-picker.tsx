@@ -119,15 +119,15 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-rule bg-paper px-3 py-2.5 text-left text-sm outline-none ring-terracotta/40 hover:border-white/20 focus:ring-2"
+        className="flex w-full items-center justify-between gap-2 rounded-[10px] border border-rule bg-input px-3 py-2.5 text-left text-sm outline-none transition duration-200 hover:border-line-hover focus:border-blue focus:ring-2 focus:ring-blue/20"
       >
-        <span className={selectedKey ? "text-ink" : "text-ink-soft"}>
+        <span className={selectedKey ? "text-ink" : "text-muted"}>
           {selectedKey ? formatWorkDate(selectedKey, "long") : placeholder}
         </span>
         <CalendarDays size={16} className="shrink-0 text-ink-soft" />
       </button>
       {open ? (
-        <div className="absolute z-50 mt-2 w-[17.5rem] max-w-[calc(100vw-2rem)] rounded-2xl border border-rule bg-paper p-3 shadow-xl">
+        <div className="absolute z-50 mt-2 w-[17.5rem] max-w-[calc(100vw-2rem)] rounded-xl border border-rule bg-elevated p-3 shadow-elevated">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" className="rounded-lg p-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => shiftMonth(-1)}>
               <ChevronLeft size={16} />
@@ -158,7 +158,7 @@ export function DatePicker({
                   className={cn(
                     "h-8 rounded-lg text-sm",
                     isSelected && "bg-terracotta text-white",
-                    !isSelected && isToday && "ring-1 ring-terracotta/70 text-ink",
+                    !isSelected && isToday && "ring-1 ring-blue/50 text-ink",
                     !isSelected && !isToday && "text-ink-soft hover:bg-white/5 hover:text-ink"
                   )}
                 >
@@ -168,18 +168,18 @@ export function DatePicker({
             })}
           </div>
           <div className="mt-2 flex flex-wrap gap-1 text-[11px]">
-            <button type="button" className="rounded-full px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(today)}>
+            <button type="button" className="rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(today)}>
               Today
             </button>
             <button
               type="button"
-              className="rounded-full px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink"
+              className="rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink"
               onClick={() => pick(shiftDay(today, 1))}
             >
               Tomorrow
             </button>
             {!required ? (
-              <button type="button" className="ml-auto rounded-full px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(null)}>
+              <button type="button" className="ml-auto rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(null)}>
                 Clear
               </button>
             ) : null}

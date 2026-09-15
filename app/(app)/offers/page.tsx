@@ -53,7 +53,7 @@ export default function OffersPage() {
       {!offers ? (
         <PageFallback />
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-rule bg-cream">
+        <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
           <table className="w-full text-sm">
             <thead className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-soft">
               <tr>

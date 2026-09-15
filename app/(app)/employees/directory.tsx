@@ -47,8 +47,8 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
-      <form onSubmit={add} className="space-y-3 rounded-2xl border border-rule bg-cream p-5">
-        <h2 className="font-serif text-xl">Add a person</h2>
+      <form onSubmit={add} className="space-y-3 rounded-xl border border-rule bg-cream shadow-card p-5">
+        <h2 className="font-semibold tracking-tight text-xl">Add a person</h2>
         <Field label="Employee code">
           <Input name="employee_code" required placeholder="A001" />
         </Field>
@@ -67,10 +67,10 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
         <Field label="Joining date">
           <DatePicker name="joining_date" placeholder="Joining date" />
         </Field>
-        {error ? <p className="text-sm text-red-800">{error}</p> : null}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
         <Button type="submit">Save</Button>
       </form>
-      <div className="overflow-hidden rounded-2xl border border-rule bg-cream">
+      <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
         <table className="w-full text-sm">
           <thead className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-soft">
             <tr>
@@ -94,7 +94,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
                 </td>
                 <td className="px-4 py-3 text-xs text-ink-soft">{employee.user_id ? "Has login" : "No login yet"}</td>
                 <td className="px-4 py-3 text-right">
-                  <button className="text-xs text-terracotta" onClick={() => toggle(employee)}>
+                  <button className="text-xs font-medium text-blue-soft hover:text-blue" onClick={() => toggle(employee)}>
                     {employee.is_active ? "Deactivate" : "Reactivate"}
                   </button>
                 </td>

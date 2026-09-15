@@ -64,21 +64,21 @@ export function AppNav({
   }
 
   return (
-    <aside className="no-print flex flex-col border-b border-rule bg-black text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between px-5 py-5 lg:block">
+    <aside className="no-print flex flex-col border-b border-rule bg-sidebar text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
+      <div className="flex items-center justify-between px-5 py-6 lg:block">
         <div>
-          <p className="text-xl font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
-          <p className="mt-0.5 text-[11px] uppercase tracking-[0.22em] text-ink-soft">Internal</p>
+          <p className="text-lg font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Internal</p>
         </div>
         <button
           onClick={signOut}
-          className="rounded-full p-2 text-ink-soft hover:bg-white/10 lg:hidden"
+          className="rounded-[10px] p-2 text-muted transition duration-200 hover:bg-white/5 hover:text-ink lg:hidden"
           aria-label="Sign out"
         >
           <LogOut size={16} />
         </button>
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-1 lg:px-3">
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-0.5 lg:px-3">
         {NAV.filter((item) => {
           if (item.adminOnly && !(profile.role === "admin" || isAdminEmail(profile.email))) return false;
           if (item.operatorOnly && !operator) return false;
@@ -93,17 +93,20 @@ export function AppNav({
               href={item.href}
               prefetch
               className={cn(
-                "flex items-center gap-2 rounded-full px-3 py-2 text-sm whitespace-nowrap",
-                active ? "bg-terracotta text-white" : "text-ink-soft hover:bg-white/5 hover:text-ink"
+                "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm whitespace-nowrap transition duration-200",
+                active
+                  ? "bg-terracotta/12 font-medium text-ink"
+                  : "text-muted hover:bg-white/[0.04] hover:text-ink"
               )}
             >
-              <Icon size={16} />
+              {active ? <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-terracotta" /> : null}
+              <Icon size={16} strokeWidth={1.75} className={active ? "text-terracotta" : "text-current"} />
               {item.label}
               {count > 0 ? (
                 <span
                   className={cn(
-                    "ml-auto rounded-full px-1.5 text-[10px]",
-                    active ? "bg-white text-terracotta" : "bg-terracotta text-white"
+                    "ml-auto rounded-md px-1.5 text-[10px] font-semibold",
+                    active ? "bg-terracotta/20 text-terracotta" : "bg-blue/15 text-blue-soft"
                   )}
                 >
                   {count > 99 ? "99+" : count}
@@ -113,10 +116,13 @@ export function AppNav({
           );
         })}
       </nav>
-      <div className="mt-auto hidden px-5 py-5 lg:block">
-        <p className="truncate text-sm">{profile.full_name || profile.email}</p>
-        <p className="text-xs capitalize text-ink-soft">{profile.role}</p>
-        <button onClick={signOut} className="mt-3 flex items-center gap-2 text-xs text-ink-soft hover:text-ink">
+      <div className="mt-auto hidden border-t border-rule px-5 py-5 lg:block">
+        <p className="truncate text-sm font-medium">{profile.full_name || profile.email}</p>
+        <p className="text-xs capitalize text-muted">{profile.role}</p>
+        <button
+          onClick={signOut}
+          className="mt-3 flex items-center gap-2 text-xs text-muted transition duration-200 hover:text-ink"
+        >
           <LogOut size={14} /> Sign out
         </button>
       </div>
@@ -125,7 +131,9 @@ export function AppNav({
 }
 
 export function SidebarFallback() {
-  return <aside className="no-print min-h-[4.5rem] border-b border-rule bg-black lg:min-h-screen lg:border-b-0 lg:border-r" />;
+  return (
+    <aside className="no-print min-h-[4.5rem] border-b border-rule bg-sidebar lg:min-h-screen lg:border-b-0 lg:border-r" />
+  );
 }
 
 export function PageFallback() {
@@ -134,7 +142,7 @@ export function PageFallback() {
       <div className="h-3 w-24 rounded bg-rule" />
       <div className="h-8 w-64 rounded bg-rule" />
       <div className="h-4 w-full max-w-xl rounded bg-rule/80" />
-      <div className="mt-8 h-48 rounded-2xl border border-rule bg-cream" />
+      <div className="mt-8 h-48 rounded-xl border border-rule bg-cream shadow-card" />
     </div>
   );
 }

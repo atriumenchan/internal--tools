@@ -119,7 +119,7 @@ export default function AcknowledgePage() {
 
   return (
     <div className="min-h-screen bg-paper">
-      <header className="flex items-center justify-between border-b border-rule px-5 py-4">
+      <header className="flex items-center justify-between border-b border-rule bg-sidebar px-5 py-4">
         <div>
           <p className="text-xl font-semibold tracking-tight">ADMEXO</p>
           <p className="text-[11px] uppercase tracking-[0.22em] text-ink-soft">Handbook v{version}</p>
@@ -130,21 +130,21 @@ export default function AcknowledgePage() {
       </header>
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-terracotta">Required</p>
-          <h1 className="mt-1 text-3xl font-semibold tracking-tight">Read and sign the handbook</h1>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Required</p>
+          <h1 className="text-[32px] font-semibold tracking-tight md:text-[40px]">Read and sign the handbook</h1>
           <p className="mt-2 text-sm text-ink-soft">
             Everyone signs once for this version before Spaces, Chat, and the rest of the internal tools.
           </p>
           <iframe
             title="ADMEXO handbook"
             src={HANDBOOK_PDF}
-            className="mt-6 min-h-[70vh] w-full rounded-2xl border border-rule bg-white"
+            className="mt-6 min-h-[70vh] w-full rounded-xl border border-rule bg-white shadow-card"
           />
-          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm text-terracotta">
+          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-medium text-blue-soft hover:text-blue">
             Open PDF in a new tab
           </a>
         </div>
-        <form onSubmit={submit} className="h-fit space-y-4 rounded-2xl border border-rule bg-cream p-5">
+        <form onSubmit={submit} className="h-fit space-y-4 rounded-xl border border-rule bg-cream shadow-card p-5">
           <h2 className="text-xl font-semibold">Confirm</h2>
           <p className="text-sm text-ink-soft">
             I have read the ADMEXO employee & intern handbook v{version} and agree to follow it.
@@ -155,7 +155,7 @@ export default function AcknowledgePage() {
           <Field label="Signature style">
             <SignaturePad name={name} onChange={setSignature} />
           </Field>
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
           <Button type="submit" disabled={busy}>
             {busy ? "Saving…" : "Sign and continue"}
           </Button>

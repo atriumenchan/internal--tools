@@ -16,6 +16,7 @@ import { isIgnoredEmployee } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
 import { Button, Field, Input, Select } from "@/components/ui";
+import { FileDrop } from "@/components/file-drop";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 const FIELDS: { key: ColumnKey; label: string; hint: string }[] = [
@@ -208,13 +209,11 @@ export function AttendanceUploader({
           <Input type="number" min={2020} max={2100} value={year} onChange={(e) => setYear(Number(e.target.value))} />
         </Field>
         <Field label="Excel file" className="min-w-56 flex-1">
-          <Input
-            type="file"
+          <FileDrop
             accept=".xlsx,.xls,.csv"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void onFile(file);
-            }}
+            hint="Month-performance .xls, .xlsx, or .csv"
+            label="Drop the Excel file or click to choose"
+            onFile={(file) => void onFile(file)}
           />
         </Field>
         <Button
@@ -230,7 +229,7 @@ export function AttendanceUploader({
       </div>
 
       {report ? (
-        <p className="rounded-2xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
+        <p className="rounded-xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
           Detected biometric <strong>month performance</strong> report
           {report.company ? ` for ${report.company}` : ""}. {report.people.length} people · IN / OUT / WORK /
           Status blocks. Counted through {formatWorkDate(kolkataTodayKey())}. Saturday, Sunday, and handbook
@@ -239,8 +238,8 @@ export function AttendanceUploader({
       ) : null}
 
       {sheet && !report ? (
-        <div className="rounded-2xl border border-rule bg-cream p-5">
-          <h3 className="font-serif text-xl">Map columns</h3>
+        <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
+          <h3 className="font-semibold tracking-tight text-xl">Map columns</h3>
           <p className="mt-1 text-sm text-ink-soft">
             This file is not the month-performance layout. Map Emp Code, Name, Date, and Time (or In / Out).
           </p>
@@ -267,9 +266,9 @@ export function AttendanceUploader({
       ) : null}
 
       {preview ? (
-        <div className="rounded-2xl border border-rule bg-cream p-5">
+        <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h3 className="font-serif text-xl">
+            <h3 className="font-semibold tracking-tight text-xl">
               Preview · {preview.summaries.length} people · through {formatWorkDate(kolkataTodayKey())}
             </h3>
             <label className="flex items-center gap-2 text-sm">
@@ -320,7 +319,7 @@ export function AttendanceUploader({
         </div>
       ) : null}
 
-      {error ? <p className="text-sm text-red-800">{error}</p> : null}
+      {error ? <p className="text-sm text-danger">{error}</p> : null}
     </div>
   );
 }

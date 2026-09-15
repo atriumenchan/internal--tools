@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, PageHeader } from "@/components/ui";
+import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import type { NotificationItem } from "@/lib/types";
 
@@ -51,15 +51,20 @@ export default function NotificationsPage() {
         }
       />
       {rows.length === 0 ? (
-        <p className="text-sm text-ink-soft">Nothing yet. When someone messages you or assigns a task, it lands here.</p>
+        <EmptyState>Nothing yet. When someone messages you or assigns a task, it lands here.</EmptyState>
       ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-cream">
+        <ul className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
           {rows.map((row) => (
-            <li key={row.id} className={row.read_at ? "opacity-60" : ""}>
-              <Link href={row.href || "/dashboard"} className="block px-4 py-3 hover:bg-white/5">
-                <p className="font-medium">{row.title}</p>
-                {row.body ? <p className="mt-0.5 truncate text-sm text-ink-soft">{row.body}</p> : null}
-                <p className="mt-1 text-[11px] text-ink-soft">{new Date(row.created_at).toLocaleString()}</p>
+            <li key={row.id} className={row.read_at ? "border-b border-rule last:border-0" : "border-b border-rule last:border-0 bg-blue/[0.04]"}>
+              <Link href={row.href || "/dashboard"} className="block px-4 py-3.5 transition duration-200 hover:bg-white/[0.03]">
+                <div className="flex items-start gap-3">
+                  {!row.read_at ? <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue" /> : <span className="mt-1.5 h-1.5 w-1.5 shrink-0" />}
+                  <div className="min-w-0 flex-1">
+                    <p className={row.read_at ? "font-medium text-ink-soft" : "font-semibold text-ink"}>{row.title}</p>
+                    {row.body ? <p className="mt-0.5 truncate text-sm text-muted">{row.body}</p> : null}
+                    <p className="mt-1 text-[12px] text-muted">{new Date(row.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
               </Link>
             </li>
           ))}

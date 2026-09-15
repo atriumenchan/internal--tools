@@ -9,7 +9,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   if (!isSupabaseConfigured()) {
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
-        <h1 className="font-serif text-3xl">Signing is not connected yet</h1>
+        <h1 className="font-semibold tracking-tight text-3xl">Signing is not connected yet</h1>
         <p className="mt-3 text-ink-soft">Supabase keys are missing on the server.</p>
       </div>
     );
@@ -22,7 +22,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
   if (error || !offer) {
     return (
       <div className="mx-auto max-w-lg px-6 py-20 text-center">
-        <h1 className="font-serif text-3xl">This link is not active</h1>
+        <h1 className="font-semibold tracking-tight text-3xl">This link is not active</h1>
         <p className="mt-3 text-ink-soft">
           It may have expired, been revoked, or the offer was never opened for signature.
         </p>

@@ -3,12 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { FileText } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Card, ErrorText, Field, PageHeader, Select, Textarea } from "@/components/ui";
+import { FileDrop } from "@/components/file-drop";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
+import { Avatar } from "@/components/avatar";
 import { displayName, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
 import { DatePicker } from "@/components/date-picker";
+import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
 import { useAppState } from "@/components/app-frame";
 import type { Profile, Space, Task, TaskComment, TaskFile } from "@/lib/types";
@@ -166,122 +170,150 @@ export default function TaskPage() {
 
   return (
     <div>
-      <p className="mb-2 text-sm">
-        <Link href={`/spaces/${id}`} className="text-ink-soft hover:text-ink">
+      <p className="mb-3 text-sm">
+        <Link href={`/spaces/${id}`} className="text-muted transition duration-200 hover:text-ink">
           ← {space?.name || "Board"}
         </Link>
       </p>
-      <PageHeader title={task.title} />
-      {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
+      <PageHeader title={task.title} description={space?.name ? `On ${space.name}` : undefined} />
+      <ErrorText className="mb-4">{error}</ErrorText>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
-        <div>
-          <Field label="Description" className="mb-6">
-            <Textarea
-              value={task.description || ""}
-              onChange={(e) => setTask({ ...task, description: e.target.value })}
-              onBlur={() => void saveTask({ description: task.description })}
-              rows={6}
-            />
-          </Field>
-          <h2 className="mb-3 text-lg font-semibold">Comments</h2>
-          <ul className="space-y-3">
-            {comments.map((comment) => (
-              <li key={comment.id} className="rounded-2xl border border-rule bg-cream px-4 py-3">
-                <p className="text-xs text-ink-soft">
-                  {displayName(profiles[comment.author_id])} · {new Date(comment.created_at).toLocaleString()}
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="space-y-6">
+          <Card>
+            <Field label="Description">
+              <Textarea
+                value={task.description || ""}
+                onChange={(e) => setTask({ ...task, description: e.target.value })}
+                onBlur={() => void saveTask({ description: task.description })}
+                rows={8}
+                placeholder="Write what this task is, what done looks like, and any links."
+                className="min-h-[10rem]"
+              />
+            </Field>
+          </Card>
+
+          <Card className="p-0">
+            <div className="border-b border-rule px-5 py-4">
+              <h2 className="text-xl font-semibold tracking-tight">Comments</h2>
+              <p className="mt-1 text-sm text-muted">Type @ to mention someone on this board.</p>
+            </div>
+            <div className="space-y-3 px-5 py-4">
+              {comments.length === 0 ? (
+                <p className="rounded-[12px] border border-dashed border-rule bg-surface px-4 py-6 text-center text-sm text-ink-soft">
+                  No comments yet.
                 </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm">
-                  <MentionBody text={comment.body} people={Object.values(profiles)} />
-                </p>
-              </li>
-            ))}
-          </ul>
-          <div ref={bottom} />
-          <form onSubmit={addComment} className="mt-4 space-y-2">
-            <MentionField
-              value={body}
-              onChange={setBody}
-              people={Object.values(profiles)}
-              rows={3}
-              placeholder="Write a comment — type @ to mention someone"
-              required
-            />
-            <Button type="submit" disabled={busy}>
-              {busy ? "Sending…" : "Comment"}
-            </Button>
-          </form>
+              ) : (
+                <ul className="space-y-3">
+                  {comments.map((comment) => (
+                    <li key={comment.id} className="flex gap-3 rounded-[12px] border border-rule bg-surface px-4 py-3">
+                      <Avatar name={displayName(profiles[comment.author_id])} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[12px] text-muted">
+                          <span className="font-medium text-ink">{displayName(profiles[comment.author_id])}</span>
+                          {" · "}
+                          {new Date(comment.created_at).toLocaleString()}
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
+                          <MentionBody text={comment.body} people={Object.values(profiles)} />
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div ref={bottom} />
+              <form onSubmit={addComment} className="space-y-3 border-t border-rule pt-4">
+                <MentionField
+                  value={body}
+                  onChange={setBody}
+                  people={Object.values(profiles)}
+                  rows={3}
+                  placeholder="Write a comment — type @ to mention someone"
+                  required
+                />
+                <div className="flex justify-end">
+                  <Button type="submit" disabled={busy}>
+                    {busy ? "Sending…" : "Comment"}
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </Card>
         </div>
-        <aside className="space-y-4 rounded-2xl border border-rule bg-cream p-4">
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Status</p>
-            <div className="flex rounded-full border border-rule p-1">
-              {TASK_COLUMNS.map((col) => (
-                <button
-                  key={col.status}
-                  type="button"
-                  className={`flex-1 rounded-full px-2 py-1 text-xs ${
-                    task.status === col.status ? "bg-terracotta text-white" : "text-ink-soft hover:text-ink"
-                  }`}
-                  onClick={() => {
-                    setTask({ ...task, status: col.status });
-                    void saveTask({ status: col.status });
+
+        <aside>
+          <Card className="divide-y divide-rule p-0">
+            <div className="px-4 py-4">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Status</p>
+              <div className="grid grid-cols-3 gap-1 rounded-[10px] border border-rule bg-input p-1">
+                {TASK_COLUMNS.map((col) => (
+                  <button
+                    key={col.status}
+                    type="button"
+                    className={`rounded-md px-2 py-1.5 text-xs font-semibold transition duration-200 ${taskStatusClass(col.status, task.status === col.status)}`}
+                    onClick={() => {
+                      setTask({ ...task, status: col.status });
+                      void saveTask({ status: col.status });
+                    }}
+                  >
+                    {TASK_STATUS_LABELS[col.status]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="px-4 py-4">
+              <Field label="Assignee">
+                <Select
+                  value={task.assignee_id || ""}
+                  onChange={(e) => {
+                    const assignee_id = e.target.value || null;
+                    setTask({ ...task, assignee_id });
+                    void saveTask({ assignee_id });
                   }}
                 >
-                  {TASK_STATUS_LABELS[col.status]}
-                </button>
-              ))}
+                  <option value="">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {displayName(m)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
-          </div>
-          <Field label="Assignee">
-            <Select
-              value={task.assignee_id || ""}
-              onChange={(e) => {
-                const assignee_id = e.target.value || null;
-                setTask({ ...task, assignee_id });
-                void saveTask({ assignee_id });
-              }}
-            >
-              <option value="">Unassigned</option>
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {displayName(m)}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Due date">
-            <DatePicker
-              value={dueDateKey(task.due_date)}
-              onChange={(due_date) => {
-                setTask({ ...task, due_date });
-                void saveTask({ due_date });
-              }}
-              placeholder="Pick a due date"
-            />
-          </Field>
-          <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Files</p>
-            <p className="mb-2 text-[11px] text-ink-soft">Optional. 8 MB each. Shared 1 GB on the free plan.</p>
-            <input
-              type="file"
-              className="w-full text-xs"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void uploadFile(file);
-                e.currentTarget.value = "";
-              }}
-            />
-            <ul className="mt-2 space-y-1 text-sm">
-              {files.map((file) => (
-                <li key={file.id}>
-                  <button type="button" className="text-terracotta hover:underline" onClick={() => void openFile(file)}>
-                    {file.file_name}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+            <div className="px-4 py-4">
+              <Field label="Due date">
+                <DatePicker
+                  value={dueDateKey(task.due_date)}
+                  onChange={(due_date) => {
+                    setTask({ ...task, due_date });
+                    void saveTask({ due_date });
+                  }}
+                  placeholder="Pick a due date"
+                />
+              </Field>
+            </div>
+            <div className="px-4 py-4">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Files</p>
+              <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. 8 MB each. Shared 1 GB on the free plan." />
+              {files.length > 0 ? (
+                <ul className="mt-3 space-y-2">
+                  {files.map((file) => (
+                    <li key={file.id}>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-[10px] border border-rule bg-input px-3 py-2 text-left text-sm transition duration-200 hover:border-line-hover"
+                        onClick={() => void openFile(file)}
+                      >
+                        <FileText size={14} className="shrink-0 text-blue-soft" />
+                        <span className="min-w-0 truncate">{file.file_name}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          </Card>
         </aside>
       </div>
     </div>

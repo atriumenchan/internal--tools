@@ -15,8 +15,8 @@ export default function AppError({
   }, [error]);
 
   return (
-    <div className="mx-auto max-w-lg rounded-2xl border border-rule bg-cream p-8">
-      <h2 className="font-serif text-2xl">Something went wrong</h2>
+    <div className="mx-auto max-w-lg rounded-xl border border-rule bg-cream shadow-card p-8">
+      <h2 className="font-semibold tracking-tight text-2xl">Something went wrong</h2>
       <p className="mt-2 text-sm text-ink-soft">
         {error.message || "The page hit a client error. Try again, or go back to the board."}
       </p>

@@ -40,14 +40,14 @@ export function PeoplePicker({
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p.id)}
-                className="rounded-full bg-terracotta/20 px-2 py-0.5 text-[11px] text-terracotta hover:bg-terracotta/30"
+                className="rounded-md bg-blue/10 px-2 py-0.5 text-[11px] font-medium text-blue-soft hover:bg-blue/20"
               >
                 {displayName(p)} ×
               </button>
             ))}
         </div>
       ) : null}
-      <ul className="mt-2 max-h-48 overflow-y-auto rounded-xl border border-rule">
+      <ul className="mt-2 max-h-48 overflow-y-auto rounded-[10px] border border-rule bg-input">
         {filtered.length === 0 ? (
           <li className="px-3 py-2 text-sm text-ink-soft">No one matches.</li>
         ) : (
@@ -60,13 +60,13 @@ export function PeoplePicker({
                   onClick={() => toggle(person.id)}
                   className={cn(
                     "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm",
-                    on ? "bg-terracotta/10" : "hover:bg-white/5"
+                    on ? "bg-blue/10" : "hover:bg-white/5"
                   )}
                 >
                   <span
                     className={cn(
                       "flex h-4 w-4 items-center justify-center rounded border",
-                      on ? "border-terracotta bg-terracotta text-[10px] text-white" : "border-rule"
+                      on ? "border-blue bg-blue text-[10px] text-white" : "border-rule"
                     )}
                   >
                     {on ? "✓" : null}

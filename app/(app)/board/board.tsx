@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Card, Input, Select } from "@/components/ui";
+import { Badge, Card, Input, Segmented, Select } from "@/components/ui";
 import { DatePicker } from "@/components/date-picker";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type Employee, type MonthlySummary } from "@/lib/types";
 import { isIgnoredEmployee } from "@/lib/admin";
@@ -134,7 +134,7 @@ export function AttendanceBoard({
         <Stat label="Hours" value={hoursLabel(totals.hours)} />
       </div>
 
-      <div className="flex flex-wrap gap-3 rounded-2xl border border-rule bg-cream p-4">
+      <div className="flex flex-wrap gap-3 rounded-xl border border-rule bg-cream shadow-card p-4">
         <Input className="max-w-xs" placeholder="Search name or code" value={query} onChange={(e) => setQuery(e.target.value)} />
         <Select className="max-w-xs" value={person} onChange={(e) => setPerson(e.target.value)}>
           <option value="all">All people</option>
@@ -166,22 +166,14 @@ export function AttendanceBoard({
         </Select>
         <DatePicker className="w-[13.5rem]" value={from || null} onChange={(v) => setFrom(v || "")} placeholder="From date" />
         <DatePicker className="w-[13.5rem]" value={to || null} onChange={(v) => setTo(v || "")} placeholder="To date" />
-        <div className="flex rounded-full border border-rule p-1">
-          <button
-            type="button"
-            className={`rounded-full px-3 py-1 text-sm ${view === "people" ? "bg-ink text-cream" : ""}`}
-            onClick={() => setView("people")}
-          >
-            By person
-          </button>
-          <button
-            type="button"
-            className={`rounded-full px-3 py-1 text-sm ${view === "days" ? "bg-ink text-cream" : ""}`}
-            onClick={() => setView("days")}
-          >
-            By day
-          </button>
-        </div>
+        <Segmented
+          value={view}
+          onChange={setView}
+          options={[
+            { id: "people", label: "By person" },
+            { id: "days", label: "By day" },
+          ]}
+        />
       </div>
 
       {view === "people" ? (
@@ -245,7 +237,7 @@ export function AttendanceBoard({
         <div className="space-y-4">
           {daysByDate.map(([date, rows]) => (
             <Card key={date}>
-              <h3 className="font-serif text-lg">{formatWorkDate(date, "long")}</h3>
+              <h3 className="text-lg font-semibold tracking-tight">{formatWorkDate(date, "long")}</h3>
               <table className="mt-3 w-full text-sm">
                 <thead className="text-left text-xs uppercase text-ink-soft">
                   <tr>
@@ -289,9 +281,9 @@ export function AttendanceBoard({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-2xl border border-rule bg-cream p-4">
-      <p className="text-xs uppercase tracking-wide text-ink-soft">{label}</p>
-      <p className="mt-1 font-serif text-2xl">{value}</p>
+    <div className="rounded-xl border border-rule bg-cream p-4 shadow-card">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className="mt-2 text-[28px] font-semibold tabular-nums leading-none">{value}</p>
     </div>
   );
 }

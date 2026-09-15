@@ -66,7 +66,7 @@ export function SignOffer({
     <div className="mx-auto max-w-3xl px-4 py-10">
       <div className="no-print mb-8">
         <p className="text-xs uppercase tracking-[0.2em] text-terracotta">{preview.company_name}</p>
-        <h1 className="mt-1 font-serif text-4xl">
+        <h1 className="mt-1 font-semibold tracking-tight text-4xl">
           {done ? "Offer signed and sent" : "Review and sign"}
         </h1>
         <p className="mt-2 max-w-xl text-sm text-ink-soft">
@@ -83,8 +83,8 @@ export function SignOffer({
           <Button onClick={() => window.print()}>Download / print</Button>
         </div>
       ) : (
-        <form onSubmit={submit} className="no-print mt-10 space-y-5 rounded-2xl border border-rule bg-cream p-6">
-          <h2 className="font-serif text-2xl">Sign to send</h2>
+        <form onSubmit={submit} className="no-print mt-10 space-y-5 rounded-xl border border-rule bg-cream shadow-card p-6">
+          <h2 className="font-semibold tracking-tight text-2xl">Sign to send</h2>
           <Field label="Type your name as you spell it">
             <Input value={name} onChange={(e) => setName(e.target.value)} required />
           </Field>
@@ -101,7 +101,7 @@ export function SignOffer({
             I have read this offer and accept its terms. Signing sends the executed letter to{" "}
             {preview.company_name}.
           </label>
-          {error ? <p className="text-sm text-red-400">{error}</p> : null}
+          {error ? <p className="text-sm text-danger">{error}</p> : null}
           <Button type="submit" disabled={busy}>
             {busy ? "Sending…" : "Sign and send offer"}
           </Button>

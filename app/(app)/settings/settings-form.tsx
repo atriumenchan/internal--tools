@@ -75,7 +75,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <form onSubmit={saveCompany} className="space-y-4 rounded-2xl border border-rule bg-cream p-5">
+      <form onSubmit={saveCompany} className="space-y-4 rounded-xl border border-rule bg-cream shadow-card p-5">
         <h2 className="text-xl font-semibold">Company & letters</h2>
         <Field label="Company name">
           <Input name="company_name" defaultValue={settings.company_name} required />
@@ -144,7 +144,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
                 <button
                   key={day.value}
                   type="button"
-                  className={`rounded-full px-3 py-1 text-sm ${on ? "bg-terracotta text-white" : "border border-rule"}`}
+                  className={`rounded-[10px] px-3 py-1.5 text-sm font-medium transition duration-200 ${on ? "bg-blue/15 text-blue-soft ring-1 ring-blue/25" : "border border-rule text-ink-soft hover:border-line-hover"}`}
                   onClick={() => {
                     if ((HANDBOOK_WEEKLY_OFFS as number[]).includes(day.value)) return;
                     setOffs((prev) =>
@@ -158,12 +158,12 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
             })}
           </div>
         </div>
-        {error ? <p className="text-sm text-red-800">{error}</p> : null}
+        {error ? <p className="text-sm text-danger">{error}</p> : null}
         {message ? <p className="text-sm text-sage">{message}</p> : null}
         <Button type="submit">Save settings</Button>
       </form>
 
-      <div className="rounded-2xl border border-rule bg-cream p-5">
+      <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
         <h2 className="text-xl font-semibold">Holidays</h2>
         <p className="mt-1 text-sm text-ink-soft">
           Saturday and Sunday cannot be turned off. Fixed Noida 2026 holidays from the handbook count as holiday, not
@@ -181,7 +181,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
               <span>
                 {holiday.holiday_date} · {holiday.name}
               </span>
-              <button className="text-xs text-terracotta" onClick={() => removeHoliday(holiday.id)}>
+              <button className="text-xs font-medium text-danger hover:underline" onClick={() => removeHoliday(holiday.id)}>
                 Remove
               </button>
             </li>

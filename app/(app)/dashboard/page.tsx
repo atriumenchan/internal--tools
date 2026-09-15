@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { PageHeader } from "@/components/ui";
+import { EmptyState, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
@@ -31,13 +31,13 @@ function Stat({
   warn?: boolean;
 }) {
   const inner = (
-    <div className="rounded-2xl border border-rule bg-cream px-4 py-3">
-      <p className="text-[11px] uppercase tracking-wide text-ink-soft">{label}</p>
-      <p className={`mt-1 text-2xl font-semibold tabular-nums ${warn ? "text-red-400" : "text-ink"}`}>{value}</p>
+    <div className="h-full rounded-xl border border-rule bg-cream px-4 py-4 shadow-card transition duration-200 hover:border-line-hover">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
+      <p className={`mt-2 text-[28px] font-semibold tabular-nums leading-none ${warn ? "text-danger" : "text-ink"}`}>{value}</p>
     </div>
   );
   return href ? (
-    <Link href={href} className="block transition hover:border-white/20">
+    <Link href={href} className="block">
       {inner}
     </Link>
   ) : (
@@ -154,30 +154,21 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-lg font-semibold">Work</h2>
-            <div className="flex rounded-full border border-rule p-1 text-xs">
-              {(
-                [
-                  ["mine", "Assigned to me"],
-                  ["created", "I created"],
-                  ["overdue", "Overdue"],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setWorkFilter(id)}
-                  className={`rounded-full px-3 py-1 ${workFilter === id ? "bg-terracotta text-white" : "text-ink-soft hover:text-ink"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+            <h2 className="text-xl font-semibold tracking-tight">Work</h2>
+            <Segmented
+              value={workFilter}
+              onChange={setWorkFilter}
+              options={[
+                { id: "mine", label: "Assigned to me" },
+                { id: "created", label: "I created" },
+                { id: "overdue", label: "Overdue" },
+              ]}
+            />
           </div>
           {shown.length === 0 ? (
-            <p className="rounded-2xl border border-dashed border-rule px-4 py-8 text-center text-sm text-ink-soft">
+            <EmptyState>
               Nothing in this list. Open Tasks to add work to a board.
-            </p>
+            </EmptyState>
           ) : (
             <ul className="space-y-2">
               {shown.map((task) => (
@@ -195,10 +186,10 @@ export default function DashboardPage() {
         </section>
 
         <aside className="space-y-4">
-          <section className="rounded-2xl border border-rule bg-cream p-4">
+          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Boards</h2>
-              <Link href="/spaces" className="text-xs text-terracotta">
+              <Link href="/spaces" className="text-xs font-medium text-blue-soft hover:text-blue">
                 All
               </Link>
             </div>
@@ -208,7 +199,7 @@ export default function DashboardPage() {
               <ul className="mt-3 space-y-2">
                 {spaces.map((space) => (
                   <li key={space.id}>
-                    <Link href={`/spaces/${space.id}`} className="flex items-center gap-2 text-sm hover:text-terracotta">
+                    <Link href={`/spaces/${space.id}`} className="flex items-center gap-2 text-sm transition duration-200 hover:text-blue-soft">
                       <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
                       {space.name}
                     </Link>
@@ -218,11 +209,11 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-rule bg-cream p-4">
+          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">{operator ? "Attendance" : "Your day"}</h2>
               {operator ? (
-                <Link href="/board" className="text-xs text-terracotta">
+                <Link href="/board" className="text-xs font-medium text-blue-soft hover:text-blue">
                   Full board
                 </Link>
               ) : null}
@@ -250,10 +241,10 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="rounded-2xl border border-rule bg-cream p-4">
+          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold">Chat</h2>
-              <Link href="/chat" className="text-xs text-terracotta">
+              <Link href="/chat" className="text-xs font-medium text-blue-soft hover:text-blue">
                 Open
               </Link>
             </div>
@@ -270,9 +261,9 @@ export default function DashboardPage() {
                   }
                   return (
                     <li key={row.conversation_id}>
-                      <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-terracotta">
+                      <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-blue-soft">
                         <span className="font-medium">{label}</span>
-                        <span className="ml-2 rounded-full bg-terracotta px-1.5 text-[10px] text-white">{row.unread_count}</span>
+                        <span className="ml-2 rounded-md bg-blue/15 px-1.5 text-[10px] font-semibold text-blue-soft">{row.unread_count}</span>
                         {row.last_body ? <span className="mt-0.5 block truncate text-xs text-ink-soft">{row.last_body}</span> : null}
                       </Link>
                     </li>

@@ -155,7 +155,7 @@ export default function SpaceDetailPage() {
           </div>
         }
       />
-      {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
+      {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
 
       {outsiders.length > 0 ? (
         <form onSubmit={invite} className="mb-5 flex max-w-md items-center gap-2">
@@ -175,7 +175,7 @@ export default function SpaceDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {TASK_COLUMNS.map((col) => (
-          <section key={col.status} className="rounded-2xl border border-rule bg-cream p-3">
+          <section key={col.status} className="rounded-xl border border-rule bg-surface p-3 shadow-card">
             <div className="mb-3 flex items-baseline justify-between px-1">
               <h2 className="font-semibold">{TASK_STATUS_LABELS[col.status]}</h2>
               <span className="text-xs text-ink-soft">
@@ -184,7 +184,7 @@ export default function SpaceDetailPage() {
             </div>
             {col.status === "open" ? (
               adding ? (
-                <form onSubmit={createTask} className="mb-3 space-y-2 rounded-xl border border-rule bg-paper p-3">
+                <form onSubmit={createTask} className="mb-3 space-y-2 rounded-[12px] border border-rule bg-cream p-3">
                   <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
                   <div className="grid grid-cols-2 gap-2">
                     <Field label="Who">
@@ -214,7 +214,7 @@ export default function SpaceDetailPage() {
                 <button
                   type="button"
                   onClick={() => setAdding(true)}
-                  className="mb-3 w-full rounded-xl border border-dashed border-rule px-3 py-2 text-left text-sm text-ink-soft hover:border-white/20 hover:text-ink"
+                  className="mb-3 w-full rounded-[12px] border border-dashed border-rule bg-input px-3 py-2.5 text-left text-sm text-muted transition duration-200 hover:border-line-hover hover:text-ink"
                 >
                   + Add a task
                 </button>
