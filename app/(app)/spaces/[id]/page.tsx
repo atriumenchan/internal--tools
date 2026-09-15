@@ -4,14 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
+import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { DatePicker } from "@/components/date-picker";
 import { PageFallback } from "@/components/app-nav";
 import { TaskCard } from "@/components/task-card";
 import { Avatar } from "@/components/avatar";
-import { displayName, missingSpacesSchema, nextTaskStatus, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
+import {
+  displayName,
+  missingPriorityColumn,
+  missingSpacesSchema,
+  TASK_COLUMNS,
+  TASK_PRIORITIES,
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+  taskPriority,
+} from "@/lib/spaces";
 import { dueDateKey } from "@/lib/datetime";
-import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { Profile, Space, Task, TaskPriority, TaskStatus } from "@/lib/types";
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,11 +31,8 @@ export default function SpaceDetailPage() {
   const [people, setPeople] = useState<Profile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [inviteId, setInviteId] = useState("");
-  const [title, setTitle] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [adding, setAdding] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const [addingStatus, setAddingStatus] = useState<TaskStatus | null>(null);
+  const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,49 +73,65 @@ export default function SpaceDetailPage() {
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
 
-  async function setStatus(task: Task, status: TaskStatus) {
+  async function setStatus(taskId: string, status: TaskStatus) {
+    const current = tasks.find((t) => t.id === taskId);
+    if (!current || current.status === status) return;
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
     const supabase = createClient();
-    const { data, error: err } = await supabase.from("tasks").update({ status }).eq("id", task.id).select("*").single();
+    const { data, error: err } = await supabase.from("tasks").update({ status }).eq("id", taskId).select("*").single();
     if (err) {
       setError(err.message);
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? current : t)));
       return;
     }
-    setTasks((prev) => prev.map((t) => (t.id === task.id ? (data as Task) : t)));
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
   }
 
-  async function createTask(e: React.FormEvent) {
-    e.preventDefault();
-    if (!space || !title.trim()) return;
-    setBusy(true);
+  async function createTask(
+    status: TaskStatus,
+    values: { title: string; assigneeId: string; dueDate: string; priority: TaskPriority; comment: string }
+  ) {
+    if (!space || !values.title.trim()) return false;
     setError(null);
     const supabase = createClient();
     const {
       data: { session },
     } = await supabase.auth.getSession();
     const userId = session?.user.id;
-    if (!userId) return;
-    const { data, error: err } = await supabase
-      .from("tasks")
-      .insert({
-        space_id: space.id,
-        title: title.trim(),
-        assignee_id: assigneeId || null,
-        created_by: userId,
-        due_date: dueDateKey(dueDate),
-        status: "open",
-      })
-      .select("*")
-      .single();
-    setBusy(false);
-    if (err) {
-      setError(err.message);
-      return;
+    if (!userId) return false;
+    const comment = values.comment.trim();
+    const payload = {
+      space_id: space.id,
+      title: values.title.trim(),
+      description: comment || null,
+      assignee_id: values.assigneeId || null,
+      created_by: userId,
+      due_date: dueDateKey(values.dueDate),
+      status,
+      priority: values.priority,
+    };
+    let { data, error: err } = await supabase.from("tasks").insert(payload).select("*").single();
+    if (err && missingPriorityColumn(err.message)) {
+      const { priority, ...withoutPriority } = payload;
+      void priority;
+      const retry = await supabase.from("tasks").insert(withoutPriority).select("*").single();
+      data = retry.data;
+      err = retry.error;
+      if (!err) {
+        setError("Priority needs a SQL patch. Paste supabase/task-board.sql in the Supabase SQL editor, then refresh.");
+      }
     }
-    setTasks((prev) => [data as Task, ...prev]);
-    setTitle("");
-    setAssigneeId("");
-    setDueDate("");
-    setAdding(false);
+    if (err || !data) {
+      setError(err?.message || "Could not add the task.");
+      return false;
+    }
+    const task = data as Task;
+    if (comment) {
+      await supabase.from("task_comments").insert({ task_id: task.id, author_id: userId, body: comment });
+    }
+    setTasks((prev) => [task, ...prev]);
+    setAddingStatus(null);
+    return true;
   }
 
   async function invite(e: React.FormEvent) {
@@ -125,6 +148,13 @@ export default function SpaceDetailPage() {
     setInviteId("");
   }
 
+  function dropTask(status: TaskStatus, event: React.DragEvent) {
+    event.preventDefault();
+    setDragOver(null);
+    const taskId = event.dataTransfer.getData("text/plain");
+    if (taskId) void setStatus(taskId, status);
+  }
+
   if (error && !space) {
     return <PageHeader title="Board" description={error} />;
   }
@@ -139,7 +169,7 @@ export default function SpaceDetailPage() {
       </p>
       <PageHeader
         title={space.name}
-        description="Click a task to open it. Click the status chip to move it: To do → Doing → Done."
+        description="Drag a card into another column, or tap To do / Doing / Done on the card."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex -space-x-2">
@@ -175,51 +205,40 @@ export default function SpaceDetailPage() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         {TASK_COLUMNS.map((col) => (
-          <section key={col.status} className="rounded-xl border border-rule bg-surface p-3 shadow-card">
+          <section
+            key={col.status}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(col.status);
+            }}
+            onDragLeave={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setDragOver((current) => (current === col.status ? null : current));
+              }
+            }}
+            onDrop={(e) => dropTask(col.status, e)}
+            className={cn(
+              "flex min-h-[22rem] flex-col rounded-xl border bg-surface p-3 shadow-card transition duration-200",
+              dragOver === col.status ? "border-blue bg-blue/10" : "border-rule"
+            )}
+          >
             <div className="mb-3 flex items-baseline justify-between px-1">
               <h2 className="font-semibold">{TASK_STATUS_LABELS[col.status]}</h2>
               <span className="text-xs text-ink-soft">
                 {columns[col.status].length} · {col.hint}
               </span>
             </div>
-            {col.status === "open" ? (
-              adding ? (
-                <form onSubmit={createTask} className="mb-3 space-y-2 rounded-[12px] border border-rule bg-cream p-3">
-                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label="Who">
-                      <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                        <option value="">Unassigned</option>
-                        {members.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {displayName(m)}
-                          </option>
-                        ))}
-                      </Select>
-                    </Field>
-                    <Field label="Due">
-                      <DatePicker value={dueDate || null} onChange={(v) => setDueDate(v || "")} placeholder="Due date" />
-                    </Field>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button type="submit" size="sm" disabled={busy}>
-                      {busy ? "Adding…" : "Add"}
-                    </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
-                      Cancel
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setAdding(true)}
-                  className="mb-3 w-full rounded-[12px] border border-dashed border-rule bg-input px-3 py-2.5 text-left text-sm text-muted transition duration-200 hover:border-line-hover hover:text-ink"
-                >
-                  + Add a task
-                </button>
-              )
-            ) : null}
+            {addingStatus === col.status ? (
+              <AddTaskForm members={members} onCancel={() => setAddingStatus(null)} onSubmit={(values) => createTask(col.status, values)} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setAddingStatus(col.status)}
+                className="mb-3 w-full rounded-[12px] border border-dashed border-rule bg-input px-3 py-2.5 text-left text-sm text-muted transition duration-200 hover:border-line-hover hover:text-ink"
+              >
+                + Add a task
+              </button>
+            )}
             <ul className="space-y-2">
               {columns[col.status].map((task) => (
                 <li key={task.id}>
@@ -227,7 +246,7 @@ export default function SpaceDetailPage() {
                     task={task}
                     href={`/spaces/${space.id}/tasks/${task.id}`}
                     assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
-                    onAdvance={() => void setStatus(task, nextTaskStatus(task.status))}
+                    onMove={(status) => void setStatus(task.id, status)}
                   />
                 </li>
               ))}
@@ -236,5 +255,84 @@ export default function SpaceDetailPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+function AddTaskForm({
+  members,
+  onCancel,
+  onSubmit,
+}: {
+  members: Profile[];
+  onCancel: () => void;
+  onSubmit: (values: {
+    title: string;
+    assigneeId: string;
+    dueDate: string;
+    priority: TaskPriority;
+    comment: string;
+  }) => Promise<boolean>;
+}) {
+  const [title, setTitle] = useState("");
+  const [assigneeId, setAssigneeId] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [priority, setPriority] = useState<TaskPriority>("medium");
+  const [comment, setComment] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        if (!title.trim() || busy) return;
+        setBusy(true);
+        const ok = await onSubmit({ title, assigneeId, dueDate, priority: taskPriority(priority), comment });
+        if (!ok) setBusy(false);
+      }}
+      className="mb-3 space-y-2 rounded-[12px] border border-rule bg-cream p-3"
+    >
+      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Assign">
+          <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+            <option value="">Unassigned</option>
+            {members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {displayName(m)}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Priority">
+          <Select value={priority} onChange={(e) => setPriority(taskPriority(e.target.value))}>
+            {TASK_PRIORITIES.map((key) => (
+              <option key={key} value={key}>
+                {TASK_PRIORITY_LABELS[key]}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
+      <Field label="Due">
+        <DatePicker value={dueDate || null} onChange={(v) => setDueDate(v || "")} placeholder="Due date" />
+      </Field>
+      <Field label="Comment">
+        <Textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          rows={2}
+          className="min-h-[4.5rem]"
+          placeholder="Optional note for the person you assign"
+        />
+      </Field>
+      <div className="flex gap-2">
+        <Button type="submit" size="sm" disabled={busy}>
+          {busy ? "Adding…" : "Add"}
+        </Button>
+        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+      </div>
+    </form>
   );
 }

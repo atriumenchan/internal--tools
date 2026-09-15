@@ -20,6 +20,7 @@ export type Profile = {
 };
 
 export type TaskStatus = "open" | "in_progress" | "done";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type ConversationType = "dm" | "group" | "space";
 
 export type Space = {
@@ -45,6 +46,7 @@ export type Task = {
   assignee_id: string | null;
   created_by: string;
   due_date: string | null;
+  priority?: TaskPriority | null;
   created_at: string;
   updated_at?: string;
 };

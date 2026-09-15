@@ -10,7 +10,15 @@ import { FileDrop } from "@/components/file-drop";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { Avatar } from "@/components/avatar";
-import { displayName, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
+import {
+  displayName,
+  missingPriorityColumn,
+  TASK_COLUMNS,
+  TASK_PRIORITIES,
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+  taskPriority,
+} from "@/lib/spaces";
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
@@ -87,7 +95,11 @@ export default function TaskPage() {
     const supabase = createClient();
     const { data, error: err } = await supabase.from("tasks").update(patch).eq("id", task.id).select("*").single();
     if (err) {
-      setError(err.message);
+      setError(
+        missingPriorityColumn(err.message)
+          ? "Priority needs a SQL patch. Paste supabase/task-board.sql in the Supabase SQL editor, then refresh."
+          : err.message
+      );
       return;
     }
     setTask(data as Task);
@@ -261,6 +273,24 @@ export default function TaskPage() {
                   </button>
                 ))}
               </div>
+            </div>
+            <div className="px-4 py-4">
+              <Field label="Priority">
+                <Select
+                  value={taskPriority(task.priority)}
+                  onChange={(e) => {
+                    const priority = taskPriority(e.target.value);
+                    setTask({ ...task, priority });
+                    void saveTask({ priority });
+                  }}
+                >
+                  {TASK_PRIORITIES.map((key) => (
+                    <option key={key} value={key}>
+                      {TASK_PRIORITY_LABELS[key]}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
             <div className="px-4 py-4">
               <Field label="Assignee">

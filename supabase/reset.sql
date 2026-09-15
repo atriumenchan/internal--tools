@@ -330,6 +330,7 @@ create table public.tasks (
   assignee_id uuid references public.profiles (id) on delete set null,
   created_by uuid not null references public.profiles (id) on delete restrict,
   due_date date,
+  priority text not null default 'medium',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

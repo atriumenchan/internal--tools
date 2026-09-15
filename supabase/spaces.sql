@@ -78,11 +78,18 @@ create table if not exists public.tasks (
   assignee_id uuid references public.profiles (id) on delete set null,
   created_by uuid not null references public.profiles (id) on delete restrict,
   due_date date,
+  priority text not null default 'medium',
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 create index if not exists tasks_space_idx on public.tasks (space_id, created_at desc);
+
+alter table public.tasks add column if not exists priority text not null default 'medium';
+alter table public.tasks drop constraint if exists tasks_priority_check;
+alter table public.tasks
+  add constraint tasks_priority_check
+  check (priority in ('low', 'medium', 'high', 'urgent'));
 
 drop trigger if exists tasks_updated_at on public.tasks;
 create trigger tasks_updated_at
