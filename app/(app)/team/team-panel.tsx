@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, Select } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
 import { isAdminUser } from "@/lib/admin";
 import type { AppRole, Employee } from "@/lib/types";
@@ -127,19 +127,14 @@ export function TeamPanel() {
           People come from Supabase. Pick one, set email and password. Ryan Ray cannot be given a login.
         </p>
         <Field label="Person">
-          <select
-            className="w-full rounded-xl border border-rule bg-white px-3 py-2.5 text-sm"
-            value={employeeId}
-            onChange={(e) => setEmployeeId(e.target.value)}
-            required
-          >
+          <Select value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} required>
             <option value="">Select</option>
             {available.map((person) => (
               <option key={person.id} value={person.id}>
                 {person.employee_code} · {person.full_name}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Login email">
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -148,7 +143,7 @@ export function TeamPanel() {
           <Input value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
         {msg ? <p className="text-sm text-sage">{msg}</p> : null}
-        {err ? <p className="text-sm text-red-800">{err}</p> : null}
+        {err ? <p className="text-sm text-red-400">{err}</p> : null}
         <Button type="submit" disabled={busy || password.length < 6 || !employeeId}>
           {busy ? "Creating…" : "Create login"}
         </Button>

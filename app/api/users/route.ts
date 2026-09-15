@@ -183,6 +183,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "The admin login cannot be deleted." }, { status: 400 });
     }
     await admin.from("employees").update({ user_id: null }).eq("user_id", id);
+    // Spaces/tasks keep a required created_by, so hand those rows to the acting admin first.
+    const { error: spaceErr } = await admin.from("spaces").update({ created_by: gate.user.id }).eq("created_by", id);
+    if (spaceErr) return NextResponse.json({ error: spaceErr.message }, { status: 400 });
+    const { error: taskErr } = await admin.from("tasks").update({ created_by: gate.user.id }).eq("created_by", id);
+    if (taskErr) return NextResponse.json({ error: taskErr.message }, { status: 400 });
     const { error } = await admin.auth.admin.deleteUser(id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
     return NextResponse.json({ ok: true });
