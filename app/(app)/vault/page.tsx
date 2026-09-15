@@ -67,8 +67,9 @@ export default function VaultPage() {
         description="Store company-related logins and keys here so the team does not lose them. This is a shared internal record, not a bank-grade password manager — anyone signed in can see these entries."
       />
       <p className="mb-6 rounded-2xl border border-rule bg-cream px-4 py-3 text-sm text-ink-soft">
-        Use this for portal logins, ads accounts, domain panels, and similar company access. Do not put personal banking
-        passwords here.
+        Use this for portal logins (TeamOffice, ads accounts, domain panels). This is a shared internal record, not
+        1Password — wiring a real password manager needs their business API and is not a small add. Anyone signed in can
+        see these entries. Do not put personal banking passwords here.
       </p>
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
       <div className="grid gap-8 lg:grid-cols-[340px_1fr]">

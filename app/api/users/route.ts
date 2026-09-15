@@ -133,3 +133,63 @@ export async function POST(request: Request) {
     );
   }
 }
+
+export async function PATCH(request: Request) {
+  const gate = await requireAdmin();
+  if ("error" in gate && gate.error) return gate.error;
+
+  const body = await request.json().catch(() => ({}));
+  const id = String(body.id || "").trim();
+  const password = String(body.password || "");
+  if (!id || password.length < 6) {
+    return NextResponse.json({ error: "User and a 6+ character password are required" }, { status: 400 });
+  }
+  if (id === gate.user.id) {
+    return NextResponse.json({ error: "Reset other people’s passwords here — not your own." }, { status: 400 });
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
+    if (target && isAdminUser({ email: target.email, role: target.role })) {
+      return NextResponse.json({ error: "The admin login cannot be reset from here." }, { status: 400 });
+    }
+    const { error } = await admin.auth.admin.updateUserById(id, { password });
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not reset password" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(request: Request) {
+  const gate = await requireAdmin();
+  if ("error" in gate && gate.error) return gate.error;
+
+  const url = new URL(request.url);
+  const id = String(url.searchParams.get("id") || "").trim();
+  if (!id) return NextResponse.json({ error: "Missing user id" }, { status: 400 });
+  if (id === gate.user.id) {
+    return NextResponse.json({ error: "You cannot delete your own login." }, { status: 400 });
+  }
+
+  try {
+    const admin = createAdminClient();
+    const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
+    if (target && isAdminUser({ email: target.email, role: target.role })) {
+      return NextResponse.json({ error: "The admin login cannot be deleted." }, { status: 400 });
+    }
+    await admin.from("employees").update({ user_id: null }).eq("user_id", id);
+    const { error } = await admin.auth.admin.deleteUser(id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Could not delete login" },
+      { status: 500 }
+    );
+  }
+}

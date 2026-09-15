@@ -43,7 +43,7 @@ export default function NotificationsPage() {
       <PageHeader
         eyebrow="Inbox"
         title="Notifications"
-        description="Messages, task assignments, and comments that involve you."
+        description="Messages, task assignments, comments, @mentions, and company announcements."
         actions={
           <Button variant="secondary" onClick={() => void markAll()}>
             Mark all read

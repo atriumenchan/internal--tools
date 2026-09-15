@@ -41,6 +41,10 @@ export default function SettingsPage() {
         description="Company details appear on offer letters. Control who can create Spaces and which handbook version everyone must sign."
       />
       {settings ? <SettingsForm settings={settings} holidays={holidays} /> : <PageFallback />}
+      <p className="mt-8 rounded-2xl border border-rule bg-cream px-4 py-3 text-sm text-ink-soft">
+        Mind (DeepSeek) is configured with the server env var <span className="text-terracotta">DEEPSEEK_API_KEY</span> on
+        Vercel — not in this form. Add the key, redeploy, then open Mind in the sidebar.
+      </p>
     </div>
   );
 }

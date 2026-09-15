@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge, PageHeader } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
+import { Announcements } from "@/components/announcements";
 import { isAdminUser } from "@/lib/admin";
 import { displayName, TASK_STATUS_LABELS } from "@/lib/spaces";
 import { formatDueDate, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
@@ -154,6 +155,7 @@ export default function HomePage() {
         }
       />
       <div className="grid gap-4 lg:grid-cols-2">
+        <Announcements operator={admin || app.operator} userId={app.userId} />
         {admin || app.operator ? (
           <>
             <section className="rounded-2xl border border-rule bg-cream p-4">

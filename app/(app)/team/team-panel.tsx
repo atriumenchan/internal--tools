@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Field, Input } from "@/components/ui";
 import { formatDate } from "@/lib/utils";
+import { isAdminUser } from "@/lib/admin";
 import type { AppRole, Employee } from "@/lib/types";
 
 type StaffUser = {
@@ -25,6 +26,8 @@ export function TeamPanel() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [resetId, setResetId] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState("");
 
   const available = useMemo(
     () => employees.filter((e) => !e.user_id && !e.ignored),
@@ -75,6 +78,47 @@ export function TeamPanel() {
     }
   }
 
+  async function resetLogin() {
+    if (!resetId || resetPassword.length < 6) return;
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: resetId, password: resetPassword }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Reset failed");
+      setMsg("Password updated. Share the new password with them.");
+      setResetId(null);
+      setResetPassword("");
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteLogin(user: StaffUser) {
+    if (!window.confirm(`Delete login for ${user.full_name || user.email}? You can create a new one after this.`)) return;
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch(`/api/users?id=${encodeURIComponent(user.id)}`, { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Delete failed");
+      setMsg("Login deleted. Pick them on the left to create a new one.");
+      await load();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="grid gap-8 lg:grid-cols-[360px_1fr]">
       <form onSubmit={createUser} className="space-y-3 rounded-2xl border border-rule bg-cream p-5">
@@ -120,6 +164,7 @@ export function TeamPanel() {
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Person</th>
                 <th className="px-4 py-3">Last sign-in</th>
+                <th className="px-4 py-3">Login</th>
               </tr>
             </thead>
             <tbody>
@@ -132,6 +177,38 @@ export function TeamPanel() {
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : "Never"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isAdminUser({ email: user.email, role: user.role }) ? (
+                      <p className="text-xs text-ink-soft">Admin — kept</p>
+                    ) : resetId === user.id ? (
+                      <div className="flex min-w-[12rem] flex-col gap-2">
+                        <Input
+                          type="password"
+                          value={resetPassword}
+                          onChange={(e) => setResetPassword(e.target.value)}
+                          placeholder="New password"
+                          minLength={6}
+                        />
+                        <div className="flex gap-2">
+                          <Button type="button" size="sm" disabled={busy || resetPassword.length < 6} onClick={() => void resetLogin()}>
+                            Save
+                          </Button>
+                          <Button type="button" size="sm" variant="ghost" onClick={() => { setResetId(null); setResetPassword(""); }}>
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => setResetId(user.id)}>
+                          Reset password
+                        </Button>
+                        <Button type="button" size="sm" variant="danger" disabled={busy} onClick={() => void deleteLogin(user)}>
+                          Delete
+                        </Button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}

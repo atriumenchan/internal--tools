@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { displayName, TASK_STATUS_LABELS } from "@/lib/spaces";
 import { dueDateKey } from "@/lib/datetime";
@@ -197,13 +198,22 @@ export default function TaskPage() {
                 <p className="text-xs text-ink-soft">
                   {displayName(profiles[comment.author_id])} · {new Date(comment.created_at).toLocaleString()}
                 </p>
-                <p className="mt-1 whitespace-pre-wrap text-sm">{comment.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm">
+                  <MentionBody text={comment.body} people={Object.values(profiles)} />
+                </p>
               </li>
             ))}
           </ul>
           <div ref={bottom} />
           <form onSubmit={addComment} className="mt-4 space-y-2">
-            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} placeholder="Write a comment" required />
+            <MentionField
+              value={body}
+              onChange={setBody}
+              people={Object.values(profiles)}
+              rows={3}
+              placeholder="Write a comment — type @ to mention someone"
+              required
+            />
             <Button type="submit" disabled={busy}>
               {busy ? "Sending…" : "Comment"}
             </Button>

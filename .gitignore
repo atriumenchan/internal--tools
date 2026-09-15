@@ -28,6 +28,9 @@ yarn-error.log*
 .env
 .env*.local
 
+# local scratch
+.tmp-video-frames/
+
 # typescript
 next-env.d.ts
 *.tsbuildinfo

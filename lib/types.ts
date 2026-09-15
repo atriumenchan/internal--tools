@@ -83,7 +83,7 @@ export type NotificationItem = {
   id: string;
   user_id: string;
   actor_id: string | null;
-  type: "message" | "task_assigned" | "task_comment" | string;
+  type: "message" | "task_assigned" | "task_comment" | "announcement" | "mention" | string;
   title: string;
   body: string | null;
   href: string | null;
@@ -101,6 +101,15 @@ export type CompanyCredential = {
   created_by: string | null;
   created_at: string;
   updated_at?: string;
+};
+
+export type Announcement = {
+  id: string;
+  title: string;
+  body: string;
+  pinned: boolean;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type TaskFile = {

@@ -3,7 +3,8 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
+import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
@@ -299,18 +300,19 @@ function ChatApp() {
                       {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
                     </p>
                     <p className="mt-1 inline-block whitespace-pre-wrap rounded-2xl bg-paper px-3 py-2 text-sm">
-                      {message.body}
+                      <MentionBody text={message.body} people={people} />
                     </p>
                   </div>
                 ))}
                 <div ref={bottom} />
               </div>
               <form onSubmit={send} className="border-t border-rule p-3">
-                <Textarea
+                <MentionField
                   value={body}
-                  onChange={(e) => setBody(e.target.value)}
+                  onChange={setBody}
+                  people={people}
                   rows={2}
-                  placeholder="Message"
+                  placeholder="Message — type @ to mention someone"
                   required
                 />
                 <div className="mt-2 flex justify-end">

@@ -26,7 +26,7 @@ export default function TeamPage() {
       <PageHeader
         eyebrow="Access"
         title="Staff accounts"
-        description="Create logins from here. People you add can sign in immediately — they do not register themselves."
+        description="Create, reset, or delete staff logins. After a delete, pick the person again on the left to recreate the login. The admin account cannot be deleted here."
       />
       <TeamPanel />
     </div>
