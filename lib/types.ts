@@ -79,6 +79,40 @@ export type ChatMessage = {
   created_at: string;
 };
 
+export type NotificationItem = {
+  id: string;
+  user_id: string;
+  actor_id: string | null;
+  type: "message" | "task_assigned" | "task_comment" | string;
+  title: string;
+  body: string | null;
+  href: string | null;
+  read_at: string | null;
+  created_at: string;
+};
+
+export type CompanyCredential = {
+  id: string;
+  title: string;
+  username: string | null;
+  secret: string | null;
+  url: string | null;
+  notes: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at?: string;
+};
+
+export type TaskFile = {
+  id: string;
+  task_id: string;
+  path: string;
+  file_name: string;
+  file_size: number;
+  uploaded_by: string | null;
+  created_at: string;
+};
+
 export type CompanySettings = {
   id: number;
   company_name: string;

@@ -9,7 +9,13 @@ import { useAppState } from "@/components/app-frame";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import type { ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
-type ConvoRow = Conversation & { last_read_at: string | null; unread: boolean };
+type InboxRow = {
+  conversation_id: string;
+  unread_count: number;
+  last_body: string | null;
+};
+
+type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
 
 function convoLabel(
   convo: Conversation,
@@ -36,6 +42,7 @@ function ChatApp() {
   const [dmUser, setDmUser] = useState("");
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [inbox, setInbox] = useState<InboxRow[]>([]);
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const myId = app?.userId;
@@ -43,13 +50,20 @@ function ChatApp() {
   const profiles = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
 
   const rows: ConvoRow[] = useMemo(() => {
+    const byId = Object.fromEntries(inbox.map((row) => [row.conversation_id, row]));
     return convos
       .map((convo) => {
         const mine = memberships.find((m) => m.conversation_id === convo.id && m.user_id === myId);
-        return { ...convo, last_read_at: mine?.last_read_at ?? null, unread: false };
+        const info = byId[convo.id];
+        return {
+          ...convo,
+          last_read_at: mine?.last_read_at ?? null,
+          unread: info?.unread_count ?? 0,
+          last_body: info?.last_body ?? null,
+        };
       })
-      .sort((a, b) => a.name?.localeCompare(b.name || "") || a.created_at.localeCompare(b.created_at));
-  }, [convos, memberships, myId]);
+      .sort((a, b) => (b.unread - a.unread) || (b.last_body ? 1 : 0) || a.created_at.localeCompare(b.created_at));
+  }, [convos, memberships, myId, inbox]);
 
   const grouped = useMemo(() => {
     const bucket = (type: ConversationType) => rows.filter((r) => r.type === type);
@@ -76,6 +90,7 @@ function ChatApp() {
     if (ids.length === 0) {
       setConvos([]);
       setMemberships([]);
+      setInbox([]);
       return;
     }
     const [convRes, memberRes] = await Promise.all([
@@ -84,6 +99,8 @@ function ChatApp() {
     ]);
     setConvos((convRes.data ?? []) as Conversation[]);
     setMemberships((memberRes.data ?? []) as ConversationMember[]);
+    const inboxRes = await supabase.rpc("chat_inbox");
+    if (!inboxRes.error) setInbox((inboxRes.data ?? []) as InboxRow[]);
   }
 
   useEffect(() => {
@@ -110,6 +127,8 @@ function ChatApp() {
       }
       setMessages((data ?? []) as ChatMessage[]);
       await supabase.rpc("mark_conversation_read", { p_conversation_id: selectedId });
+      const inboxRes = await supabase.rpc("chat_inbox");
+      if (!inboxRes.error) setInbox((inboxRes.data ?? []) as InboxRow[]);
     })();
 
     const channel = supabase
@@ -198,10 +217,17 @@ function ChatApp() {
                 type="button"
                 onClick={() => router.push(`/chat?c=${convo.id}`)}
                 className={`w-full rounded-xl px-3 py-2 text-left text-sm ${
-                  convo.id === selectedId ? "bg-terracotta text-white" : "text-ink-soft hover:bg-white/5 hover:text-ink"
+                  convo.id === selectedId ? "bg-terracotta text-white" : convo.unread > 0 ? "text-ink bg-white/5" : "text-ink-soft hover:bg-white/5 hover:text-ink"
                 }`}
               >
                 {convoLabel(convo, memberships, profiles, myId || "")}
+                {convo.unread > 0 ? (
+                  <span className="mt-0.5 block truncate text-[11px] opacity-80">
+                    {convo.unread} new{convo.last_body ? ` · ${convo.last_body}` : ""}
+                  </span>
+                ) : convo.last_body ? (
+                  <span className="mt-0.5 block truncate text-[11px] opacity-70">{convo.last_body}</span>
+                ) : null}
               </button>
             </li>
           ))}

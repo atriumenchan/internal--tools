@@ -22,8 +22,8 @@ export default function AppError({
       </p>
       <div className="mt-6 flex gap-3">
         <Button onClick={reset}>Try again</Button>
-        <Button variant="secondary" onClick={() => (window.location.href = "/spaces")}>
-          Back to Spaces
+        <Button variant="secondary" onClick={() => (window.location.href = "/home")}>
+          Back to home
         </Button>
       </div>
     </div>

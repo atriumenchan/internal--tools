@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { displayName, missingSpacesSchema, TASK_STATUS_LABELS } from "@/lib/spaces";
+import { dueDateKey, formatDueDate, isOverdue, kolkataTodayKey } from "@/lib/datetime";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
 export default function SpaceDetailPage() {
@@ -58,12 +59,13 @@ export default function SpaceDetailPage() {
   }, [id]);
 
   const visible = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = kolkataTodayKey();
     return tasks.filter((task) => {
       if (statusFilter !== "all" && task.status !== statusFilter) return false;
       if (assigneeFilter !== "all" && (task.assignee_id || "") !== assigneeFilter) return false;
-      if (dueFilter === "overdue" && (!task.due_date || task.due_date >= today || task.status === "done")) return false;
-      if (dueFilter === "upcoming" && (!task.due_date || task.due_date < today)) return false;
+      const due = dueDateKey(task.due_date);
+      if (dueFilter === "overdue" && (!due || due >= today || task.status === "done")) return false;
+      if (dueFilter === "upcoming" && (!due || due < today)) return false;
       return true;
     });
   }, [tasks, statusFilter, assigneeFilter, dueFilter]);
@@ -89,7 +91,7 @@ export default function SpaceDetailPage() {
         description: description.trim() || null,
         assignee_id: assigneeId || null,
         created_by: userId,
-        due_date: dueDate || null,
+        due_date: dueDateKey(dueDate),
         status: "open",
       })
       .select("*")
@@ -166,8 +168,9 @@ export default function SpaceDetailPage() {
                 ))}
               </Select>
             </Field>
-            <Field label="Due">
+            <Field label="Due date">
               <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <p className="mt-1 text-xs text-ink-soft">Optional. Uses the calendar date in India (IST), not UTC.</p>
             </Field>
           </div>
           <Button type="submit" disabled={busy}>
@@ -243,7 +246,9 @@ export default function SpaceDetailPage() {
                     <span className="block font-medium">{task.title}</span>
                     <span className="text-xs text-ink-soft">
                       {assignee ? displayName(assignee) : "Unassigned"}
-                      {task.due_date ? ` · due ${task.due_date}` : ""}
+                      {formatDueDate(task.due_date)
+                        ? ` · due ${formatDueDate(task.due_date)}${isOverdue(task.due_date, task.status) ? " (overdue)" : ""}`
+                        : ""}
                     </span>
                   </span>
                   <Badge tone={task.status === "done" ? "ok" : task.status === "in_progress" ? "info" : "neutral"}>

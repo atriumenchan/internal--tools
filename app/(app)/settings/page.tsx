@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/spaces");
+    if (app && !app.operator) router.replace("/home");
   }, [app, router]);
 
   useEffect(() => {

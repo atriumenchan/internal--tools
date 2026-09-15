@@ -24,7 +24,7 @@ export default function OffersPage() {
   const [offers, setOffers] = useState<OfferLetter[] | null>(null);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/spaces");
+    if (app && !app.operator) router.replace("/home");
   }, [app, router]);
 
   useEffect(() => {

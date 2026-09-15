@@ -31,7 +31,7 @@ export default function OfferDetailPage() {
   const [missing, setMissing] = useState(false);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/spaces");
+    if (app && !app.operator) router.replace("/home");
   }, [app, router]);
 
   useEffect(() => {

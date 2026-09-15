@@ -54,6 +54,25 @@ export function formatClock(value: string | null | undefined) {
   }
 }
 
+export function dueDateKey(value: string | null | undefined) {
+  if (!value) return null;
+  const key = String(value).trim().slice(0, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(key) ? key : null;
+}
+
+export function formatDueDate(value: string | null | undefined) {
+  const key = dueDateKey(value);
+  if (!key) return null;
+  return formatWorkDate(key, "short");
+}
+
+export function isOverdue(value: string | null | undefined, status?: string | null) {
+  if (status === "done") return false;
+  const key = dueDateKey(value);
+  if (!key) return false;
+  return key < kolkataTodayKey();
+}
+
 export function hoursLabel(value: number | string | null | undefined) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";

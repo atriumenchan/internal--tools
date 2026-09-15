@@ -24,7 +24,7 @@ export async function updateSession(request: NextRequest) {
 
   if (fresh && isPublic && path.startsWith("/login")) {
     const redirect = request.nextUrl.clone();
-    redirect.pathname = "/spaces";
+    redirect.pathname = "/home";
     return NextResponse.redirect(redirect);
   }
 
@@ -68,7 +68,7 @@ export async function updateSession(request: NextRequest) {
 
   if (user && path.startsWith("/login")) {
     const redirect = request.nextUrl.clone();
-    redirect.pathname = "/spaces";
+    redirect.pathname = "/home";
     return NextResponse.redirect(redirect);
   }
 

@@ -50,7 +50,7 @@ export default function AcknowledgePage() {
         }) ||
         isAdminEmail(user.email)
       ) {
-        router.replace("/spaces");
+        router.replace("/home");
         return;
       }
       setReady(true);
@@ -105,7 +105,7 @@ export default function AcknowledgePage() {
     }
     sessionStorage.removeItem("it-shell-v2");
     sessionStorage.removeItem("it-shell-v3");
-    router.replace("/spaces");
+    router.replace("/home");
     router.refresh();
   }
 

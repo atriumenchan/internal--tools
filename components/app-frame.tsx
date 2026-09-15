@@ -36,6 +36,7 @@ export function useAppState() {
 export function AppFrame({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState | null>(null);
   const [chatUnread, setChatUnread] = useState(0);
+  const [notifUnread, setNotifUnread] = useState(0);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -123,21 +124,30 @@ export function AppFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!state?.handbookAcknowledged) {
       setChatUnread(0);
+      setNotifUnread(0);
       return;
     }
     const supabase = createClient();
     let cancelled = false;
 
-    async function loadUnread() {
-      const { data, error } = await supabase.rpc("chat_unread_count");
-      if (!cancelled && !error && typeof data === "number") setChatUnread(data);
+    async function loadBadges() {
+      const [chat, notifs] = await Promise.all([
+        supabase.rpc("chat_unread_count"),
+        supabase.rpc("unread_notification_count"),
+      ]);
+      if (cancelled) return;
+      if (!chat.error && typeof chat.data === "number") setChatUnread(chat.data);
+      if (!notifs.error && typeof notifs.data === "number") setNotifUnread(notifs.data);
     }
 
-    void loadUnread();
+    void loadBadges();
     const channel = supabase
-      .channel("chat-unread")
+      .channel("nav-badges")
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, () => {
-        void loadUnread();
+        void loadBadges();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => {
+        void loadBadges();
       })
       .subscribe();
 
@@ -164,6 +174,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
             companyName={state.companyName}
             operator={state.operator}
             chatUnread={chatUnread}
+            notifUnread={notifUnread}
           />
         ) : (
           <SidebarFallback />

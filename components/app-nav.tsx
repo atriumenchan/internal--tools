@@ -2,16 +2,33 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { BookOpen, FileSignature, LayoutDashboard, LogOut, MessageSquare, Shield, SquareKanban, Timer, Users, Settings } from "lucide-react";
+import {
+  Bell,
+  BookOpen,
+  FileSignature,
+  Home,
+  KeyRound,
+  LayoutDashboard,
+  LogOut,
+  MessageSquare,
+  Shield,
+  SquareKanban,
+  Timer,
+  Users,
+  Settings,
+} from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
+  { href: "/home", label: "Home", icon: Home, adminOnly: false, operatorOnly: false },
   { href: "/spaces", label: "Spaces", icon: SquareKanban, adminOnly: false, operatorOnly: false },
   { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
-  { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: false },
+  { href: "/notifications", label: "Notifications", icon: Bell, adminOnly: false, operatorOnly: false },
+  { href: "/vault", label: "Credentials", icon: KeyRound, adminOnly: false, operatorOnly: false },
+  { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: true },
   { href: "/handbook", label: "Handbook", icon: BookOpen, adminOnly: false, operatorOnly: false },
   { href: "/attendance", label: "Upload", icon: Timer, adminOnly: false, operatorOnly: true },
   { href: "/offers", label: "Offer letters", icon: FileSignature, adminOnly: false, operatorOnly: true },
@@ -25,11 +42,13 @@ export function AppNav({
   companyName,
   operator,
   chatUnread = 0,
+  notifUnread = 0,
 }: {
   profile: Profile;
   companyName: string;
   operator: boolean;
   chatUnread?: number;
+  notifUnread?: number;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -67,6 +86,7 @@ export function AppNav({
         }).map((item) => {
           const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
           const Icon = item.icon;
+          const count = item.href === "/chat" ? chatUnread : item.href === "/notifications" ? notifUnread : 0;
           return (
             <Link
               key={item.href}
@@ -79,14 +99,14 @@ export function AppNav({
             >
               <Icon size={16} />
               {item.label}
-              {item.href === "/chat" && chatUnread > 0 ? (
+              {count > 0 ? (
                 <span
                   className={cn(
                     "ml-auto rounded-full px-1.5 text-[10px]",
                     active ? "bg-white text-terracotta" : "bg-terracotta text-white"
                   )}
                 >
-                  {chatUnread > 99 ? "99+" : chatUnread}
+                  {count > 99 ? "99+" : count}
                 </span>
               ) : null}
             </Link>
