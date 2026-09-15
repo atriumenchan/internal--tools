@@ -183,7 +183,6 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
                 {holiday.holiday_date} · {holiday.name}
               </span>
               <ConfirmDelete
-                iconOnly
                 label="Delete holiday"
                 title="Delete this holiday?"
                 onConfirm={() => removeHoliday(holiday.id)}

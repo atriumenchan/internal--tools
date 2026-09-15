@@ -110,7 +110,6 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
                       {employee.is_active ? "Deactivate" : "Reactivate"}
                     </button>
                     <ConfirmDelete
-                      iconOnly
                       label="Delete person"
                       title="Delete this person?"
                       description="They will be removed from People. Attendance history is kept."

@@ -94,7 +94,6 @@ export default function OffersPage() {
                     </td>
                     <td className="px-4 py-3 text-right">
                       <ConfirmDelete
-                        iconOnly
                         label="Delete offer"
                         title="Delete this offer?"
                         description="The letter and signing link will be removed."

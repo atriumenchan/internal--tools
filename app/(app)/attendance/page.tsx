@@ -109,7 +109,6 @@ export default function AttendancePage() {
                     Open month
                   </Link>
                   <ConfirmDelete
-                    iconOnly
                     label="Delete upload"
                     title="Delete this upload?"
                     description="The file record and that month’s imported attendance will be removed."

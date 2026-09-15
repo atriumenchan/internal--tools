@@ -111,7 +111,6 @@ export default function VaultPage() {
                     ) : null}
                   </div>
                   <ConfirmDelete
-                    iconOnly
                     label="Delete login"
                     title="Delete this saved login?"
                     onConfirm={() => remove(row.id)}

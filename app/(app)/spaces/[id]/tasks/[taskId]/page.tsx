@@ -283,7 +283,6 @@ export default function TaskPage() {
                         </p>
                       </div>
                       <ConfirmDelete
-                        iconOnly
                         label="Delete comment"
                         title="Delete this comment?"
                         onConfirm={() => deleteComment(comment.id)}
@@ -397,7 +396,6 @@ export default function TaskPage() {
                         <span className="min-w-0 truncate">{file.file_name}</span>
                       </button>
                       <ConfirmDelete
-                        iconOnly
                         label="Delete file"
                         title="Delete this file?"
                         onConfirm={() => deleteFile(file)}

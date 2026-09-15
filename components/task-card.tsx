@@ -104,7 +104,6 @@ export function TaskCard({
               <Badge tone={priorityTone(priority)}>{TASK_PRIORITY_LABELS[priority]}</Badge>
               {onDelete ? (
                 <ConfirmDelete
-                  iconOnly
                   label="Delete task"
                   title="Delete this task?"
                   description="The task, comments, and files will be removed."

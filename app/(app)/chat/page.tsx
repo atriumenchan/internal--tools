@@ -281,7 +281,6 @@ function ChatApp() {
                 </button>
                 {convo.type !== "space" ? (
                   <ConfirmDelete
-                    iconOnly
                     align="left"
                     label={convo.type === "group" ? "Delete group" : "Delete chat"}
                     title={convo.type === "group" ? "Delete this group?" : "Delete this chat?"}
@@ -360,7 +359,6 @@ function ChatApp() {
                 </div>
                 {selected.type !== "space" ? (
                   <ConfirmDelete
-                    iconOnly
                     label={selected.type === "group" ? "Delete group" : "Delete chat"}
                     title={selected.type === "group" ? "Delete this group?" : "Delete this chat?"}
                     description="All messages in this conversation will be removed."
@@ -389,7 +387,6 @@ function ChatApp() {
                         </p>
                         {canDelete ? (
                           <ConfirmDelete
-                            iconOnly
                             align={mine ? "right" : "left"}
                             label="Delete message"
                             title="Delete this message?"

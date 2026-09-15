@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Trash2 } from "lucide-react";
+import { MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+
+const MENU_WIDTH = 152;
+const CONFIRM_WIDTH = 264;
 
 export function ConfirmDelete({
   label = "Delete",
@@ -12,7 +15,6 @@ export function ConfirmDelete({
   description = "This cannot be undone.",
   confirmLabel = "Delete",
   onConfirm,
-  iconOnly = false,
   align = "right",
   className,
 }: {
@@ -21,39 +23,40 @@ export function ConfirmDelete({
   description?: string;
   confirmLabel?: string;
   onConfirm: () => Promise<void> | void;
-  iconOnly?: boolean;
   align?: "left" | "right";
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"closed" | "menu" | "confirm">("closed");
   const [busy, setBusy] = useState(false);
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
-  const trigger = useRef<HTMLElement | null>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
 
-  function place() {
-    const el = trigger.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const width = 280;
-    const left = align === "right" ? r.right - width : r.left;
-    setBox({
-      top: Math.min(r.bottom + 8, window.innerHeight - 196),
-      left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-    });
-  }
+  const open = mode !== "closed";
+  const width = mode === "confirm" ? CONFIRM_WIDTH : MENU_WIDTH;
 
   useEffect(() => {
     if (!open) return;
+    function place() {
+      const el = trigger.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const height = mode === "confirm" ? 172 : 48;
+      const left = align === "right" ? r.right - width : r.left;
+      setBox({
+        top: Math.min(r.bottom + 6, window.innerHeight - height - 8),
+        left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+      });
+    }
     place();
     function onPointer(e: PointerEvent) {
       const node = e.target as Node;
       if (wrap.current?.contains(node) || pop.current?.contains(node)) return;
-      setOpen(false);
+      setMode("closed");
     }
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") setMode("closed");
     }
     window.addEventListener("pointerdown", onPointer);
     window.addEventListener("keydown", onKey);
@@ -65,59 +68,54 @@ export function ConfirmDelete({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, align]);
+  }, [open, mode, align, width]);
 
   async function confirm() {
     setBusy(true);
     try {
       await onConfirm();
-      setOpen(false);
+      setMode("closed");
     } finally {
       setBusy(false);
     }
   }
 
-  function toggle(e: React.MouseEvent<HTMLElement>) {
-    e.preventDefault();
-    e.stopPropagation();
-    trigger.current = e.currentTarget;
-    const r = e.currentTarget.getBoundingClientRect();
-    const width = 280;
-    const left = align === "right" ? r.right - width : r.left;
-    setBox({
-      top: Math.min(r.bottom + 8, window.innerHeight - 196),
-      left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-    });
-    setOpen((v) => !v);
-  }
-
-  const popover =
+  const panel =
     open && box && typeof document !== "undefined"
       ? createPortal(
           <div
             ref={pop}
-            className="fixed z-[80] w-[280px] rounded-xl border border-danger/20 bg-elevated p-3.5 shadow-elevated"
-            style={{ top: box.top, left: box.left }}
+            className={cn(
+              "fixed z-[80] rounded-xl border border-rule bg-elevated shadow-elevated",
+              mode === "confirm" ? "border-danger/20 p-3.5" : "p-1"
+            )}
+            style={{ top: box.top, left: box.left, width }}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="flex items-start gap-3">
-              <span className="mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px] bg-danger/15 text-danger">
+            {mode === "menu" ? (
+              <button
+                type="button"
+                onClick={() => setMode("confirm")}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-danger transition duration-200 hover:bg-danger/10"
+              >
                 <Trash2 size={14} />
-              </span>
-              <div className="min-w-0">
+                {label}
+              </button>
+            ) : (
+              <>
                 <p className="text-sm font-semibold text-ink">{title}</p>
                 <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{description}</p>
-              </div>
-            </div>
-            <div className="mt-3.5 flex justify-end gap-2">
-              <Button type="button" size="sm" variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
-                Cancel
-              </Button>
-              <Button type="button" size="sm" variant="danger" onClick={() => void confirm()} disabled={busy}>
-                {busy ? "Deleting…" : confirmLabel}
-              </Button>
-            </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setMode("closed")} disabled={busy}>
+                    Cancel
+                  </Button>
+                  <Button type="button" size="sm" variant="danger" onClick={() => void confirm()} disabled={busy}>
+                    {busy ? "Deleting…" : confirmLabel}
+                  </Button>
+                </div>
+              </>
+            )}
           </div>,
           document.body
         )
@@ -125,23 +123,24 @@ export function ConfirmDelete({
 
   return (
     <div ref={wrap} className={cn("relative shrink-0", className)}>
-      {iconOnly ? (
-        <button
-          type="button"
-          aria-label={label}
-          title={label}
-          onClick={toggle}
-          className="inline-flex h-8 w-8 items-center justify-center rounded-[10px] border border-danger/25 bg-danger/10 text-danger transition duration-200 hover:border-danger/40 hover:bg-danger/20"
-        >
-          <Trash2 size={14} />
-        </button>
-      ) : (
-        <Button type="button" size="sm" variant="danger" onClick={toggle}>
-          <Trash2 size={14} />
-          {label}
-        </Button>
-      )}
-      {popover}
+      <button
+        ref={trigger}
+        type="button"
+        aria-label={label}
+        title={label}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setMode((m) => (m === "closed" ? "menu" : "closed"));
+        }}
+        className={cn(
+          "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted transition duration-200 hover:bg-white/[0.06] hover:text-ink",
+          open && "bg-white/[0.06] text-ink"
+        )}
+      >
+        <MoreHorizontal size={15} />
+      </button>
+      {panel}
     </div>
   );
 }

@@ -150,7 +150,6 @@ export default function SpacesPage() {
                     </span>
                   </button>
                   <ConfirmDelete
-                    iconOnly
                     label="Delete board"
                     title="Delete this board?"
                     description="All tasks, comments, and files on this board will be removed."
