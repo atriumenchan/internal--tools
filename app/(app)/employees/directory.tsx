@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { isIgnoredEmployee } from "@/lib/admin";
 import type { Employee } from "@/lib/types";
 
@@ -64,7 +65,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
           <Input name="designation" />
         </Field>
         <Field label="Joining date">
-          <Input name="joining_date" type="date" />
+          <DatePicker name="joining_date" placeholder="Joining date" />
         </Field>
         {error ? <p className="text-sm text-red-800">{error}</p> : null}
         <Button type="submit">Save</Button>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import type { EmploymentType } from "@/lib/types";
 
 export function OfferForm({
@@ -90,7 +91,7 @@ export function OfferForm({
           <Input name="ctc_annual" type="number" min={0} step={1000} />
         </Field>
         <Field label="Joining date">
-          <Input name="joining_date" type="date" />
+          <DatePicker name="joining_date" placeholder="Joining date" />
         </Field>
         <Field label="Reporting manager">
           <Input name="reporting_manager" />

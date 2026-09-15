@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { WEEKDAYS } from "@/lib/utils";
 import { HANDBOOK_WEEKLY_OFFS } from "@/lib/handbook-calendar";
 import type { CompanySettings, Holiday } from "@/lib/types";
@@ -170,7 +171,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
           here only if the whole office takes it.
         </p>
         <form onSubmit={addHoliday} className="mt-4 grid grid-cols-[1fr_1fr_auto] gap-2">
-          <Input name="holiday_date" type="date" required />
+          <DatePicker name="holiday_date" required placeholder="Holiday date" />
           <Input name="name" placeholder="Name" required />
           <Button type="submit">Add</Button>
         </form>

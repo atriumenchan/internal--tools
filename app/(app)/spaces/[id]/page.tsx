@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { PageFallback } from "@/components/app-nav";
 import { TaskCard } from "@/components/task-card";
 import { Avatar } from "@/components/avatar";
@@ -197,7 +198,7 @@ export default function SpaceDetailPage() {
                       </Select>
                     </Field>
                     <Field label="Due">
-                      <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                      <DatePicker value={dueDate || null} onChange={(v) => setDueDate(v || "")} placeholder="Due date" />
                     </Field>
                   </div>
                   <div className="flex gap-2">

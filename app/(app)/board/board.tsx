@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge, Card, Input, Select } from "@/components/ui";
+import { DatePicker } from "@/components/date-picker";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type Employee, type MonthlySummary } from "@/lib/types";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
@@ -163,8 +164,8 @@ export function AttendanceBoard({
             </option>
           ))}
         </Select>
-        <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-        <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        <DatePicker className="w-[13.5rem]" value={from || null} onChange={(v) => setFrom(v || "")} placeholder="From date" />
+        <DatePicker className="w-[13.5rem]" value={to || null} onChange={(v) => setTo(v || "")} placeholder="To date" />
         <div className="flex rounded-full border border-rule p-1">
           <button
             type="button"

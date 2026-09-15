@@ -4,10 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Field, PageHeader, Select, Textarea } from "@/components/ui";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { displayName, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
+import { DatePicker } from "@/components/date-picker";
 import { dueDateKey } from "@/lib/datetime";
 import { useAppState } from "@/components/app-frame";
 import type { Profile, Space, Task, TaskComment, TaskFile } from "@/lib/types";
@@ -250,14 +251,13 @@ export default function TaskPage() {
             </Select>
           </Field>
           <Field label="Due date">
-            <Input
-              type="date"
-              value={dueDateKey(task.due_date) || ""}
-              onChange={(e) => {
-                const due_date = dueDateKey(e.target.value);
+            <DatePicker
+              value={dueDateKey(task.due_date)}
+              onChange={(due_date) => {
                 setTask({ ...task, due_date });
                 void saveTask({ due_date });
               }}
+              placeholder="Pick a due date"
             />
           </Field>
           <div>
