@@ -26,7 +26,7 @@ export default function TeamPage() {
       <PageHeader
         eyebrow="Access"
         title="Staff accounts"
-        description="Create, reset, or delete staff logins. After a delete, pick the person again on the left to recreate the login. The admin account cannot be deleted here."
+        description="Create, reset, or delete staff logins. On each person: Reset password, or Delete then pick them on the left to make a new email and password. Your admin login cannot be deleted or reset here — that password is ADMIN_PASSWORD in Vercel."
       />
       <TeamPanel />
     </div>

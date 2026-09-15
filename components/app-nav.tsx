@@ -29,7 +29,7 @@ const NAV = [
   { href: "/spaces", label: "Spaces", icon: SquareKanban, adminOnly: false, operatorOnly: false },
   { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
   { href: "/notifications", label: "Notifications", icon: Bell, adminOnly: false, operatorOnly: false },
-  { href: "/vault", label: "Credentials", icon: KeyRound, adminOnly: false, operatorOnly: false },
+  { href: "/vault", label: "My logins", icon: KeyRound, adminOnly: false, operatorOnly: false },
   { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: true },
   { href: "/handbook", label: "Handbook", icon: BookOpen, adminOnly: false, operatorOnly: false },
   { href: "/attendance", label: "Upload", icon: Timer, adminOnly: false, operatorOnly: true },

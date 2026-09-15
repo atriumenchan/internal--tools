@@ -62,14 +62,13 @@ export default function VaultPage() {
   return (
     <div>
       <PageHeader
-        eyebrow="Company"
-        title="Credentials"
-        description="Store company-related logins and keys here so the team does not lose them. This is a shared internal record, not a bank-grade password manager — anyone signed in can see these entries."
+        eyebrow="Private"
+        title="Your credentials"
+        description="Only you can see what you save here. Other staff cannot, and admin cannot see your rows in the app."
       />
       <p className="mb-6 rounded-2xl border border-rule bg-cream px-4 py-3 text-sm text-ink-soft">
-        Use this for portal logins (TeamOffice, ads accounts, domain panels). This is a shared internal record, not
-        1Password — wiring a real password manager needs their business API and is not a small add. Anyone signed in can
-        see these entries. Do not put personal banking passwords here.
+        Use this for logins you personally need (TeamOffice, ads accounts, domain panels). Do not put personal banking
+        passwords here. The DeepSeek key for Mind is not stored here — that goes in Vercel as a server env var.
       </p>
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
       <div className="grid gap-8 lg:grid-cols-[340px_1fr]">

@@ -254,7 +254,7 @@ grant execute on function public.mark_notifications_read() to authenticated;
 grant execute on function public.chat_inbox() to authenticated;
 
 -- -----------------------------------------------------------------------------
--- Company credentials (shared notebook — not a password manager)
+-- Personal credentials (only the creator can see their own rows — not even admin)
 -- -----------------------------------------------------------------------------
 create table if not exists public.company_credentials (
   id uuid primary key default gen_random_uuid(),
@@ -277,13 +277,23 @@ alter table public.company_credentials enable row level security;
 
 drop policy if exists "staff read credentials" on public.company_credentials;
 drop policy if exists "staff write credentials" on public.company_credentials;
-create policy "staff read credentials" on public.company_credentials
+drop policy if exists "own credentials select" on public.company_credentials;
+drop policy if exists "own credentials insert" on public.company_credentials;
+drop policy if exists "own credentials update" on public.company_credentials;
+drop policy if exists "own credentials delete" on public.company_credentials;
+create policy "own credentials select" on public.company_credentials
   for select to authenticated
-  using (public.has_signed_handbook() or public.is_admin());
-create policy "staff write credentials" on public.company_credentials
-  for all to authenticated
-  using (public.has_signed_handbook() or public.is_admin())
-  with check (public.has_signed_handbook() or public.is_admin());
+  using (created_by = auth.uid());
+create policy "own credentials insert" on public.company_credentials
+  for insert to authenticated
+  with check (created_by = auth.uid());
+create policy "own credentials update" on public.company_credentials
+  for update to authenticated
+  using (created_by = auth.uid())
+  with check (created_by = auth.uid());
+create policy "own credentials delete" on public.company_credentials
+  for delete to authenticated
+  using (created_by = auth.uid());
 
 grant select, insert, update, delete on public.company_credentials to authenticated;
 
