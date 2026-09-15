@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 
 export function OfferActions({
   offerId,
@@ -61,6 +62,16 @@ export function OfferActions({
     router.refresh();
   }
 
+  async function remove() {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("offer_letters").delete().eq("id", offerId);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    router.push("/offers");
+  }
+
   async function copy() {
     await navigator.clipboard.writeText(signingUrl);
     setCopied(true);
@@ -90,6 +101,12 @@ export function OfferActions({
           Print / save PDF
         </Button>
       ) : null}
+      <ConfirmDelete
+        label="Delete offer"
+        title="Delete this offer?"
+        description="The letter and signing link will be removed."
+        onConfirm={() => remove()}
+      />
       {error ? <p className="w-full text-sm text-danger">{error}</p> : null}
     </div>
   );

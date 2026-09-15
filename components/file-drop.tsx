@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 export function FileDrop({
   onFile,
-  hint = "Optional. 8 MB each.",
+  hint = "Optional. Up to 8 MB each.",
   accept,
   label = "Drop a file or click to upload",
 }: {

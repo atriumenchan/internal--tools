@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { EmptyState, PageHeader, Segmented } from "@/components/ui";
+import { EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [today, setToday] = useState<AttendanceDay | null>(null);
   const [teamToday, setTeamToday] = useState<AttendanceDay[]>([]);
   const [workFilter, setWorkFilter] = useState<"mine" | "created" | "overdue">("mine");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!app) return;
@@ -124,6 +125,20 @@ export default function DashboardPage() {
 
   const shown = workFilter === "created" ? created : workFilter === "overdue" ? overdue : mine;
 
+  async function deleteTask(taskId: string) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this task. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setTasks((prev) => (prev ?? []).filter((t) => t.id !== taskId));
+  }
+
   if (!app || tasks === null) return <PageFallback />;
 
   return (
@@ -132,6 +147,7 @@ export default function DashboardPage() {
         title="Dashboard"
         description={formatWorkDate(kolkataTodayKey(), "long")}
       />
+      <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href="/spaces" />
@@ -178,6 +194,7 @@ export default function DashboardPage() {
                     href={`/spaces/${task.space_id}/tasks/${task.id}`}
                     spaceName={spaceMap[task.space_id]?.name}
                     assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
+                    onDelete={() => deleteTask(task.id)}
                   />
                 </li>
               ))}

@@ -1046,7 +1046,11 @@ create policy "members update tasks"
 
 create policy "members delete tasks"
   on public.tasks for delete to authenticated
-  using (public.has_signed_handbook() and public.is_space_member(space_id) and created_by = auth.uid());
+  using (public.has_signed_handbook() and public.is_space_member(space_id));
+
+create policy "members delete spaces"
+  on public.spaces for delete to authenticated
+  using (public.has_signed_handbook() and public.is_space_member(id));
 
 create policy "members read task comments"
   on public.task_comments for select to authenticated
@@ -1063,6 +1067,10 @@ create policy "members insert task comments"
     and public.is_space_member(public.task_space_id(task_id))
     and length(trim(body)) > 0
   );
+
+create policy "authors delete task comments"
+  on public.task_comments for delete to authenticated
+  using (author_id = auth.uid() or public.is_admin());
 
 create policy "members read conversations"
   on public.conversations for select to authenticated
@@ -1089,6 +1097,14 @@ create policy "members insert messages"
     and public.is_conversation_member(conversation_id)
     and length(trim(body)) > 0
   );
+
+create policy "authors delete messages"
+  on public.messages for delete to authenticated
+  using (author_id = auth.uid() or public.is_admin());
+
+create policy "members delete conversations"
+  on public.conversations for delete to authenticated
+  using (public.has_signed_handbook() and public.is_conversation_member(id) and type <> 'space');
 
 -- -----------------------------------------------------------------------------
 -- Grants

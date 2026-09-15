@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader, Textarea } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import type { CompanyCredential } from "@/lib/types";
@@ -109,9 +110,12 @@ export default function VaultPage() {
                       </a>
                     ) : null}
                   </div>
-                  <button className="text-xs font-medium text-danger hover:underline" onClick={() => void remove(row.id)}>
-                    Remove
-                  </button>
+                  <ConfirmDelete
+                    iconOnly
+                    label="Delete login"
+                    title="Delete this saved login?"
+                    onConfirm={() => remove(row.id)}
+                  />
                 </div>
                 {row.secret ? (
                   <p className="mt-2 font-mono text-sm">

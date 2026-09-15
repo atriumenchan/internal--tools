@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
 import { PageFallback } from "@/components/app-nav";
 import { TaskCard } from "@/components/task-card";
@@ -25,6 +26,7 @@ import type { Profile, Space, Task, TaskPriority, TaskStatus } from "@/lib/types
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [space, setSpace] = useState<Space | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
@@ -134,6 +136,35 @@ export default function SpaceDetailPage() {
     return true;
   }
 
+  async function deleteTask(taskId: string) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this task. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }
+
+  async function deleteSpace() {
+    if (!space) return;
+    const supabase = createClient();
+    const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this board. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    router.push("/spaces");
+  }
+
   async function invite(e: React.FormEvent) {
     e.preventDefault();
     if (!inviteId || !space) return;
@@ -182,6 +213,12 @@ export default function SpaceDetailPage() {
                 <Button variant="secondary">Chat</Button>
               </Link>
             ) : null}
+            <ConfirmDelete
+              label="Delete board"
+              title="Delete this board?"
+              description="All tasks, comments, and files on this board will be removed."
+              onConfirm={() => deleteSpace()}
+            />
           </div>
         }
       />
@@ -247,6 +284,7 @@ export default function SpaceDetailPage() {
                     href={`/spaces/${space.id}/tasks/${task.id}`}
                     assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
                     onMove={(status) => void setStatus(task.id, status)}
+                    onDelete={() => deleteTask(task.id)}
                   />
                 </li>
               ))}

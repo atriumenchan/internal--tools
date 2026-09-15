@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { AttendanceUploader } from "./uploader";
 import { monthLabel } from "@/lib/utils";
 import { isIgnoredEmployee } from "@/lib/admin";
@@ -22,6 +23,7 @@ export default function AttendancePage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [uploads, setUploads] = useState<UploadRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (app && !app.operator) router.replace("/dashboard");
@@ -50,6 +52,33 @@ export default function AttendancePage() {
     });
   }, []);
 
+  async function deleteUpload(upload: UploadRow) {
+    const start = `${upload.period_year}-${String(upload.period_month).padStart(2, "0")}-01`;
+    const last = new Date(upload.period_year, upload.period_month, 0).getDate();
+    const end = `${upload.period_year}-${String(upload.period_month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
+    const supabase = createClient();
+    const daysRes = await supabase.from("attendance_days").delete().gte("work_date", start).lte("work_date", end);
+    if (daysRes.error) {
+      setError(daysRes.error.message);
+      return;
+    }
+    const sumRes = await supabase
+      .from("monthly_summaries")
+      .delete()
+      .eq("period_month", upload.period_month)
+      .eq("period_year", upload.period_year);
+    if (sumRes.error) {
+      setError(sumRes.error.message);
+      return;
+    }
+    const { error: err } = await supabase.from("attendance_uploads").delete().eq("id", upload.id);
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setUploads((prev) => (prev ?? []).filter((row) => row.id !== upload.id));
+  }
+
   if (app && !app.operator) return <PageFallback />;
   if (!app || !settings || !uploads) return <PageFallback />;
 
@@ -61,6 +90,7 @@ export default function AttendancePage() {
         description="Drop the weekly month-performance .xls here. Saturday, Sunday, and handbook holidays count as offs. It overwrites that month in Supabase."
       />
       <AttendanceUploader settings={settings} employees={employees} holidays={holidays} userId={app.userId} />
+      {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
 
       <section className="mt-12">
         <h2 className="font-semibold tracking-tight text-2xl">Past uploads</h2>
@@ -74,9 +104,18 @@ export default function AttendancePage() {
                   <p className="font-medium">{upload.file_name}</p>
                   <p className="text-xs text-ink-soft">{monthLabel(upload.period_month, upload.period_year)}</p>
                 </div>
-                <Link className="text-sm font-medium text-blue-soft hover:text-blue" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
-                  Open month
-                </Link>
+                <div className="flex items-center gap-3">
+                  <Link className="text-sm font-medium text-blue-soft hover:text-blue" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
+                    Open month
+                  </Link>
+                  <ConfirmDelete
+                    iconOnly
+                    label="Delete upload"
+                    title="Delete this upload?"
+                    description="The file record and that month’s imported attendance will be removed."
+                    onConfirm={() => deleteUpload(upload)}
+                  />
+                </div>
               </li>
             ))
           )}

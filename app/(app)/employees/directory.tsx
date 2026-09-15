@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
 import { isIgnoredEmployee } from "@/lib/admin";
 import type { Employee } from "@/lib/types";
@@ -42,6 +43,16 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
   async function toggle(employee: Employee) {
     const supabase = createClient();
     await supabase.from("employees").update({ is_active: !employee.is_active }).eq("id", employee.id);
+    router.refresh();
+  }
+
+  async function remove(employee: Employee) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("employees").delete().eq("id", employee.id);
+    if (err) {
+      setError(err.message);
+      return;
+    }
     router.refresh();
   }
 
@@ -94,9 +105,18 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
                 </td>
                 <td className="px-4 py-3 text-xs text-ink-soft">{employee.user_id ? "Has login" : "No login yet"}</td>
                 <td className="px-4 py-3 text-right">
-                  <button className="text-xs font-medium text-blue-soft hover:text-blue" onClick={() => toggle(employee)}>
-                    {employee.is_active ? "Deactivate" : "Reactivate"}
-                  </button>
+                  <div className="flex items-center justify-end gap-2">
+                    <button className="text-xs font-medium text-blue-soft hover:text-blue" onClick={() => toggle(employee)}>
+                      {employee.is_active ? "Deactivate" : "Reactivate"}
+                    </button>
+                    <ConfirmDelete
+                      iconOnly
+                      label="Delete person"
+                      title="Delete this person?"
+                      description="They will be removed from People. Attendance history is kept."
+                      onConfirm={() => remove(employee)}
+                    />
+                  </div>
                 </td>
               </tr>
             ))}

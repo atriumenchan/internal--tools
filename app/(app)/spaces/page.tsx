@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { canCreateSpace, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
@@ -68,6 +69,20 @@ export default function SpacesPage() {
     if (typeof data === "string") router.push(`/spaces/${data}`);
   }
 
+  async function deleteSpace(space: Space) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this board. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setSpaces((prev) => (prev ?? []).filter((row) => row.id !== space.id));
+  }
+
   return (
     <div>
       <PageHeader
@@ -119,20 +134,29 @@ export default function SpacesPage() {
             const c = counts.get(space.id) ?? { open: 0, overdue: 0 };
             return (
               <li key={space.id}>
-                <button
-                  type="button"
-                  onClick={() => router.push(`/spaces/${space.id}`)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-rule bg-cream p-4 text-left shadow-card transition duration-200 hover:border-line-hover"
-                >
-                  <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium">{space.name}</span>
-                    <span className="text-xs text-ink-soft">
-                      {c.open} open
-                      {c.overdue ? <span className="text-danger"> · {c.overdue} overdue</span> : null}
+                <div className="flex items-stretch gap-2 rounded-xl border border-rule bg-cream p-4 shadow-card transition duration-200 hover:border-line-hover">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/spaces/${space.id}`)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-medium">{space.name}</span>
+                      <span className="text-xs text-ink-soft">
+                        {c.open} open
+                        {c.overdue ? <span className="text-danger"> · {c.overdue} overdue</span> : null}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                  <ConfirmDelete
+                    iconOnly
+                    label="Delete board"
+                    title="Delete this board?"
+                    description="All tasks, comments, and files on this board will be removed."
+                    onConfirm={() => deleteSpace(space)}
+                  />
+                </div>
               </li>
             );
           })}

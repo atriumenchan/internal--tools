@@ -4,11 +4,13 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PeoplePicker } from "@/components/people-picker";
 import { Avatar } from "@/components/avatar";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
+import { isAdminUser } from "@/lib/admin";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import type { ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
@@ -205,8 +207,40 @@ function ChatApp() {
     if (typeof data === "string") router.push(`/chat?c=${data}`);
   }
 
+  async function deleteConversation(conversationId: string, type: ConversationType) {
+    if (type === "space") return;
+    const supabase = createClient();
+    const { error: err } = await supabase.from("conversations").delete().eq("id", conversationId);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this chat. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setConvos((prev) => prev.filter((c) => c.id !== conversationId));
+    setMessages((prev) => (selectedId === conversationId ? [] : prev));
+    if (selectedId === conversationId) router.push("/chat");
+  }
+
+  async function deleteMessage(messageId: string) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("messages").delete().eq("id", messageId);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this message. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+  }
+
   const selected = convos.find((c) => c.id === selectedId);
   const others = people.filter((p) => p.id !== myId);
+  const admin = app ? isAdminUser(app.profile) : false;
 
   function Section({ title, items }: { title: string; items: ConvoRow[] }) {
     if (items.length === 0) return null;
@@ -218,11 +252,11 @@ function ChatApp() {
             const label = convoLabel(convo, memberships, profiles, myId || "");
             const active = convo.id === selectedId;
             return (
-              <li key={convo.id}>
+              <li key={convo.id} className="group flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => router.push(`/chat?c=${convo.id}`)}
-                  className={`flex w-full items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200 ${
+                  className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200 ${
                     active
                       ? "bg-terracotta/12 text-ink"
                       : convo.unread > 0
@@ -245,6 +279,17 @@ function ChatApp() {
                     ) : null}
                   </span>
                 </button>
+                {convo.type !== "space" ? (
+                  <ConfirmDelete
+                    iconOnly
+                    align="left"
+                    label={convo.type === "group" ? "Delete group" : "Delete chat"}
+                    title={convo.type === "group" ? "Delete this group?" : "Delete this chat?"}
+                    description="All messages in this conversation will be removed."
+                    onConfirm={() => deleteConversation(convo.id, convo.type)}
+                    className="opacity-70 transition duration-200 group-hover:opacity-100"
+                  />
+                ) : null}
               </li>
             );
           })}
@@ -306,27 +351,52 @@ function ChatApp() {
         <section className="flex min-h-0 flex-col">
           {selected ? (
             <>
-              <div className="border-b border-rule px-4 py-3">
-                <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
-                <p className="text-xs capitalize text-ink-soft">{selected.type === "dm" ? "Direct message" : selected.type}</p>
+              <div className="flex items-start justify-between gap-3 border-b border-rule px-4 py-3">
+                <div>
+                  <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
+                  <p className="text-xs capitalize text-ink-soft">
+                    {selected.type === "dm" ? "Direct message" : selected.type === "space" ? "Board channel" : "Group"}
+                  </p>
+                </div>
+                {selected.type !== "space" ? (
+                  <ConfirmDelete
+                    iconOnly
+                    label={selected.type === "group" ? "Delete group" : "Delete chat"}
+                    title={selected.type === "group" ? "Delete this group?" : "Delete this chat?"}
+                    description="All messages in this conversation will be removed."
+                    onConfirm={() => deleteConversation(selected.id, selected.type)}
+                  />
+                ) : null}
               </div>
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
                 {messages.map((message) => {
                   const mine = message.author_id === myId;
+                  const canDelete = mine || admin;
                   return (
                     <div key={message.id} className={mine ? "ml-8 text-right" : "mr-8"}>
                       <p className="text-[11px] text-muted">
                         {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
                       </p>
-                      <p
-                        className={`mt-1 inline-block whitespace-pre-wrap rounded-[12px] px-3 py-2 text-sm ${
-                          mine
-                            ? "bg-terracotta/15 text-ink ring-1 ring-terracotta/25"
-                            : "bg-elevated text-ink ring-1 ring-rule"
-                        }`}
-                      >
-                        <MentionBody text={message.body} people={people} />
-                      </p>
+                      <div className={`mt-1 inline-flex max-w-full items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
+                        <p
+                          className={`whitespace-pre-wrap rounded-[12px] px-3 py-2 text-left text-sm ${
+                            mine
+                              ? "bg-terracotta/15 text-ink ring-1 ring-terracotta/25"
+                              : "bg-elevated text-ink ring-1 ring-rule"
+                          }`}
+                        >
+                          <MentionBody text={message.body} people={people} />
+                        </p>
+                        {canDelete ? (
+                          <ConfirmDelete
+                            iconOnly
+                            align={mine ? "right" : "left"}
+                            label="Delete message"
+                            title="Delete this message?"
+                            onConfirm={() => deleteMessage(message.id)}
+                          />
+                        ) : null}
+                      </div>
                     </div>
                   );
                 })}

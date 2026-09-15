@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button, Field, Input, Select } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { formatDate } from "@/lib/utils";
 import { isAdminUser } from "@/lib/admin";
 import type { AppRole, Employee } from "@/lib/types";
@@ -102,7 +103,6 @@ export function TeamPanel() {
   }
 
   async function deleteLogin(user: StaffUser) {
-    if (!window.confirm(`Delete login for ${user.full_name || user.email}? You can create a new one after this.`)) return;
     setBusy(true);
     setErr(null);
     setMsg(null);
@@ -199,9 +199,12 @@ export function TeamPanel() {
                         <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => setResetId(user.id)}>
                           Reset password
                         </Button>
-                        <Button type="button" size="sm" variant="danger" disabled={busy} onClick={() => void deleteLogin(user)}>
-                          Delete
-                        </Button>
+                        <ConfirmDelete
+                          label="Delete login"
+                          title="Delete this login?"
+                          description="You can create a new one for them after this."
+                          onConfirm={() => deleteLogin(user)}
+                        />
                       </div>
                     )}
                   </td>

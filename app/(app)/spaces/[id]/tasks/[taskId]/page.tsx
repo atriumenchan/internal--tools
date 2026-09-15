@@ -4,9 +4,11 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FileText } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ErrorText, Field, PageHeader, Select, Textarea } from "@/components/ui";
 import { FileDrop } from "@/components/file-drop";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { Avatar } from "@/components/avatar";
@@ -27,6 +29,7 @@ import type { Profile, Space, Task, TaskComment, TaskFile } from "@/lib/types";
 
 export default function TaskPage() {
   const app = useAppState();
+  const router = useRouter();
   const { id, taskId } = useParams<{ id: string; taskId: string }>();
   const [space, setSpace] = useState<Space | null>(null);
   const [task, setTask] = useState<Task | null>(null);
@@ -108,7 +111,7 @@ export default function TaskPage() {
   async function uploadFile(file: File) {
     if (!task || !app) return;
     if (file.size > 8 * 1024 * 1024) {
-      setError("Each file must be 8 MB or smaller (Supabase free plan).");
+      setError("Each file must be 8 MB or smaller.");
       return;
     }
     const supabase = createClient();
@@ -175,6 +178,44 @@ export default function TaskPage() {
     setBody("");
   }
 
+  function deleteBlocked(message: string, kind: string) {
+    return message.includes("row-level security") || message.includes("policy")
+      ? `Could not delete this ${kind}. Paste supabase/deletes.sql in the Supabase SQL editor, then try again.`
+      : message;
+  }
+
+  async function deleteTask() {
+    if (!task) return;
+    const supabase = createClient();
+    const { error: err } = await supabase.from("tasks").delete().eq("id", task.id);
+    if (err) {
+      setError(deleteBlocked(err.message, "task"));
+      return;
+    }
+    router.push(`/spaces/${id}`);
+  }
+
+  async function deleteComment(commentId: string) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("task_comments").delete().eq("id", commentId);
+    if (err) {
+      setError(deleteBlocked(err.message, "comment"));
+      return;
+    }
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+  }
+
+  async function deleteFile(file: TaskFile) {
+    const supabase = createClient();
+    await supabase.storage.from("task-files").remove([file.path]);
+    const { error: err } = await supabase.from("task_files").delete().eq("id", file.id);
+    if (err) {
+      setError(deleteBlocked(err.message, "file"));
+      return;
+    }
+    setFiles((prev) => prev.filter((row) => row.id !== file.id));
+  }
+
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
   }
@@ -187,7 +228,18 @@ export default function TaskPage() {
           ← {space?.name || "Board"}
         </Link>
       </p>
-      <PageHeader title={task.title} description={space?.name ? `On ${space.name}` : undefined} />
+      <PageHeader
+        title={task.title}
+        description={space?.name ? `On ${space.name}` : undefined}
+        actions={
+          <ConfirmDelete
+            label="Delete task"
+            title="Delete this task?"
+            description="The task, comments, and files will be removed."
+            onConfirm={() => deleteTask()}
+          />
+        }
+      />
       <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -230,6 +282,12 @@ export default function TaskPage() {
                           <MentionBody text={comment.body} people={Object.values(profiles)} />
                         </p>
                       </div>
+                      <ConfirmDelete
+                        iconOnly
+                        label="Delete comment"
+                        title="Delete this comment?"
+                        onConfirm={() => deleteComment(comment.id)}
+                      />
                     </li>
                   ))}
                 </ul>
@@ -325,19 +383,25 @@ export default function TaskPage() {
             </div>
             <div className="px-4 py-4">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Files</p>
-              <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. 8 MB each. Shared 1 GB on the free plan." />
+              <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. Up to 8 MB each." />
               {files.length > 0 ? (
                 <ul className="mt-3 space-y-2">
                   {files.map((file) => (
-                    <li key={file.id}>
+                    <li key={file.id} className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="flex w-full items-center gap-2 rounded-[10px] border border-rule bg-input px-3 py-2 text-left text-sm transition duration-200 hover:border-line-hover"
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-rule bg-input px-3 py-2 text-left text-sm transition duration-200 hover:border-line-hover"
                         onClick={() => void openFile(file)}
                       >
                         <FileText size={14} className="shrink-0 text-blue-soft" />
                         <span className="min-w-0 truncate">{file.file_name}</span>
                       </button>
+                      <ConfirmDelete
+                        iconOnly
+                        label="Delete file"
+                        title="Delete this file?"
+                        onConfirm={() => deleteFile(file)}
+                      />
                     </li>
                   ))}
                 </ul>

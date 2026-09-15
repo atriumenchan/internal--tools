@@ -4,6 +4,7 @@ import { useRef } from "react";
 import Link from "next/link";
 import { GripVertical } from "lucide-react";
 import { Badge } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import {
   displayName,
   TASK_COLUMNS,
@@ -52,12 +53,14 @@ export function TaskCard({
   spaceName,
   assignee,
   onMove,
+  onDelete,
 }: {
   task: Task;
   href: string;
   spaceName?: string;
   assignee?: Profile | null;
   onMove?: (status: TaskStatus) => void;
+  onDelete?: () => Promise<void> | void;
 }) {
   const due = formatDueDate(task.due_date);
   const late = isOverdue(task.due_date, task.status);
@@ -97,7 +100,18 @@ export function TaskCard({
             >
               {task.title}
             </Link>
-            <Badge tone={priorityTone(priority)}>{TASK_PRIORITY_LABELS[priority]}</Badge>
+            <div className="flex shrink-0 items-center gap-1">
+              <Badge tone={priorityTone(priority)}>{TASK_PRIORITY_LABELS[priority]}</Badge>
+              {onDelete ? (
+                <ConfirmDelete
+                  iconOnly
+                  label="Delete task"
+                  title="Delete this task?"
+                  description="The task, comments, and files will be removed."
+                  onConfirm={onDelete}
+                />
+              ) : null}
+            </div>
           </div>
           <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-muted">
             {spaceName ? <span>{spaceName}</span> : null}

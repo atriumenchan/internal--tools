@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, PageHeader } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { formatDate } from "@/lib/utils";
 import { useAppState } from "@/components/app-frame";
 import { PageFallback } from "@/components/app-nav";
@@ -36,6 +37,12 @@ export default function OffersPage() {
       .then(({ data }) => setOffers((data ?? []) as OfferLetter[]));
   }, []);
 
+  async function deleteOffer(id: string) {
+    const supabase = createClient();
+    await supabase.from("offer_letters").delete().eq("id", id);
+    setOffers((prev) => (prev ?? []).filter((row) => row.id !== id));
+  }
+
   if (app && !app.operator) return <PageFallback />;
 
   return (
@@ -61,12 +68,13 @@ export default function OffersPage() {
                 <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Created</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {offers.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-ink-soft">
+                  <td colSpan={5} className="px-4 py-10 text-center text-ink-soft">
                     No offers yet. Create one, then share the signing link.
                   </td>
                 </tr>
@@ -83,6 +91,15 @@ export default function OffersPage() {
                     <td className="px-4 py-3 text-ink-soft">{formatDate(offer.created_at)}</td>
                     <td className="px-4 py-3">
                       <Badge tone={TONE[offer.status]}>{STATUS_LABELS[offer.status]}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ConfirmDelete
+                        iconOnly
+                        label="Delete offer"
+                        title="Delete this offer?"
+                        description="The letter and signing link will be removed."
+                        onConfirm={() => deleteOffer(offer.id)}
+                      />
                     </td>
                   </tr>
                 ))

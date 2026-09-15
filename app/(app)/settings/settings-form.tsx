@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, Textarea } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
 import { WEEKDAYS } from "@/lib/utils";
 import { HANDBOOK_WEEKLY_OFFS } from "@/lib/handbook-calendar";
@@ -181,9 +182,12 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
               <span>
                 {holiday.holiday_date} · {holiday.name}
               </span>
-              <button className="text-xs font-medium text-danger hover:underline" onClick={() => removeHoliday(holiday.id)}>
-                Remove
-              </button>
+              <ConfirmDelete
+                iconOnly
+                label="Delete holiday"
+                title="Delete this holiday?"
+                onConfirm={() => removeHoliday(holiday.id)}
+              />
             </li>
           ))}
         </ul>

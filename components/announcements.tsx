@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ErrorText, Field, Input, Textarea } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { missingSpacesSchema } from "@/lib/spaces";
 import type { Announcement } from "@/lib/types";
 
@@ -114,9 +115,12 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
                   <p className="mt-1 text-[11px] text-ink-soft">{new Date(row.created_at).toLocaleString()}</p>
                 </div>
                 {operator ? (
-                  <Button type="button" size="sm" variant="ghost" onClick={() => void remove(row.id)}>
-                    Remove
-                  </Button>
+                  <ConfirmDelete
+                    iconOnly
+                    label="Delete announcement"
+                    title="Delete this announcement?"
+                    onConfirm={() => remove(row.id)}
+                  />
                 ) : null}
               </div>
             </li>
