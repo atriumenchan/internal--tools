@@ -3,8 +3,10 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
+import { Button, Field, Input, PageHeader } from "@/components/ui";
 import { MentionBody, MentionField } from "@/components/mention-field";
+import { PeoplePicker } from "@/components/people-picker";
+import { Avatar } from "@/components/avatar";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
@@ -24,7 +26,7 @@ function convoLabel(
   profiles: Record<string, Profile>,
   myId: string
 ) {
-  if (convo.type === "space" || convo.type === "group") return convo.name || (convo.type === "space" ? "Space" : "Group");
+  if (convo.type === "space" || convo.type === "group") return convo.name || (convo.type === "space" ? "Board" : "Group");
   const other = members.find((m) => m.conversation_id === convo.id && m.user_id !== myId);
   return displayName(other ? profiles[other.user_id] : null);
 }
@@ -40,9 +42,9 @@ function ChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
-  const [dmUser, setDmUser] = useState("");
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
+  const [compose, setCompose] = useState<"idle" | "dm" | "group">("idle");
   const [inbox, setInbox] = useState<InboxRow[]>([]);
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
@@ -172,25 +174,24 @@ function ChatApp() {
     setBody("");
   }
 
-  async function startDm(e: React.FormEvent) {
-    e.preventDefault();
-    if (!dmUser) return;
+  async function openDm(userId: string) {
     const supabase = createClient();
-    const { data, error: err } = await supabase.rpc("get_or_create_dm", { p_other_user_id: dmUser });
+    const { data, error: err } = await supabase.rpc("get_or_create_dm", { p_other_user_id: userId });
     if (err) {
       setError(err.message);
       return;
     }
-    setDmUser("");
+    setCompose("idle");
     await loadConversations();
     if (typeof data === "string") router.push(`/chat?c=${data}`);
   }
 
   async function startGroup(e: React.FormEvent) {
     e.preventDefault();
+    if (!groupName.trim() || groupMembers.length === 0) return;
     const supabase = createClient();
     const { data, error: err } = await supabase.rpc("create_group_conversation", {
-      p_name: groupName,
+      p_name: groupName.trim(),
       p_member_ids: groupMembers,
     });
     if (err) {
@@ -199,6 +200,7 @@ function ChatApp() {
     }
     setGroupName("");
     setGroupMembers([]);
+    setCompose("idle");
     await loadConversations();
     if (typeof data === "string") router.push(`/chat?c=${data}`);
   }
@@ -212,26 +214,36 @@ function ChatApp() {
       <div className="mb-4">
         <p className="mb-1 px-2 text-[11px] uppercase tracking-[0.18em] text-ink-soft">{title}</p>
         <ul className="space-y-0.5">
-          {items.map((convo) => (
-            <li key={convo.id}>
-              <button
-                type="button"
-                onClick={() => router.push(`/chat?c=${convo.id}`)}
-                className={`w-full rounded-xl px-3 py-2 text-left text-sm ${
-                  convo.id === selectedId ? "bg-terracotta text-white" : convo.unread > 0 ? "text-ink bg-white/5" : "text-ink-soft hover:bg-white/5 hover:text-ink"
-                }`}
-              >
-                {convoLabel(convo, memberships, profiles, myId || "")}
-                {convo.unread > 0 ? (
-                  <span className="mt-0.5 block truncate text-[11px] opacity-80">
-                    {convo.unread} new{convo.last_body ? ` · ${convo.last_body}` : ""}
+          {items.map((convo) => {
+            const label = convoLabel(convo, memberships, profiles, myId || "");
+            const active = convo.id === selectedId;
+            return (
+              <li key={convo.id}>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/chat?c=${convo.id}`)}
+                  className={`flex w-full items-center gap-2.5 rounded-xl px-2 py-2 text-left ${
+                    active ? "bg-terracotta text-white" : convo.unread > 0 ? "bg-white/5 text-ink" : "text-ink-soft hover:bg-white/5 hover:text-ink"
+                  }`}
+                >
+                  <Avatar name={label} size="sm" className={active ? "bg-white/20" : undefined} />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">{label}</span>
+                      {convo.unread > 0 ? (
+                        <span className={`rounded-full px-1.5 text-[10px] ${active ? "bg-white text-terracotta" : "bg-terracotta text-white"}`}>
+                          {convo.unread}
+                        </span>
+                      ) : null}
+                    </span>
+                    {convo.last_body ? (
+                      <span className="mt-0.5 block truncate text-[11px] opacity-70">{convo.last_body}</span>
+                    ) : null}
                   </span>
-                ) : convo.last_body ? (
-                  <span className="mt-0.5 block truncate text-[11px] opacity-70">{convo.last_body}</span>
-                ) : null}
-              </button>
-            </li>
-          ))}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </div>
     );
@@ -241,50 +253,51 @@ function ChatApp() {
 
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
-      <PageHeader
-        eyebrow="Talk"
-        title="Chat"
-        description="Direct messages, groups you create, and one channel per Space."
-      />
+      <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
       {error ? <p className="mb-3 text-sm text-red-400">{error}</p> : null}
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-2xl border border-rule bg-cream lg:grid-cols-[280px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-b border-rule p-3 lg:border-b-0 lg:border-r">
-          <form onSubmit={startDm} className="mb-3 space-y-2">
-            <Select value={dmUser} onChange={(e) => setDmUser(e.target.value)}>
-              <option value="">New direct message</option>
-              {others.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {displayName(p)}
-                </option>
-              ))}
-            </Select>
-            <Button type="submit" size="sm" variant="secondary" disabled={!dmUser}>
-              Open
+          <div className="mb-3 grid grid-cols-2 gap-2">
+            <Button type="button" size="sm" variant={compose === "dm" ? "primary" : "secondary"} onClick={() => setCompose(compose === "dm" ? "idle" : "dm")}>
+              New chat
             </Button>
-          </form>
-          <form onSubmit={startGroup} className="mb-4 space-y-2 rounded-xl border border-rule p-3">
-            <Field label="New group">
-              <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="Name" required />
-            </Field>
-            <Select
-              multiple
-              value={groupMembers}
-              onChange={(e) => setGroupMembers(Array.from(e.target.selectedOptions).map((o) => o.value))}
-              className="h-24"
-            >
-              {others.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {displayName(p)}
-                </option>
-              ))}
-            </Select>
-            <Button type="submit" size="sm" variant="secondary">
-              Create group
+            <Button type="button" size="sm" variant={compose === "group" ? "primary" : "secondary"} onClick={() => setCompose(compose === "group" ? "idle" : "group")}>
+              New group
             </Button>
-          </form>
+          </div>
+          {compose === "dm" ? (
+            <div className="mb-4 rounded-xl border border-rule p-2">
+              <p className="px-1 pb-2 text-xs text-ink-soft">Pick a person</p>
+              <ul className="max-h-56 overflow-y-auto">
+                {others.map((p) => (
+                  <li key={p.id}>
+                    <button
+                      type="button"
+                      onClick={() => void openDm(p.id)}
+                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-white/5"
+                    >
+                      <Avatar name={displayName(p)} size="sm" />
+                      {displayName(p)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {compose === "group" ? (
+            <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-xl border border-rule p-3">
+              <Field label="Group name">
+                <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
+              </Field>
+              <PeoplePicker people={others} selected={groupMembers} onChange={setGroupMembers} placeholder="Add people" />
+              <Button type="submit" size="sm" disabled={!groupName.trim() || groupMembers.length === 0}>
+                Create group
+              </Button>
+            </form>
+          ) : null}
           <Section title="Direct" items={grouped.dm} />
           <Section title="Groups" items={grouped.group} />
-          <Section title="Spaces" items={grouped.space} />
+          <Section title="Boards" items={grouped.space} />
         </aside>
         <section className="flex min-h-0 flex-col">
           {selected ? (

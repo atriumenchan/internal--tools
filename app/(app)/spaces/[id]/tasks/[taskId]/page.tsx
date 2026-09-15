@@ -4,13 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Badge, Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
-import { displayName, TASK_STATUS_LABELS } from "@/lib/spaces";
+import { displayName, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
 import { dueDateKey } from "@/lib/datetime";
 import { useAppState } from "@/components/app-frame";
-import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
+import type { Profile, Space, Task, TaskComment, TaskFile } from "@/lib/types";
 
 export default function TaskPage() {
   const app = useAppState();
@@ -166,19 +166,11 @@ export default function TaskPage() {
   return (
     <div>
       <p className="mb-2 text-sm">
-        <Link href={`/spaces/${id}`} className="text-terracotta">
-          ← {space?.name || "Space"}
+        <Link href={`/spaces/${id}`} className="text-ink-soft hover:text-ink">
+          ← {space?.name || "Board"}
         </Link>
       </p>
-      <PageHeader
-        eyebrow="Task"
-        title={task.title}
-        actions={
-          <Badge tone={task.status === "done" ? "ok" : task.status === "in_progress" ? "info" : "neutral"}>
-            {TASK_STATUS_LABELS[task.status]}
-          </Badge>
-        }
-      />
+      <PageHeader title={task.title} />
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
 
       <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
@@ -220,22 +212,26 @@ export default function TaskPage() {
           </form>
         </div>
         <aside className="space-y-4 rounded-2xl border border-rule bg-cream p-4">
-          <Field label="Status">
-            <Select
-              value={task.status}
-              onChange={(e) => {
-                const status = e.target.value as TaskStatus;
-                setTask({ ...task, status });
-                void saveTask({ status });
-              }}
-            >
-              {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
+          <div>
+            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Status</p>
+            <div className="flex rounded-full border border-rule p-1">
+              {TASK_COLUMNS.map((col) => (
+                <button
+                  key={col.status}
+                  type="button"
+                  className={`flex-1 rounded-full px-2 py-1 text-xs ${
+                    task.status === col.status ? "bg-terracotta text-white" : "text-ink-soft hover:text-ink"
+                  }`}
+                  onClick={() => {
+                    setTask({ ...task, status: col.status });
+                    void saveTask({ status: col.status });
+                  }}
+                >
+                  {TASK_STATUS_LABELS[col.status]}
+                </button>
               ))}
-            </Select>
-          </Field>
+            </div>
+          </div>
           <Field label="Assignee">
             <Select
               value={task.assignee_id || ""}

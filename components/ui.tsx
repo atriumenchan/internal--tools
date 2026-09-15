@@ -108,8 +108,8 @@ export function Badge({
         tone === "neutral" && "bg-rule/70 text-ink-soft",
         tone === "warn" && "bg-amber-950 text-amber-200",
         tone === "ok" && "bg-sage-soft text-sage",
-        tone === "danger" && "bg-red-950 text-red-200",
-        tone === "info" && "bg-orange-950 text-orange-200"
+        tone === "danger" && "bg-red-950 text-red-300",
+        tone === "info" && "bg-sky-soft text-sky"
       )}
     >
       {children}

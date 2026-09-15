@@ -14,7 +14,7 @@ export default function TeamPage() {
 
   useEffect(() => {
     if (app && !isAdminUser({ email: app.profile.email, role: app.profile.role })) {
-      router.replace("/home");
+      router.replace("/dashboard");
     }
   }, [app, router]);
 

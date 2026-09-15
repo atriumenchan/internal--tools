@@ -5,8 +5,8 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   BookOpen,
+  ClipboardList,
   FileSignature,
-  Home,
   KeyRound,
   LayoutDashboard,
   LogOut,
@@ -23,12 +23,12 @@ import type { Profile } from "@/lib/types";
 import { isAdminEmail } from "@/lib/admin";
 
 const NAV = [
-  { href: "/home", label: "Home", icon: Home, adminOnly: false, operatorOnly: false },
-  { href: "/spaces", label: "Spaces", icon: SquareKanban, adminOnly: false, operatorOnly: false },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false, operatorOnly: false },
+  { href: "/spaces", label: "Tasks", icon: SquareKanban, adminOnly: false, operatorOnly: false },
   { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
   { href: "/notifications", label: "Notifications", icon: Bell, adminOnly: false, operatorOnly: false },
   { href: "/vault", label: "My logins", icon: KeyRound, adminOnly: false, operatorOnly: false },
-  { href: "/dashboard", label: "Board", icon: LayoutDashboard, adminOnly: false, operatorOnly: true },
+  { href: "/board", label: "Board", icon: ClipboardList, adminOnly: false, operatorOnly: true },
   { href: "/handbook", label: "Handbook", icon: BookOpen, adminOnly: false, operatorOnly: false },
   { href: "/attendance", label: "Upload", icon: Timer, adminOnly: false, operatorOnly: true },
   { href: "/offers", label: "Offer letters", icon: FileSignature, adminOnly: false, operatorOnly: true },

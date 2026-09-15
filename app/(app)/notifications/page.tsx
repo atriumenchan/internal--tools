@@ -56,7 +56,7 @@ export default function NotificationsPage() {
         <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-cream">
           {rows.map((row) => (
             <li key={row.id} className={row.read_at ? "opacity-60" : ""}>
-              <Link href={row.href || "/home"} className="block px-4 py-3 hover:bg-white/5">
+              <Link href={row.href || "/dashboard"} className="block px-4 py-3 hover:bg-white/5">
                 <p className="font-medium">{row.title}</p>
                 {row.body ? <p className="mt-0.5 truncate text-sm text-ink-soft">{row.body}</p> : null}
                 <p className="mt-1 text-[11px] text-ink-soft">{new Date(row.created_at).toLocaleString()}</p>

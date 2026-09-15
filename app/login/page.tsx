@@ -15,7 +15,7 @@ export default async function LoginPage() {
         <div>
           <h1 className="text-5xl font-semibold leading-tight">Work, chat, and attendance — after you sign the handbook.</h1>
           <p className="mt-4 max-w-md text-ink-soft">
-            Spaces and tasks for the team. Chat with each other. Attendance and offer letters sit beside it.
+            Task boards for the team. Chat with each other. Attendance and offer letters sit beside it.
           </p>
         </div>
         <p className="text-sm text-ink-soft">Internal · not a public site</p>

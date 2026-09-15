@@ -13,6 +13,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [compose, setCompose] = useState(false);
 
   async function load() {
     const supabase = createClient();
@@ -57,6 +58,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
     }
     setTitle("");
     setBody("");
+    setCompose(false);
     await load();
   }
 
@@ -67,28 +69,31 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
   }
 
   return (
-    <section className="rounded-2xl border border-rule bg-cream p-4 lg:col-span-2">
-      <h2 className="text-lg font-semibold">Company announcements</h2>
+    <section className="rounded-2xl border border-rule bg-cream p-4">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-lg font-semibold">Announcements</h2>
+        {operator ? (
+          <Button type="button" size="sm" variant={compose ? "secondary" : "primary"} onClick={() => setCompose((v) => !v)}>
+            {compose ? "Cancel" : "Post"}
+          </Button>
+        ) : null}
+      </div>
       {error ? <p className="mt-2 text-sm text-red-400">{error}</p> : null}
-      {operator ? (
-        <form onSubmit={post} className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]">
-          <div className="space-y-2">
-            <Field label="Title">
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Office closed Friday…" />
-            </Field>
-            <Field label="Message">
-              <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} required />
-            </Field>
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
-              Pin to the top
-            </label>
-          </div>
-          <div className="self-end">
-            <Button type="submit" disabled={busy}>
-              {busy ? "Posting…" : "Post"}
-            </Button>
-          </div>
+      {operator && compose ? (
+        <form onSubmit={post} className="mt-3 space-y-2">
+          <Field label="Title">
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Office closed Friday…" />
+          </Field>
+          <Field label="Message">
+            <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} required />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-ink-soft">
+            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+            Pin to the top
+          </label>
+          <Button type="submit" disabled={busy}>
+            {busy ? "Posting…" : "Publish"}
+          </Button>
         </form>
       ) : null}
       {!rows ? (

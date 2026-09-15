@@ -24,7 +24,7 @@ export default function AttendancePage() {
   const [uploads, setUploads] = useState<UploadRow[] | null>(null);
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/home");
+    if (app && !app.operator) router.replace("/dashboard");
   }, [app, router]);
 
   useEffect(() => {

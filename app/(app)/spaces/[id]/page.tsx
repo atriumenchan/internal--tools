@@ -2,30 +2,28 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Badge, Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
-import { displayName, missingSpacesSchema, TASK_STATUS_LABELS } from "@/lib/spaces";
-import { dueDateKey, formatDueDate, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { TaskCard } from "@/components/task-card";
+import { Avatar } from "@/components/avatar";
+import { displayName, missingSpacesSchema, nextTaskStatus, TASK_COLUMNS, TASK_STATUS_LABELS } from "@/lib/spaces";
+import { dueDateKey } from "@/lib/datetime";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
 export default function SpaceDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [space, setSpace] = useState<Space | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [members, setMembers] = useState<Profile[]>([]);
   const [people, setPeople] = useState<Profile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [inviteId, setInviteId] = useState("");
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | "all">("all");
-  const [assigneeFilter, setAssigneeFilter] = useState<string>("all");
-  const [dueFilter, setDueFilter] = useState<"all" | "overdue" | "upcoming">("all");
   const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
 
@@ -43,8 +41,8 @@ export default function SpaceDetailPage() {
       if (spaceRes.error || !spaceRes.data) {
         setError(
           missingSpacesSchema(spaceRes.error?.message)
-            ? "Spaces are not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor."
-            : spaceRes.error?.message || "Space not found."
+            ? "Task boards are not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor."
+            : spaceRes.error?.message || "Board not found."
         );
         return;
       }
@@ -58,23 +56,28 @@ export default function SpaceDetailPage() {
     })();
   }, [id]);
 
-  const visible = useMemo(() => {
-    const today = kolkataTodayKey();
-    return tasks.filter((task) => {
-      if (statusFilter !== "all" && task.status !== statusFilter) return false;
-      if (assigneeFilter !== "all" && (task.assignee_id || "") !== assigneeFilter) return false;
-      const due = dueDateKey(task.due_date);
-      if (dueFilter === "overdue" && (!due || due >= today || task.status === "done")) return false;
-      if (dueFilter === "upcoming" && (!due || due < today)) return false;
-      return true;
-    });
-  }, [tasks, statusFilter, assigneeFilter, dueFilter]);
+  const columns = useMemo(() => {
+    const by: Record<TaskStatus, Task[]> = { open: [], in_progress: [], done: [] };
+    for (const task of tasks) by[task.status].push(task);
+    return by;
+  }, [tasks]);
 
+  const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
+
+  async function setStatus(task: Task, status: TaskStatus) {
+    const supabase = createClient();
+    const { data, error: err } = await supabase.from("tasks").update({ status }).eq("id", task.id).select("*").single();
+    if (err) {
+      setError(err.message);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === task.id ? (data as Task) : t)));
+  }
 
   async function createTask(e: React.FormEvent) {
     e.preventDefault();
-    if (!space) return;
+    if (!space || !title.trim()) return;
     setBusy(true);
     setError(null);
     const supabase = createClient();
@@ -88,7 +91,6 @@ export default function SpaceDetailPage() {
       .insert({
         space_id: space.id,
         title: title.trim(),
-        description: description.trim() || null,
         assignee_id: assigneeId || null,
         created_by: userId,
         due_date: dueDateKey(dueDate),
@@ -103,9 +105,9 @@ export default function SpaceDetailPage() {
     }
     setTasks((prev) => [data as Task, ...prev]);
     setTitle("");
-    setDescription("");
     setAssigneeId("");
     setDueDate("");
+    setAdding(false);
   }
 
   async function invite(e: React.FormEvent) {
@@ -123,143 +125,115 @@ export default function SpaceDetailPage() {
   }
 
   if (error && !space) {
-    return (
-      <div>
-        <PageHeader title="Space" description={error} />
-      </div>
-    );
+    return <PageHeader title="Board" description={error} />;
   }
-
   if (!space) return <PageFallback />;
 
   return (
     <div>
+      <p className="mb-3 text-sm">
+        <Link href="/spaces" className="text-ink-soft hover:text-ink">
+          ← All boards
+        </Link>
+      </p>
       <PageHeader
-        eyebrow="Space"
         title={space.name}
-        description="Assign work to members. Comments live on each task. Chat for this Space is in Chat."
+        description="Click a task to open it. Click the status chip to move it: To do → Doing → Done."
         actions={
-          conversationId ? (
-            <Link href={`/chat?c=${conversationId}`}>
-              <Button variant="secondary">Open channel</Button>
-            </Link>
-          ) : null
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex -space-x-2">
+              {members.slice(0, 6).map((m) => (
+                <Avatar key={m.id} name={displayName(m)} className="border border-paper" />
+              ))}
+            </div>
+            {conversationId ? (
+              <Link href={`/chat?c=${conversationId}`}>
+                <Button variant="secondary">Chat</Button>
+              </Link>
+            ) : null}
+          </div>
         }
       />
       {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
 
-      <div className="mb-8 grid gap-6 lg:grid-cols-[1fr_280px]">
-        <form onSubmit={createTask} className="space-y-3 rounded-2xl border border-rule bg-cream p-4">
-          <h2 className="text-lg font-semibold">New task</h2>
-          <Field label="Title">
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </Field>
-          <Field label="Description">
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
-          </Field>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Assignee">
-              <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                <option value="">Unassigned</option>
-                {members.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {displayName(m)}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Due date">
-              <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-              <p className="mt-1 text-xs text-ink-soft">Optional. Uses the calendar date in India (IST), not UTC.</p>
-            </Field>
-          </div>
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Add task"}
+      {outsiders.length > 0 ? (
+        <form onSubmit={invite} className="mb-5 flex max-w-md items-center gap-2">
+          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required>
+            <option value="">Add a person to this board</option>
+            {outsiders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {displayName(p)}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" size="sm" variant="secondary">
+            Add
           </Button>
         </form>
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-rule bg-cream p-4">
-            <h2 className="text-lg font-semibold">Members</h2>
-            <ul className="mt-3 space-y-1 text-sm">
-              {members.map((m) => (
-                <li key={m.id}>{displayName(m)}</li>
-              ))}
-            </ul>
-            {outsiders.length > 0 ? (
-              <form onSubmit={invite} className="mt-4 space-y-2">
-                <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required>
-                  <option value="">Invite someone</option>
-                  {outsiders.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {displayName(p)}
-                    </option>
-                  ))}
-                </Select>
-                <Button type="submit" size="sm" variant="secondary">
-                  Add
-                </Button>
-              </form>
-            ) : null}
-          </div>
-        </div>
-      </div>
+      ) : null}
 
-      <div className="mb-4 flex flex-wrap gap-3">
-        <Select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TaskStatus | "all")} className="w-auto">
-          <option value="all">All statuses</option>
-          {Object.entries(TASK_STATUS_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </Select>
-        <Select value={assigneeFilter} onChange={(e) => setAssigneeFilter(e.target.value)} className="w-auto">
-          <option value="all">Anyone</option>
-          <option value="">Unassigned</option>
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {displayName(m)}
-            </option>
-          ))}
-        </Select>
-        <Select value={dueFilter} onChange={(e) => setDueFilter(e.target.value as typeof dueFilter)} className="w-auto">
-          <option value="all">Any due date</option>
-          <option value="overdue">Overdue</option>
-          <option value="upcoming">Upcoming</option>
-        </Select>
-      </div>
-
-      {visible.length === 0 ? (
-        <p className="text-sm text-ink-soft">No tasks match these filters.</p>
-      ) : (
-        <ul className="divide-y divide-rule overflow-hidden rounded-2xl border border-rule bg-cream">
-          {visible.map((task) => {
-            const assignee = members.find((m) => m.id === task.assignee_id);
-            return (
-              <li key={task.id}>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {TASK_COLUMNS.map((col) => (
+          <section key={col.status} className="rounded-2xl border border-rule bg-cream p-3">
+            <div className="mb-3 flex items-baseline justify-between px-1">
+              <h2 className="font-semibold">{TASK_STATUS_LABELS[col.status]}</h2>
+              <span className="text-xs text-ink-soft">
+                {columns[col.status].length} · {col.hint}
+              </span>
+            </div>
+            {col.status === "open" ? (
+              adding ? (
+                <form onSubmit={createTask} className="mb-3 space-y-2 rounded-xl border border-rule bg-paper p-3">
+                  <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Field label="Who">
+                      <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                        <option value="">Unassigned</option>
+                        {members.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {displayName(m)}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                    <Field label="Due">
+                      <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+                    </Field>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button type="submit" size="sm" disabled={busy}>
+                      {busy ? "Adding…" : "Add"}
+                    </Button>
+                    <Button type="button" size="sm" variant="ghost" onClick={() => setAdding(false)}>
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
                 <button
                   type="button"
-                  className="flex w-full items-center justify-between gap-4 px-4 py-3 text-left hover:bg-white/5"
-                  onClick={() => router.push(`/spaces/${space.id}/tasks/${task.id}`)}
+                  onClick={() => setAdding(true)}
+                  className="mb-3 w-full rounded-xl border border-dashed border-rule px-3 py-2 text-left text-sm text-ink-soft hover:border-white/20 hover:text-ink"
                 >
-                  <span>
-                    <span className="block font-medium">{task.title}</span>
-                    <span className="text-xs text-ink-soft">
-                      {assignee ? displayName(assignee) : "Unassigned"}
-                      {formatDueDate(task.due_date)
-                        ? ` · due ${formatDueDate(task.due_date)}${isOverdue(task.due_date, task.status) ? " (overdue)" : ""}`
-                        : ""}
-                    </span>
-                  </span>
-                  <Badge tone={task.status === "done" ? "ok" : task.status === "in_progress" ? "info" : "neutral"}>
-                    {TASK_STATUS_LABELS[task.status]}
-                  </Badge>
+                  + Add a task
                 </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+              )
+            ) : null}
+            <ul className="space-y-2">
+              {columns[col.status].map((task) => (
+                <li key={task.id}>
+                  <TaskCard
+                    task={task}
+                    href={`/spaces/${space.id}/tasks/${task.id}`}
+                    assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
+                    onAdvance={() => void setStatus(task, nextTaskStatus(task.status))}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </div>
   );
 }

@@ -12,7 +12,7 @@ export default function NewOfferPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (app && !app.operator) router.replace("/home");
+    if (app && !app.operator) router.replace("/dashboard");
   }, [app, router]);
 
   if (!app?.operator) return <PageFallback />;
