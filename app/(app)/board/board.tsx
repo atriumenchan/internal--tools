@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Badge, Card, Input } from "@/components/ui";
+import { Badge, Card, Input, Select } from "@/components/ui";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type Employee, type MonthlySummary } from "@/lib/types";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
@@ -135,24 +135,24 @@ export function AttendanceBoard({
 
       <div className="flex flex-wrap gap-3 rounded-2xl border border-rule bg-cream p-4">
         <Input className="max-w-xs" placeholder="Search name or code" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <select className="rounded-xl border border-rule bg-white px-3 py-2 text-sm" value={person} onChange={(e) => setPerson(e.target.value)}>
+        <Select className="max-w-xs" value={person} onChange={(e) => setPerson(e.target.value)}>
           <option value="all">All people</option>
           {visiblePeople.map((e) => (
             <option key={e.id} value={e.employee_code}>
               {e.employee_code} · {e.full_name}
             </option>
           ))}
-        </select>
-        <select className="rounded-xl border border-rule bg-white px-3 py-2 text-sm" value={department} onChange={(e) => setDepartment(e.target.value)}>
+        </Select>
+        <Select className="max-w-xs" value={department} onChange={(e) => setDepartment(e.target.value)}>
           <option value="all">All departments</option>
           {departments.map((d) => (
             <option key={d} value={d}>
               {d}
             </option>
           ))}
-        </select>
-        <select
-          className="rounded-xl border border-rule bg-white px-3 py-2 text-sm"
+        </Select>
+        <Select
+          className="max-w-xs"
           value={status}
           onChange={(e) => setStatus(e.target.value as "all" | DayStatus)}
         >
@@ -162,7 +162,7 @@ export function AttendanceBoard({
               {label}
             </option>
           ))}
-        </select>
+        </Select>
         <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
         <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
         <div className="flex rounded-full border border-rule p-1">

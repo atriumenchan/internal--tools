@@ -15,7 +15,7 @@ import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
-import { Button, Field, Input } from "@/components/ui";
+import { Button, Field, Input, Select } from "@/components/ui";
 import type { CompanySettings, Employee, Holiday } from "@/lib/types";
 
 const FIELDS: { key: ColumnKey; label: string; hint: string }[] = [
@@ -247,8 +247,7 @@ export function AttendanceUploader({
           <div className="mt-4 grid gap-3 md:grid-cols-2">
             {FIELDS.map((field) => (
               <Field key={field.key} label={`${field.label} · ${field.hint}`}>
-                <select
-                  className="w-full rounded-xl border border-rule bg-white px-3 py-2.5 text-sm"
+                <Select
                   value={mapping[field.key] ?? ""}
                   onChange={(e) =>
                     setMapping((prev) => ({ ...prev, [field.key]: e.target.value || undefined }))
@@ -260,7 +259,7 @@ export function AttendanceUploader({
                       {header}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
             ))}
           </div>
@@ -268,7 +267,7 @@ export function AttendanceUploader({
       ) : null}
 
       {preview ? (
-        <div className="rounded-2xl border border-rule bg-white p-5">
+        <div className="rounded-2xl border border-rule bg-cream p-5">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-serif text-xl">
               Preview · {preview.summaries.length} people · through {formatWorkDate(kolkataTodayKey())}

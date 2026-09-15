@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, Textarea } from "@/components/ui";
+import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import type { EmploymentType } from "@/lib/types";
 
 export function OfferForm({
@@ -76,16 +76,12 @@ export function OfferForm({
           <Input name="department" />
         </Field>
         <Field label="Employment type">
-          <select
-            name="employment_type"
-            className="w-full rounded-xl border border-rule bg-white px-3 py-2.5 text-sm"
-            defaultValue="full_time"
-          >
+          <Select name="employment_type" defaultValue="full_time">
             <option value="full_time">Full-time</option>
             <option value="part_time">Part-time</option>
             <option value="contract">Contract</option>
             <option value="intern">Internship</option>
-          </select>
+          </Select>
         </Field>
         <Field label="Location">
           <Input name="location" />
