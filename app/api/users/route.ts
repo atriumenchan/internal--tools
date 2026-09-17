@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { isAdminUser, isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { parseAppRole } from "@/lib/roles";
 import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
@@ -71,34 +71,54 @@ export async function POST(request: Request) {
     .trim()
     .toLowerCase();
   const password = String(body.password || "");
-  const employeeId = String(body.employee_id || "").trim();
+  const employeeCode = String(body.employee_code || "").trim();
+  const fullName = String(body.full_name || body.name || "").trim();
   const role = parseAppRole(body.role);
   if (role === "admin") {
     return NextResponse.json({ error: "Create a normal login. Admin stays the existing admin account." }, { status: 400 });
   }
 
-  if (!email || password.length < 6 || !employeeId) {
+  if (!email || password.length < 6 || !employeeCode || !fullName) {
     return NextResponse.json(
-      { error: "Pick a person, then email and a 6+ character password" },
+      { error: "Name, employee code, email ID, and a 6+ character password are required" },
       { status: 400 }
     );
   }
 
   try {
     const admin = createAdminClient();
-    const { data: employee, error: empErr } = await admin
-      .from("employees")
-      .select("*")
-      .eq("id", employeeId)
-      .maybeSingle();
-    if (empErr || !employee) {
-      return NextResponse.json({ error: "Employee not found in Supabase" }, { status: 404 });
-    }
-    if (employee.ignored || isIgnoredEmployee(employee.employee_code, employee.full_name)) {
+    const { data: people, error: empErr } = await admin.from("employees").select("*");
+    if (empErr) return NextResponse.json({ error: empErr.message }, { status: 400 });
+    const wanted = normalizeEmpCode(employeeCode);
+    let employee = (people ?? []).find(
+      (row) => normalizeEmpCode(row.employee_code) === wanted || String(row.employee_code).trim() === employeeCode
+    );
+
+    if (employee?.ignored || isIgnoredEmployee(employee?.employee_code, employee?.full_name || fullName)) {
       return NextResponse.json({ error: "This person is excluded and cannot have a login" }, { status: 400 });
     }
-    if (employee.user_id) {
-      return NextResponse.json({ error: "This person already has a login" }, { status: 400 });
+    if (employee?.user_id) {
+      return NextResponse.json({ error: "This employee code already has a login" }, { status: 400 });
+    }
+
+    if (!employee) {
+      const created = await admin
+        .from("employees")
+        .insert({
+          employee_code: employeeCode,
+          full_name: fullName,
+          email,
+          is_active: true,
+        })
+        .select("*")
+        .single();
+      if (created.error || !created.data) {
+        return NextResponse.json({ error: created.error?.message || "Could not save this employee code" }, { status: 400 });
+      }
+      employee = created.data;
+    } else if (fullName && fullName !== employee.full_name) {
+      await admin.from("employees").update({ full_name: fullName, email }).eq("id", employee.id);
+      employee = { ...employee, full_name: fullName, email };
     }
 
     const { data, error } = await admin.auth.admin.createUser({
