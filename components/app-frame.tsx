@@ -91,7 +91,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
         id: user.id,
         email: user.email ?? "",
         full_name: "",
-        role: isAdminEmail(user.email) ? "admin" : "hr",
+        role: isAdminEmail(user.email) ? "admin" : "employee",
       };
       const acknowledged =
         !schemaReady ||

@@ -20,11 +20,14 @@ import {
   TASK_STATUS_LABELS,
   taskPriority,
 } from "@/lib/spaces";
+import { useAppState } from "@/components/app-frame";
+import { applyTaskStatus, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskPriority, TaskStatus } from "@/lib/types";
 
 export default function SpaceDetailPage() {
+  const app = useAppState();
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [space, setSpace] = useState<Space | null>(null);
@@ -67,8 +70,16 @@ export default function SpaceDetailPage() {
   }, [id]);
 
   const columns = useMemo(() => {
-    const by: Record<TaskStatus, Task[]> = { open: [], in_progress: [], done: [] };
-    for (const task of tasks) by[task.status].push(task);
+    const by: Record<TaskStatus, Task[]> = {
+      open: [],
+      in_progress: [],
+      in_review: [],
+      done: [],
+      cancelled: [],
+    };
+    for (const task of tasks) {
+      (by[task.status] ?? by.open).push(task);
+    }
     return by;
   }, [tasks]);
 
@@ -78,11 +89,22 @@ export default function SpaceDetailPage() {
   async function setStatus(taskId: string, status: TaskStatus) {
     const current = tasks.find((t) => t.id === taskId);
     if (!current || current.status === status) return;
-    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
+    const userId = app?.userId;
+    if (!userId) return;
+    const next = applyTaskStatus(current, status, userId);
+    if (next.error && next.status === current.status) {
+      setError(next.error);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: next.status } : t)));
     const supabase = createClient();
-    const { data, error: err } = await supabase.from("tasks").update({ status }).eq("id", taskId).select("*").single();
+    const { data, error: err } = await supabase.from("tasks").update({ status: next.status }).eq("id", taskId).select("*").single();
     if (err) {
-      setError(err.message);
+      setError(
+        missingWorkflowColumn(err.message)
+          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+          : err.message
+      );
       setTasks((prev) => prev.map((t) => (t.id === taskId ? current : t)));
       return;
     }
@@ -91,7 +113,14 @@ export default function SpaceDetailPage() {
 
   async function createTask(
     status: TaskStatus,
-    values: { title: string; assigneeId: string; dueDate: string; priority: TaskPriority; comment: string }
+    values: {
+      title: string;
+      assigneeId: string;
+      dueDate: string;
+      priority: TaskPriority;
+      comment: string;
+      criteria: string;
+    }
   ) {
     if (!space || !values.title.trim()) return false;
     setError(null);
@@ -102,25 +131,31 @@ export default function SpaceDetailPage() {
     const userId = session?.user.id;
     if (!userId) return false;
     const comment = values.comment.trim();
+    const criteria = values.criteria.trim();
+    const assigneeId = values.assigneeId || null;
     const payload = {
       space_id: space.id,
       title: values.title.trim(),
       description: comment || null,
-      assignee_id: values.assigneeId || null,
+      completion_criteria: criteria || null,
+      assignee_id: assigneeId,
+      reviewer_id: assigneeId && assigneeId !== userId ? userId : null,
       created_by: userId,
       due_date: dueDateKey(values.dueDate),
-      status,
+      status: status === "cancelled" ? "open" : status,
       priority: values.priority,
     };
     let { data, error: err } = await supabase.from("tasks").insert(payload).select("*").single();
-    if (err && missingPriorityColumn(err.message)) {
-      const { priority, ...withoutPriority } = payload;
+    if (err && (missingPriorityColumn(err.message) || missingWorkflowColumn(err.message))) {
+      const { priority, completion_criteria, reviewer_id, ...without } = payload;
       void priority;
-      const retry = await supabase.from("tasks").insert(withoutPriority).select("*").single();
+      void completion_criteria;
+      void reviewer_id;
+      const retry = await supabase.from("tasks").insert(without).select("*").single();
       data = retry.data;
       err = retry.error;
       if (!err) {
-        setError("Priority needs a SQL patch. Paste supabase/task-board.sql in the Supabase SQL editor, then refresh.");
+        setError("Task review fields need a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor.");
       }
     }
     if (err || !data) {
@@ -240,7 +275,7 @@ export default function SpaceDetailPage() {
         </form>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {TASK_COLUMNS.map((col) => (
           <section
             key={col.status}
@@ -309,6 +344,7 @@ function AddTaskForm({
     dueDate: string;
     priority: TaskPriority;
     comment: string;
+    criteria: string;
   }) => Promise<boolean>;
 }) {
   const [title, setTitle] = useState("");
@@ -316,6 +352,7 @@ function AddTaskForm({
   const [dueDate, setDueDate] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("medium");
   const [comment, setComment] = useState("");
+  const [criteria, setCriteria] = useState("");
   const [busy, setBusy] = useState(false);
 
   return (
@@ -324,7 +361,7 @@ function AddTaskForm({
         e.preventDefault();
         if (!title.trim() || busy) return;
         setBusy(true);
-        const ok = await onSubmit({ title, assigneeId, dueDate, priority: taskPriority(priority), comment });
+        const ok = await onSubmit({ title, assigneeId, dueDate, priority: taskPriority(priority), comment, criteria });
         if (!ok) setBusy(false);
       }}
       className="mb-3 space-y-2 rounded-[12px] border border-rule bg-cream p-3"
@@ -361,6 +398,15 @@ function AddTaskForm({
           rows={2}
           className="min-h-[4.5rem]"
           placeholder="Optional note for the person you assign"
+        />
+      </Field>
+      <Field label="Done looks like">
+        <Textarea
+          value={criteria}
+          onChange={(e) => setCriteria(e.target.value)}
+          rows={2}
+          className="min-h-[3.5rem]"
+          placeholder="Optional. What should be true when this is finished?"
         />
       </Field>
       <div className="flex gap-2">

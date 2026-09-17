@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { parseAppRole } from "@/lib/roles";
 import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
 
@@ -45,7 +46,7 @@ export async function GET() {
           id: u.id,
           email: u.email,
           full_name: profile?.full_name || u.user_metadata?.full_name || "",
-          role: (profile?.role as AppRole) || "hr",
+          role: (profile?.role as AppRole) || "employee",
           employee_code: employee?.employee_code ?? null,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
@@ -71,7 +72,10 @@ export async function POST(request: Request) {
     .toLowerCase();
   const password = String(body.password || "");
   const employeeId = String(body.employee_id || "").trim();
-  const role: AppRole = "hr";
+  const role = parseAppRole(body.role);
+  if (role === "admin") {
+    return NextResponse.json({ error: "Create a normal login. Admin stays the existing admin account." }, { status: 400 });
+  }
 
   if (!email || password.length < 6 || !employeeId) {
     return NextResponse.json(
@@ -141,21 +145,37 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => ({}));
   const id = String(body.id || "").trim();
   const password = String(body.password || "");
-  if (!id || password.length < 6) {
-    return NextResponse.json({ error: "User and a 6+ character password are required" }, { status: 400 });
+  const role = body.role != null ? parseAppRole(body.role) : null;
+  if (!id) {
+    return NextResponse.json({ error: "User is required" }, { status: 400 });
   }
-  if (id === gate.user.id) {
+  if (!password && !role) {
+    return NextResponse.json({ error: "Password or role is required" }, { status: 400 });
+  }
+  if (password && password.length < 6) {
+    return NextResponse.json({ error: "Use a 6+ character password" }, { status: 400 });
+  }
+  if (id === gate.user.id && password) {
     return NextResponse.json({ error: "Reset other people’s passwords here — not your own." }, { status: 400 });
+  }
+  if (role === "admin") {
+    return NextResponse.json({ error: "Do not promote another login to admin here." }, { status: 400 });
   }
 
   try {
     const admin = createAdminClient();
     const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
     if (target && isAdminUser({ email: target.email, role: target.role })) {
-      return NextResponse.json({ error: "The admin login cannot be reset from here." }, { status: 400 });
+      return NextResponse.json({ error: "The admin login cannot be changed from here." }, { status: 400 });
     }
-    const { error } = await admin.auth.admin.updateUserById(id, { password });
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (password) {
+      const { error } = await admin.auth.admin.updateUserById(id, { password });
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (role) {
+      const { error } = await admin.from("profiles").update({ role }).eq("id", id);
+      if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(

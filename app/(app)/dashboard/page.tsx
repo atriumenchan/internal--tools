@@ -11,6 +11,7 @@ import { TaskCard } from "@/components/task-card";
 import { isAdminUser } from "@/lib/admin";
 import { displayName } from "@/lib/spaces";
 import { formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { effectiveReviewer, isAssignedByOther } from "@/lib/task-workflow";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
 
 type InboxRow = {
@@ -59,7 +60,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [today, setToday] = useState<AttendanceDay | null>(null);
   const [teamToday, setTeamToday] = useState<AttendanceDay[]>([]);
-  const [workFilter, setWorkFilter] = useState<"mine" | "created" | "overdue">("mine");
+  const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done">("mine");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -111,19 +112,47 @@ export default function DashboardPage() {
   const spaceMap = useMemo(() => Object.fromEntries(spaces.map((s) => [s.id, s])), [spaces]);
 
   const mine = useMemo(
-    () => (tasks ?? []).filter((t) => t.assignee_id === app?.userId && t.status !== "done"),
+    () => (tasks ?? []).filter((t) => t.assignee_id === app?.userId && t.status !== "done" && t.status !== "cancelled"),
     [tasks, app?.userId]
   );
-  const created = useMemo(
-    () => (tasks ?? []).filter((t) => t.created_by === app?.userId && t.status !== "done"),
+  const requested = useMemo(
+    () =>
+      (tasks ?? []).filter(
+        (t) => t.created_by === app?.userId && isAssignedByOther(t) && t.status !== "done" && t.status !== "cancelled"
+      ),
+    [tasks, app?.userId]
+  );
+  const needsReview = useMemo(
+    () => (tasks ?? []).filter((t) => t.status === "in_review" && effectiveReviewer(t) === app?.userId),
+    [tasks, app?.userId]
+  );
+  const completed = useMemo(
+    () =>
+      (tasks ?? []).filter(
+        (t) =>
+          t.status === "done" &&
+          (t.assignee_id === app?.userId || t.created_by === app?.userId || t.reviewer_id === app?.userId)
+      ),
     [tasks, app?.userId]
   );
   const overdue = useMemo(() => (tasks ?? []).filter((t) => isOverdue(t.due_date, t.status)), [tasks]);
+  const waiting = requested.filter((t) => t.status === "in_review" || (t.assignee_id && t.assignee_id !== app?.userId));
+  const needsAction = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: Task[] = [];
+    for (const task of [...needsReview, ...overdue.filter((t) => t.assignee_id === app?.userId), ...mine.filter((t) => t.status === "open")]) {
+      if (seen.has(task.id)) continue;
+      seen.add(task.id);
+      rows.push(task);
+    }
+    return rows;
+  }, [needsReview, overdue, mine, app?.userId]);
   const unreadChats = inbox.filter((row) => row.unread_count > 0);
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
-  const shown = workFilter === "created" ? created : workFilter === "overdue" ? overdue : mine;
+  const shown =
+    workFilter === "requested" ? requested : workFilter === "review" ? needsReview : workFilter === "done" ? completed : mine;
 
   async function deleteTask(taskId: string) {
     const supabase = createClient();
@@ -151,6 +180,7 @@ export default function DashboardPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href="/spaces" />
+        <Stat label="Needs my review" value={needsReview.length} warn={needsReview.length > 0} href="/spaces" />
         <Stat label="Overdue" value={overdue.length} warn={overdue.length > 0} href="/spaces" />
         <Stat label="Unread chats" value={unreadChats.reduce((n, r) => n + r.unread_count, 0)} href="/chat" />
         {operator ? (
@@ -175,12 +205,27 @@ export default function DashboardPage() {
               value={workFilter}
               onChange={setWorkFilter}
               options={[
-                { id: "mine", label: "Assigned to me" },
-                { id: "created", label: "I created" },
-                { id: "overdue", label: "Overdue" },
+                { id: "mine", label: "My tasks" },
+                { id: "requested", label: "Requested by me" },
+                { id: "review", label: "Needs my review" },
+                { id: "done", label: "Completed" },
               ]}
             />
           </div>
+          {workFilter === "mine" && (needsAction.length > 0 || waiting.length > 0) ? (
+            <div className="mb-4 grid gap-3 sm:grid-cols-2">
+              <div className="rounded-[12px] border border-rule bg-surface px-3 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Needs your action</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{needsAction.length}</p>
+                <p className="mt-1 text-xs text-ink-soft">Reviews, overdue, and new assigns.</p>
+              </div>
+              <div className="rounded-[12px] border border-rule bg-surface px-3 py-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Waiting on others</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">{waiting.length}</p>
+                <p className="mt-1 text-xs text-ink-soft">Work you asked someone else for.</p>
+              </div>
+            </div>
+          ) : null}
           {shown.length === 0 ? (
             <EmptyState>
               Nothing in this list. Open Tasks to add work to a board.

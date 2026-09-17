@@ -67,7 +67,7 @@ export function formatDueDate(value: string | null | undefined) {
 }
 
 export function isOverdue(value: string | null | undefined, status?: string | null) {
-  if (status === "done") return false;
+  if (status === "done" || status === "cancelled") return false;
   const key = dueDateKey(value);
   if (!key) return false;
   return key < kolkataTodayKey();

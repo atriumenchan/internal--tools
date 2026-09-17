@@ -18,7 +18,9 @@ import type { Profile, Task, TaskPriority, TaskStatus } from "@/lib/types";
 
 export function taskBadgeTone(task: Pick<Task, "status" | "due_date">) {
   if (task.status === "done") return "ok" as const;
+  if (task.status === "cancelled") return "neutral" as const;
   if (isOverdue(task.due_date, task.status)) return "danger" as const;
+  if (task.status === "in_review") return "warn" as const;
   if (task.status === "in_progress") return "info" as const;
   return "neutral" as const;
 }
@@ -29,10 +31,20 @@ export function taskStatusClass(status: TaskStatus, active = false) {
       ? "bg-success/15 text-success ring-1 ring-success/30"
       : "text-muted hover:bg-success/10 hover:text-success";
   }
+  if (status === "in_review") {
+    return active
+      ? "bg-warning/15 text-warning ring-1 ring-warning/30"
+      : "text-muted hover:bg-warning/10 hover:text-warning";
+  }
   if (status === "in_progress") {
     return active
       ? "bg-blue/15 text-blue-soft ring-1 ring-blue/30"
       : "text-muted hover:bg-blue/10 hover:text-blue-soft";
+  }
+  if (status === "cancelled") {
+    return active
+      ? "bg-white/[0.08] text-ink-soft ring-1 ring-rule"
+      : "text-muted hover:bg-white/5 hover:text-ink";
   }
   return active
     ? "bg-white/[0.08] text-ink ring-1 ring-rule"
@@ -119,7 +131,7 @@ export function TaskCard({
           </div>
           {comment ? <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-ink-soft">{comment}</p> : null}
           {onMove ? (
-            <div className="mt-2.5 grid grid-cols-3 gap-1">
+            <div className="mt-2.5 grid grid-cols-2 gap-1">
               {TASK_COLUMNS.map((col) => (
                 <button
                   key={col.status}

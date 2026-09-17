@@ -25,7 +25,8 @@ import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
 import { useAppState } from "@/components/app-frame";
-import type { Profile, Space, Task, TaskComment, TaskFile } from "@/lib/types";
+import { applyTaskStatus, canApproveReview, canCompleteDirectly, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
 
 export default function TaskPage() {
   const app = useAppState();
@@ -99,8 +100,8 @@ export default function TaskPage() {
     const { data, error: err } = await supabase.from("tasks").update(patch).eq("id", task.id).select("*").single();
     if (err) {
       setError(
-        missingPriorityColumn(err.message)
-          ? "Priority needs a SQL patch. Paste supabase/task-board.sql in the Supabase SQL editor, then refresh."
+        missingPriorityColumn(err.message) || missingWorkflowColumn(err.message)
+          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
           : err.message
       );
       return;
@@ -216,6 +217,16 @@ export default function TaskPage() {
     setFiles((prev) => prev.filter((row) => row.id !== file.id));
   }
 
+  async function setStatus(status: TaskStatus) {
+    if (!task || !app) return;
+    const next = applyTaskStatus(task, status, app.userId);
+    if (next.error && next.status === task.status) {
+      setError(next.error);
+      return;
+    }
+    await saveTask({ status: next.status });
+  }
+
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
   }
@@ -245,16 +256,28 @@ export default function TaskPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-6">
           <Card>
-            <Field label="Description">
+            <Field label="Brief">
               <Textarea
                 value={task.description || ""}
                 onChange={(e) => setTask({ ...task, description: e.target.value })}
                 onBlur={() => void saveTask({ description: task.description })}
-                rows={8}
-                placeholder="Write what this task is, what done looks like, and any links."
-                className="min-h-[10rem]"
+                rows={6}
+                placeholder="What this is, and any links."
+                className="min-h-[8rem]"
               />
             </Field>
+            <div className="mt-4">
+              <Field label="Done looks like">
+                <Textarea
+                  value={task.completion_criteria || ""}
+                  onChange={(e) => setTask({ ...task, completion_criteria: e.target.value })}
+                  onBlur={() => void saveTask({ completion_criteria: task.completion_criteria })}
+                  rows={4}
+                  placeholder="What should be true when this is finished?"
+                  className="min-h-[6rem]"
+                />
+              </Field>
+            </div>
           </Card>
 
           <Card className="p-0">
@@ -315,21 +338,47 @@ export default function TaskPage() {
           <Card className="divide-y divide-rule p-0">
             <div className="px-4 py-4">
               <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Status</p>
-              <div className="grid grid-cols-3 gap-1 rounded-[10px] border border-rule bg-input p-1">
+              <div className="grid grid-cols-2 gap-1 rounded-[10px] border border-rule bg-input p-1">
                 {TASK_COLUMNS.map((col) => (
                   <button
                     key={col.status}
                     type="button"
                     className={`rounded-md px-2 py-1.5 text-xs font-semibold transition duration-200 ${taskStatusClass(col.status, task.status === col.status)}`}
-                    onClick={() => {
-                      setTask({ ...task, status: col.status });
-                      void saveTask({ status: col.status });
-                    }}
+                    onClick={() => void setStatus(col.status)}
                   >
                     {TASK_STATUS_LABELS[col.status]}
                   </button>
                 ))}
               </div>
+              {app ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {task.status !== "done" && task.status !== "cancelled" && isAssignedByOther(task) && task.assignee_id === app.userId ? (
+                    <Button size="sm" onClick={() => void setStatus("in_review")}>
+                      Submit for review
+                    </Button>
+                  ) : null}
+                  {task.status === "in_review" && canApproveReview(task, app.userId) ? (
+                    <>
+                      <Button size="sm" onClick={() => void setStatus("done")}>
+                        Approve
+                      </Button>
+                      <Button size="sm" variant="secondary" onClick={() => void setStatus("in_progress")}>
+                        Request changes
+                      </Button>
+                    </>
+                  ) : null}
+                  {task.status !== "done" && task.status !== "cancelled" && canCompleteDirectly(task, app.userId) ? (
+                    <Button size="sm" onClick={() => void setStatus("done")}>
+                      Mark done
+                    </Button>
+                  ) : null}
+                  {task.status !== "done" && task.status !== "cancelled" && (app.userId === task.created_by || app.userId === task.assignee_id) ? (
+                    <Button size="sm" variant="ghost" onClick={() => void setStatus("cancelled")}>
+                      Cancel task
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
             <div className="px-4 py-4">
               <Field label="Priority">
@@ -360,6 +409,30 @@ export default function TaskPage() {
                   }}
                 >
                   <option value="">Unassigned</option>
+                  {members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {displayName(m)}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
+            <div className="px-4 py-4">
+              <Field label="Requester">
+                <p className="text-sm">{displayName(profiles[task.created_by])}</p>
+              </Field>
+            </div>
+            <div className="px-4 py-4">
+              <Field label="Reviewer">
+                <Select
+                  value={task.reviewer_id || ""}
+                  onChange={(e) => {
+                    const reviewer_id = e.target.value || null;
+                    setTask({ ...task, reviewer_id });
+                    void saveTask({ reviewer_id });
+                  }}
+                >
+                  <option value="">{isAssignedByOther(task) ? "Requester (default)" : "None — mark done yourself"}</option>
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>
                       {displayName(m)}

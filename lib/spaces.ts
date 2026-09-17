@@ -3,12 +3,15 @@ import type { Profile, TaskPriority, TaskStatus } from "@/lib/types";
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "To do",
   in_progress: "Doing",
+  in_review: "In review",
   done: "Done",
+  cancelled: "Cancelled",
 };
 
 export const TASK_COLUMNS: { status: TaskStatus; hint: string }[] = [
   { status: "open", hint: "Not started" },
   { status: "in_progress", hint: "In motion" },
+  { status: "in_review", hint: "Needs a yes" },
   { status: "done", hint: "Finished" },
 ];
 
@@ -49,7 +52,8 @@ export function initials(profile: Pick<Profile, "full_name" | "email"> | undefin
 
 export function nextTaskStatus(status: TaskStatus): TaskStatus {
   if (status === "open") return "in_progress";
-  if (status === "in_progress") return "done";
+  if (status === "in_progress") return "in_review";
+  if (status === "in_review") return "done";
   return "open";
 }
 

@@ -5,17 +5,19 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Bell,
   BookOpen,
+  CalendarDays,
   ClipboardList,
   FileSignature,
   KeyRound,
   LayoutDashboard,
+  Library,
   LogOut,
   MessageSquare,
+  Settings,
   Shield,
   SquareKanban,
   Timer,
   Users,
-  Settings,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -25,6 +27,8 @@ import { isAdminEmail } from "@/lib/admin";
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, adminOnly: false, operatorOnly: false },
   { href: "/spaces", label: "Tasks", icon: SquareKanban, adminOnly: false, operatorOnly: false },
+  { href: "/leave", label: "Leave", icon: CalendarDays, adminOnly: false, operatorOnly: false },
+  { href: "/knowledge", label: "Knowledge", icon: Library, adminOnly: false, operatorOnly: false },
   { href: "/chat", label: "Chat", icon: MessageSquare, adminOnly: false, operatorOnly: false },
   { href: "/notifications", label: "Notifications", icon: Bell, adminOnly: false, operatorOnly: false },
   { href: "/vault", label: "My logins", icon: KeyRound, adminOnly: false, operatorOnly: false },

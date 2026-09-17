@@ -5,6 +5,7 @@ import { Button, Field, Input, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { formatDate } from "@/lib/utils";
 import { isAdminUser } from "@/lib/admin";
+import { parseAppRole, WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
 import type { AppRole, Employee } from "@/lib/types";
 
 type StaffUser = {
@@ -24,6 +25,7 @@ export function TeamPanel() {
   const [employeeId, setEmployeeId] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"employee" | "manager">("employee");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function TeamPanel() {
       const res = await fetch("/api/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ employee_id: employeeId, email, password }),
+        body: JSON.stringify({ employee_id: employeeId, email, password, role }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Create failed");
@@ -71,6 +73,7 @@ export function TeamPanel() {
       setEmail("");
       setPassword("");
       setEmployeeId("");
+      setRole("employee");
       await load();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Create failed");
@@ -97,6 +100,27 @@ export function TeamPanel() {
       setResetPassword("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function setUserRole(user: StaffUser, next: string) {
+    const parsed = parseAppRole(next);
+    if (parsed === "admin") return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user.id, role: parsed }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not change role");
+      setUsers((prev) => prev.map((row) => (row.id === user.id ? { ...row, role: parsed } : row)));
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not change role");
     } finally {
       setBusy(false);
     }
@@ -139,6 +163,12 @@ export function TeamPanel() {
         <Field label="Login email">
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
+        <Field label="Role">
+          <Select value={role} onChange={(e) => setRole(e.target.value === "manager" ? "manager" : "employee")}>
+            <option value="employee">Employee</option>
+            <option value="manager">Manager</option>
+          </Select>
+        </Field>
         <Field label="Password">
           <Input value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
@@ -159,6 +189,7 @@ export function TeamPanel() {
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Person</th>
                 <th className="px-4 py-3">Last sign-in</th>
+                <th className="px-4 py-3">Role</th>
                 <th className="px-4 py-3">Login</th>
               </tr>
             </thead>
@@ -172,6 +203,19 @@ export function TeamPanel() {
                   </td>
                   <td className="px-4 py-3 text-ink-soft">
                     {user.last_sign_in_at ? formatDate(user.last_sign_in_at) : "Never"}
+                  </td>
+                  <td className="px-4 py-3">
+                    {isAdminUser({ email: user.email, role: user.role }) ? (
+                      <span className="text-xs text-ink-soft">Admin</span>
+                    ) : (
+                      <Select
+                        value={workspaceRole(user) === "manager" ? "manager" : "employee"}
+                        onChange={(e) => void setUserRole(user, e.target.value)}
+                      >
+                        <option value="employee">{WORKSPACE_ROLE_LABELS.employee}</option>
+                        <option value="manager">{WORKSPACE_ROLE_LABELS.manager}</option>
+                      </Select>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {isAdminUser({ email: user.email, role: user.role }) ? (

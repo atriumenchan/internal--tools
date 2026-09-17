@@ -47,7 +47,7 @@ export default function SpacesPage() {
     const map = new Map<string, { open: number; overdue: number }>();
     for (const task of tasks) {
       const row = map.get(task.space_id) ?? { open: 0, overdue: 0 };
-      if (task.status !== "done") row.open += 1;
+      if (task.status !== "done" && task.status !== "cancelled") row.open += 1;
       if (isOverdue(task.due_date, task.status)) row.overdue += 1;
       map.set(task.space_id, row);
     }

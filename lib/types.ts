@@ -1,4 +1,4 @@
-export type AppRole = "admin" | "hr";
+export type AppRole = "admin" | "hr" | "manager" | "employee";
 export type EmploymentType = "full_time" | "part_time" | "contract" | "intern";
 export type OfferStatus = "draft" | "awaiting_signature" | "signed" | "revoked" | "expired";
 export type DayStatus =
@@ -19,7 +19,7 @@ export type Profile = {
   handbook_acknowledged_at?: string | null;
 };
 
-export type TaskStatus = "open" | "in_progress" | "done";
+export type TaskStatus = "open" | "in_progress" | "in_review" | "done" | "cancelled";
 export type TaskPriority = "low" | "medium" | "high" | "urgent";
 export type ConversationType = "dm" | "group" | "space";
 
@@ -47,6 +47,8 @@ export type Task = {
   created_by: string;
   due_date: string | null;
   priority?: TaskPriority | null;
+  completion_criteria?: string | null;
+  reviewer_id?: string | null;
   created_at: string;
   updated_at?: string;
 };
