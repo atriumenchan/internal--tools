@@ -173,24 +173,16 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Dashboard"
+        title="Home"
         description={formatWorkDate(kolkataTodayKey(), "long")}
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href="/spaces" />
-        <Stat label="Needs my review" value={needsReview.length} warn={needsReview.length > 0} href="/spaces" />
+        <Stat label="To review" value={needsReview.length} warn={needsReview.length > 0} href="/spaces" />
         <Stat label="Overdue" value={overdue.length} warn={overdue.length > 0} href="/spaces" />
-        <Stat label="Unread chats" value={unreadChats.reduce((n, r) => n + r.unread_count, 0)} href="/chat" />
-        {operator ? (
-          <Stat label="Absent today" value={absent} href="/board" warn={absent > 0} />
-        ) : (
-          <Stat
-            label="Today"
-            value={today ? today.status.replace("_", " ") : employee ? "No punch" : "—"}
-          />
-        )}
+        <Stat label="Unread chat" value={unreadChats.reduce((n, r) => n + r.unread_count, 0)} href="/chat" />
       </div>
 
       <div className="mb-6">
@@ -205,10 +197,10 @@ export default function DashboardPage() {
               value={workFilter}
               onChange={setWorkFilter}
               options={[
-                { id: "mine", label: "My tasks" },
-                { id: "requested", label: "Requested by me" },
-                { id: "review", label: "Needs my review" },
-                { id: "done", label: "Completed" },
+                { id: "mine", label: "Mine" },
+                { id: "requested", label: "Requested" },
+                { id: "review", label: "Review" },
+                { id: "done", label: "Done" },
               ]}
             />
           </div>

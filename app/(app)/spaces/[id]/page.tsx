@@ -235,7 +235,7 @@ export default function SpaceDetailPage() {
       </p>
       <PageHeader
         title={space.name}
-        description="Drag a card into another column, or tap To do / Doing / Done on the card."
+        description="Drag a card, or use the four status buttons on it."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex -space-x-2">
@@ -296,9 +296,7 @@ export default function SpaceDetailPage() {
           >
             <div className="mb-3 flex items-baseline justify-between px-1">
               <h2 className="font-semibold">{TASK_STATUS_LABELS[col.status]}</h2>
-              <span className="text-xs text-ink-soft">
-                {columns[col.status].length} · {col.hint}
-              </span>
+              <span className="text-xs tabular-nums text-ink-soft">{columns[col.status].length}</span>
             </div>
             {addingStatus === col.status ? (
               <AddTaskForm members={members} onCancel={() => setAddingStatus(null)} onSubmit={(values) => createTask(col.status, values)} />

@@ -30,7 +30,13 @@ export function LoginForm() {
       router.push(next);
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not authenticate");
+      setError(
+        /invalid login credentials/i.test(err instanceof Error ? err.message : "")
+          ? "Email or password is wrong."
+          : err instanceof Error
+            ? err.message
+            : "Could not sign in"
+      );
     } finally {
       setBusy(false);
     }
@@ -43,11 +49,27 @@ export function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <Field label="Work email">
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+      <Field label="Work email" htmlFor="login-email">
+        <Input
+          id="login-email"
+          type="email"
+          autoComplete="username"
+          placeholder="you@admexo.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
       </Field>
-      <Field label="Password">
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} />
+      <Field label="Password" htmlFor="login-password">
+        <Input
+          id="login-password"
+          type="password"
+          autoComplete="current-password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          minLength={6}
+        />
       </Field>
       {linkExpired ? (
         <ErrorText>
@@ -60,7 +82,7 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Please wait…" : "Sign in"}
       </Button>
-      <p className="text-center text-xs text-ink-soft">Accounts are created by an admin. There is no public sign-up.</p>
+      <p className="text-center text-xs text-ink-soft">Ask admin if you need an account.</p>
     </form>
   );
 }

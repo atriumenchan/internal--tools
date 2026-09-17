@@ -131,13 +131,13 @@ export function TaskCard({
           </div>
           {comment ? <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-ink-soft">{comment}</p> : null}
           {onMove ? (
-            <div className="mt-2.5 grid grid-cols-2 gap-1">
+            <div className="mt-2.5 grid grid-cols-4 gap-1">
               {TASK_COLUMNS.map((col) => (
                 <button
                   key={col.status}
                   type="button"
                   title={`Move to ${TASK_STATUS_LABELS[col.status]}`}
-                  className={cn("rounded-md px-1.5 py-1 text-[11px] font-semibold transition duration-200", taskStatusClass(col.status, task.status === col.status))}
+                  className={cn("rounded-md px-1 py-1 text-[10px] font-semibold leading-none transition duration-200", taskStatusClass(col.status, task.status === col.status))}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();

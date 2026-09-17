@@ -3,7 +3,7 @@ import type { Profile, TaskPriority, TaskStatus } from "@/lib/types";
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   open: "To do",
   in_progress: "Doing",
-  in_review: "In review",
+  in_review: "Review",
   done: "Done",
   cancelled: "Cancelled",
 };

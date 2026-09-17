@@ -62,16 +62,18 @@ export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLab
 
 export function Field({
   label,
+  htmlFor,
   children,
   className,
 }: {
   label: string;
+  htmlFor?: string;
   children: React.ReactNode;
   className?: string;
 }) {
   return (
     <div className={className}>
-      <Label>{label}</Label>
+      <Label htmlFor={htmlFor}>{label}</Label>
       {children}
     </div>
   );
@@ -172,7 +174,7 @@ export function Segmented<T extends string>({
   className?: string;
 }) {
   return (
-    <div className={cn("inline-flex rounded-[10px] border border-rule bg-input p-1", className)}>
+    <div className={cn("inline-flex flex-wrap rounded-[10px] border border-rule bg-input p-1", className)}>
       {options.map((option) => {
         const active = option.id === value;
         return (

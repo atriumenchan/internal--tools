@@ -87,7 +87,7 @@ export default function SpacesPage() {
     <div>
       <PageHeader
         title="Tasks"
-        description="Each board is a team’s work in three columns: To do, Doing, Done."
+        description="Each board is To do, Doing, Review, and Done."
         actions={
           allowCreate ? (
             <Button type="button" variant={creating ? "secondary" : "primary"} onClick={() => setCreating((v) => !v)}>
