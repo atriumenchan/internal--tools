@@ -1,16 +1,8 @@
 -- =============================================================================
--- ADMEXO — task review, leave, knowledge, Employee/Manager/Admin
--- Paste into Supabase → SQL Editor. Safe to re-run. Do NOT run reset.sql.
+-- STEP 2 of 2 — run AFTER workspace-lite-enums.sql has succeeded on its own.
+-- Postgres cannot add enum values and use them in the same run.
+-- Safe to re-run. Do NOT run reset.sql.
 -- =============================================================================
-
--- Roles: keep existing admin/hr rows. Add employee + manager.
-do $$ begin
-  alter type public.app_role add value if not exists 'employee';
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  alter type public.app_role add value if not exists 'manager';
-exception when duplicate_object then null; end $$;
 
 alter table public.profiles alter column role set default 'employee';
 
@@ -58,15 +50,6 @@ as $$
 $$;
 
 grant execute on function public.is_manager() to authenticated;
-
--- Task workflow fields + statuses
-do $$ begin
-  alter type public.task_status add value if not exists 'in_review';
-exception when duplicate_object then null; end $$;
-
-do $$ begin
-  alter type public.task_status add value if not exists 'cancelled';
-exception when duplicate_object then null; end $$;
 
 alter table public.tasks
   add column if not exists completion_criteria text,
