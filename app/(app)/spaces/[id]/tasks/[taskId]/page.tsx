@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { FileText } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, ErrorText, Field, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, Card, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { FileDrop } from "@/components/file-drop";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
@@ -41,6 +41,7 @@ export default function TaskPage() {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const bottom = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export default function TaskPage() {
       const memberIds = new Set((memberRes.data ?? []).map((row) => row.user_id as string));
       setSpace((spaceRes.data as Space) ?? null);
       setTask(taskRes.data as Task);
+      setTitleDraft((taskRes.data as Task).title);
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
       setComments((commentRes.data ?? []) as TaskComment[]);
       setFiles((filesRes.data ?? []) as TaskFile[]);
@@ -107,6 +109,7 @@ export default function TaskPage() {
       return;
     }
     setTask(data as Task);
+    if (typeof patch.title === "string") setTitleDraft(patch.title);
   }
 
   async function uploadFile(file: File) {
@@ -241,7 +244,7 @@ export default function TaskPage() {
       </p>
       <PageHeader
         title={task.title}
-        description={space?.name ? `On ${space.name}` : undefined}
+        description={space?.name ? `On ${space.name} · edit the fields below, they save when you leave a box.` : undefined}
         actions={
           <ConfirmDelete
             label="Delete task"
@@ -256,7 +259,24 @@ export default function TaskPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="space-y-6">
           <Card>
-            <Field label="Brief">
+            <Field label="Title">
+              <Input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                onBlur={() => {
+                  if (titleDraft.trim() && titleDraft.trim() !== task.title) void saveTask({ title: titleDraft.trim() });
+                  else setTitleDraft(task.title);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    (e.target as HTMLInputElement).blur();
+                  }
+                }}
+              />
+            </Field>
+            <div className="mt-4">
+              <Field label="Brief">
               <Textarea
                 value={task.description || ""}
                 onChange={(e) => setTask({ ...task, description: e.target.value })}
@@ -266,6 +286,7 @@ export default function TaskPage() {
                 className="min-h-[8rem]"
               />
             </Field>
+            </div>
             <div className="mt-4">
               <Field label="Done looks like">
                 <Textarea

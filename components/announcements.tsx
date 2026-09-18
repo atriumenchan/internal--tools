@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Pin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, ErrorText, Field, Input, Textarea } from "@/components/ui";
+import { Badge, Button, Card, Checkbox, ErrorText, Field, Input, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { missingSpacesSchema } from "@/lib/spaces";
+import { formatRelative } from "@/lib/datetime";
 import type { Announcement } from "@/lib/types";
 
 export function Announcements({ operator, userId }: { operator: boolean; userId: string }) {
@@ -65,14 +67,18 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
 
   async function remove(id: string) {
     const supabase = createClient();
-    await supabase.from("announcements").delete().eq("id", id);
+    const { error: err } = await supabase.from("announcements").delete().eq("id", id);
+    if (err) {
+      setError(err.message);
+      return;
+    }
     await load();
   }
 
   return (
-    <Card className="p-4">
+    <Card className="p-6">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold tracking-tight">Announcements</h2>
+        <h2 className="text-[18px] font-semibold tracking-tight">Announcements</h2>
         {operator ? (
           <Button type="button" size="sm" variant={compose ? "secondary" : "primary"} onClick={() => setCompose((v) => !v)}>
             {compose ? "Cancel" : "Post"}
@@ -81,38 +87,47 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
       </div>
       <ErrorText className="mt-2">{error}</ErrorText>
       {operator && compose ? (
-        <form onSubmit={post} className="mt-3 space-y-2">
+        <form onSubmit={post} className="mt-4 space-y-3">
           <Field label="Title">
             <Input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Office closed Friday…" />
           </Field>
           <Field label="Message">
             <Textarea value={body} onChange={(e) => setBody(e.target.value)} rows={3} required />
           </Field>
-          <label className="flex items-center gap-2 text-sm text-ink-soft">
-            <input type="checkbox" checked={pinned} onChange={(e) => setPinned(e.target.checked)} />
+          <Checkbox checked={pinned} onChange={setPinned}>
             Pin to the top
-          </label>
+          </Checkbox>
           <Button type="submit" disabled={busy}>
             {busy ? "Posting…" : "Publish"}
           </Button>
         </form>
       ) : null}
       {!rows ? (
-        <p className="mt-3 text-sm text-ink-soft">Loading…</p>
+        <p className="mt-4 text-[13px] text-muted">Loading…</p>
       ) : rows.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-soft">No announcements yet.</p>
+        <p className="mt-4 text-[13px] text-muted">No announcements yet.</p>
       ) : (
-        <ul className="mt-4 space-y-3">
+        <ul className="mt-5 space-y-4">
           {rows.map((row) => (
-            <li key={row.id} className="rounded-[12px] border border-rule bg-surface px-4 py-3">
+            <li
+              key={row.id}
+              className={`rounded-[10px] bg-elevated px-5 py-4 shadow-[inset_0_1px_0_rgb(255_255_255/0.05)] ${
+                row.pinned ? "border-l-[3px] border-l-terracotta pl-[17px]" : "border border-rule"
+              }`}
+            >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-medium">
-                    {row.pinned ? <span className="mr-2 text-[10px] uppercase tracking-wide text-terracotta">Pinned</span> : null}
-                    {row.title}
+                <div className="min-w-0">
+                  {row.pinned ? (
+                    <Badge tone="accent">
+                      <Pin size={11} />
+                      Pinned
+                    </Badge>
+                  ) : null}
+                  <p className={`text-[15px] font-semibold tracking-tight text-ink ${row.pinned ? "mt-2" : ""}`}>{row.title}</p>
+                  <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">{row.body}</p>
+                  <p className="mt-2 text-[12px] text-muted" title={new Date(row.created_at).toLocaleString()}>
+                    {formatRelative(row.created_at)}
                   </p>
-                  <p className="mt-1 whitespace-pre-wrap text-sm text-ink-soft">{row.body}</p>
-                  <p className="mt-1 text-[11px] text-ink-soft">{new Date(row.created_at).toLocaleString()}</p>
                 </div>
                 {operator ? (
                   <ConfirmDelete

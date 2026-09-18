@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Eye, LayoutList, MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
 import { TaskCard } from "@/components/task-card";
+import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
-import { displayName } from "@/lib/spaces";
-import { formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
-import { effectiveReviewer, isAssignedByOther } from "@/lib/task-workflow";
+import { displayName, missingPriorityColumn } from "@/lib/spaces";
+import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { cn } from "@/lib/utils";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
 
 type InboxRow = {
@@ -24,25 +27,50 @@ function Stat({
   label,
   value,
   href,
-  warn,
+  icon: Icon,
+  tone = "neutral",
+  onSelect,
 }: {
   label: string;
-  value: string | number;
-  href?: string;
-  warn?: boolean;
+  value: number;
+  href: string;
+  icon: typeof LayoutList;
+  tone?: "neutral" | "info" | "warn" | "danger";
+  onSelect?: () => void;
 }) {
-  const inner = (
-    <div className="h-full rounded-xl border border-rule bg-cream px-4 py-4 shadow-card transition duration-200 hover:border-line-hover">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
-      <p className={`mt-2 text-[28px] font-semibold tabular-nums leading-none ${warn ? "text-danger" : "text-ink"}`}>{value}</p>
-    </div>
-  );
-  return href ? (
-    <Link href={href} className="block">
-      {inner}
+  const zero = value === 0;
+  return (
+    <Link
+      href={href}
+      onClick={onSelect}
+      className="group block rounded-[10px] border border-rule bg-surface p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.05)] transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lift"
+    >
+      <div className="flex items-center gap-2.5">
+        <span
+          className={cn(
+            "grid h-8 w-8 place-items-center rounded-[8px]",
+            tone === "danger" && "bg-danger/15 text-danger",
+            tone === "warn" && "bg-warning/15 text-warning",
+            tone === "info" && "bg-blue/15 text-blue-soft",
+            tone === "neutral" && "bg-white/[0.06] text-ink-soft"
+          )}
+        >
+          <Icon size={16} strokeWidth={1.75} />
+        </span>
+        <p className="text-[12px] font-medium text-ink-soft">{label}</p>
+      </div>
+      <p
+        className={cn(
+          "tabular mt-3 text-[32px] font-semibold leading-none",
+          zero && "text-muted",
+          !zero && tone === "danger" && "text-danger",
+          !zero && tone === "warn" && "text-warning",
+          !zero && tone !== "danger" && tone !== "warn" && "text-ink"
+        )}
+      >
+        {value}
+      </p>
     </Link>
-  ) : (
-    inner
   );
 }
 
@@ -60,7 +88,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [today, setToday] = useState<AttendanceDay | null>(null);
   const [teamToday, setTeamToday] = useState<AttendanceDay[]>([]);
-  const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done">("mine");
+  const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done" | "overdue">("mine");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -108,6 +136,13 @@ export default function DashboardPage() {
     })();
   }, [app, operator]);
 
+  useEffect(() => {
+    const work = new URLSearchParams(window.location.search).get("work");
+    if (work === "mine" || work === "requested" || work === "review" || work === "done" || work === "overdue") {
+      setWorkFilter(work);
+    }
+  }, []);
+
   const peopleMap = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
   const spaceMap = useMemo(() => Object.fromEntries(spaces.map((s) => [s.id, s])), [spaces]);
 
@@ -152,7 +187,15 @@ export default function DashboardPage() {
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
   const shown =
-    workFilter === "requested" ? requested : workFilter === "review" ? needsReview : workFilter === "done" ? completed : mine;
+    workFilter === "requested"
+      ? requested
+      : workFilter === "review"
+        ? needsReview
+        : workFilter === "done"
+          ? completed
+          : workFilter === "overdue"
+            ? overdue
+            : mine;
 
   async function deleteTask(taskId: string) {
     const supabase = createClient();
@@ -168,6 +211,31 @@ export default function DashboardPage() {
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== taskId));
   }
 
+  async function editTask(taskId: string, values: TaskDraft) {
+    if (!app) return false;
+    const supabase = createClient();
+    const assigneeId = values.assigneeId || null;
+    const payload = {
+      title: values.title.trim(),
+      description: values.comment.trim() || null,
+      completion_criteria: values.criteria.trim() || null,
+      assignee_id: assigneeId,
+      due_date: dueDateKey(values.dueDate),
+      priority: values.priority,
+    };
+    const { data, error: err } = await supabase.from("tasks").update(payload).eq("id", taskId).select("*").single();
+    if (err || !data) {
+      setError(
+        missingPriorityColumn(err?.message) || missingWorkflowColumn(err?.message)
+          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+          : err?.message || "Could not save the task."
+      );
+      return false;
+    }
+    setTasks((prev) => (prev ?? []).map((t) => (t.id === taskId ? (data as Task) : t)));
+    return true;
+  }
+
   if (!app || tasks === null) return <PageFallback />;
 
   return (
@@ -178,11 +246,17 @@ export default function DashboardPage() {
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="My tasks" value={mine.length} href="/spaces" />
-        <Stat label="To review" value={needsReview.length} warn={needsReview.length > 0} href="/spaces" />
-        <Stat label="Overdue" value={overdue.length} warn={overdue.length > 0} href="/spaces" />
-        <Stat label="Unread chat" value={unreadChats.reduce((n, r) => n + r.unread_count, 0)} href="/chat" />
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="My tasks" value={mine.length} href="/dashboard?work=mine" icon={LayoutList} tone="neutral" onSelect={() => setWorkFilter("mine")} />
+        <Stat label="To review" value={needsReview.length} href="/dashboard?work=review" icon={Eye} tone="warn" onSelect={() => setWorkFilter("review")} />
+        <Stat label="Overdue" value={overdue.length} href="/dashboard?work=overdue" icon={AlertTriangle} tone="danger" onSelect={() => setWorkFilter("overdue")} />
+        <Stat
+          label="Unread chat"
+          value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}
+          href="/chat"
+          icon={MessageSquare}
+          tone="info"
+        />
       </div>
 
       <div className="mb-6">
@@ -200,6 +274,7 @@ export default function DashboardPage() {
                 { id: "mine", label: "Mine" },
                 { id: "requested", label: "Requested" },
                 { id: "review", label: "Review" },
+                { id: "overdue", label: "Overdue" },
                 { id: "done", label: "Done" },
               ]}
             />
@@ -231,6 +306,8 @@ export default function DashboardPage() {
                     href={`/spaces/${task.space_id}/tasks/${task.id}`}
                     spaceName={spaceMap[task.space_id]?.name}
                     assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
+                    members={people}
+                    onEdit={(values) => editTask(task.id, values)}
                     onDelete={() => deleteTask(task.id)}
                   />
                 </li>

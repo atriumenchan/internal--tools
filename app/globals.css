@@ -1,40 +1,66 @@
+/*
+  DESIGN AUDIT (Part 1) — ADMEXO Workspace
+  1. Raw HTML defaults: native <select> (task move, assign, invite); native <input type=checkbox>
+     on announcements; unstyled overflow “…”; date-picker month cells without pressed state;
+     login inputs inherit browser autofill; no shared focus-visible on Links.
+  2. Spacing: Stat cards px-4 py-4 vs announcements p-4 vs kanban p-3 vs task cards p-3.5 vs
+     PageHeader mb-8. Nav py-2 vs group labels pb-1. Radii 10 / 12 / 14 mixed.
+  3. Flat hierarchy: Home 32/40, card titles 15 semibold, body 16, nav 14 all similar ink color.
+     Pinned + title same weight. Stat zeros same weight as overdue.
+  4. Vault: insert uses FormData + created_by=app.userId. After await, e.currentTarget.reset()
+     can throw (null currentTarget) so load() never runs — save looks like a no-op. Delete
+     ignores errors. No success feedback. RLS requires created_by = auth.uid().
+  5. Empty: kanban empty columns were blank/hint text only. Vault empty is one line.
+     Failed save = ErrorText if caught; vault silent if reset throws. Loading = PageFallback
+     or “Loading…” on announcements, not skeletons on stats.
+*/
+
 @import "tailwindcss";
 
 @theme {
   --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
 
-  --color-ink: #f5f7fa;
-  --color-ink-soft: #aab4c2;
-  --color-muted: #707b8c;
-  --color-disabled: #4b5563;
-  --color-paper: #0b0f14;
-  --color-sidebar: #080b10;
-  --color-surface: #10151c;
-  --color-cream: #141a22;
-  --color-elevated: #181f29;
-  --color-input: #0f141b;
-  --color-rule: #242c38;
-  --color-line-hover: #344052;
-  --color-terracotta: #ff5a1f;
-  --color-terracotta-hover: #ff6b32;
-  --color-terracotta-dark: #e94d17;
-  --color-blue: #4f8cff;
-  --color-blue-soft: #6ea0ff;
-  --color-sage: #32d583;
-  --color-sage-soft: #0f2318;
-  --color-success: #32d583;
-  --color-warning: #f7b955;
-  --color-gold: #f7b955;
-  --color-danger: #f97066;
-  --color-sky: #4f8cff;
-  --color-sky-soft: #101a2e;
+  --color-paper: #0a0a0f;
+  --color-sidebar: #08080c;
+  --color-surface: #12131a;
+  --color-cream: #12131a;
+  --color-elevated: #1a1c24;
+  --color-overlay: #22242e;
+  --color-input: #0e0f16;
 
-  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.28), 0 8px 24px rgb(0 0 0 / 0.16);
-  --shadow-elevated: 0 2px 8px rgb(0 0 0 / 0.32), 0 16px 40px rgb(0 0 0 / 0.22);
+  --color-ink: rgb(255 255 255 / 0.95);
+  --color-ink-soft: rgb(255 255 255 / 0.62);
+  --color-muted: rgb(255 255 255 / 0.42);
+  --color-disabled: rgb(255 255 255 / 0.28);
 
+  --color-rule: rgb(255 255 255 / 0.07);
+  --color-line-hover: rgb(255 255 255 / 0.12);
+
+  --color-terracotta: #ff6a33;
+  --color-terracotta-hover: #ff7d4d;
+  --color-terracotta-dark: #e85a24;
+
+  --color-blue: #6b93d6;
+  --color-blue-soft: #8aa8de;
+  --color-success: #5dba8a;
+  --color-sage: #5dba8a;
+  --color-sage-soft: #102018;
+  --color-warning: #d4a84b;
+  --color-gold: #d4a84b;
+  --color-danger: #d6766a;
+  --color-sky: #6b93d6;
+  --color-sky-soft: #121824;
+
+  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04), 0 8px 24px rgb(0 0 0 / 0.35);
+  --shadow-elevated: 0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 40px rgb(0 0 0 / 0.45);
+  --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
+
+  --radius-sm: 6px;
   --radius-control: 10px;
-  --radius-card: 12px;
+  --radius-card: 10px;
+  --radius-lg: 14px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
@@ -53,15 +79,28 @@ body {
   font-size: 15px;
   line-height: 1.5;
   letter-spacing: -0.011em;
+  font-feature-settings: "cv11", "ss01";
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-terracotta) 35%, transparent);
+  background: color-mix(in srgb, var(--color-terracotta) 32%, transparent);
   color: var(--color-ink);
 }
 
 :focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-blue) 70%, white);
+  outline: 2px solid color-mix(in srgb, var(--color-terracotta) 75%, white);
   outline-offset: 2px;
 }
 
@@ -75,9 +114,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-rule);
+  background: rgb(255 255 255 / 0.1);
   border-radius: 999px;
   border: 2px solid var(--color-paper);
+}
+
+.surface-card {
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-card);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    var(--shadow-card);
 }
 
 .letter-sheet {

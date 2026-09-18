@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
 import { MoreHorizontal, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ export function ConfirmDelete({
   description = "This cannot be undone.",
   confirmLabel = "Delete",
   onConfirm,
+  extra,
   align = "right",
   className,
 }: {
@@ -23,6 +25,7 @@ export function ConfirmDelete({
   description?: string;
   confirmLabel?: string;
   onConfirm: () => Promise<void> | void;
+  extra?: { label: string; icon?: ReactNode; onSelect: () => void }[];
   align?: "left" | "right";
   className?: string;
 }) {
@@ -42,7 +45,7 @@ export function ConfirmDelete({
       const el = trigger.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const height = mode === "confirm" ? 172 : 48;
+      const height = mode === "confirm" ? 172 : 44 + (extra?.length || 0) * 40;
       const left = align === "right" ? r.right - width : r.left;
       setBox({
         top: Math.min(r.bottom + 6, window.innerHeight - height - 8),
@@ -68,7 +71,7 @@ export function ConfirmDelete({
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, mode, align, width]);
+  }, [open, mode, align, width, extra]);
 
   async function confirm() {
     setBusy(true);
@@ -94,14 +97,30 @@ export function ConfirmDelete({
             onPointerDown={(e) => e.stopPropagation()}
           >
             {mode === "menu" ? (
-              <button
-                type="button"
-                onClick={() => setMode("confirm")}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-danger transition duration-200 hover:bg-danger/10"
-              >
-                <Trash2 size={14} />
-                {label}
-              </button>
+              <div className="flex flex-col">
+                {extra?.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      setMode("closed");
+                      item.onSelect();
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-ink transition duration-200 hover:bg-white/[0.06]"
+                  >
+                    {item.icon}
+                    {item.label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setMode("confirm")}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-danger transition duration-200 hover:bg-danger/10"
+                >
+                  <Trash2 size={14} />
+                  {label}
+                </button>
+              </div>
             ) : (
               <>
                 <p className="text-sm font-semibold text-ink">{title}</p>
@@ -134,8 +153,8 @@ export function ConfirmDelete({
           setMode((m) => (m === "closed" ? "menu" : "closed"));
         }}
         className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-lg text-muted transition duration-200 hover:bg-white/[0.06] hover:text-ink",
-          open && "bg-white/[0.06] text-ink"
+          "inline-flex h-7 w-7 items-center justify-center rounded-full text-muted transition duration-150 hover:bg-white/[0.08] hover:text-ink",
+          open && "bg-white/[0.08] text-ink"
         )}
       >
         <MoreHorizontal size={15} />

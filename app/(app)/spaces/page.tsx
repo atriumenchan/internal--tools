@@ -134,7 +134,7 @@ export default function SpacesPage() {
             const c = counts.get(space.id) ?? { open: 0, overdue: 0 };
             return (
               <li key={space.id}>
-                <div className="flex items-stretch gap-2 rounded-xl border border-rule bg-cream p-4 shadow-card transition duration-200 hover:border-line-hover">
+                <div className="flex items-stretch gap-2 rounded-[14px] border border-white/[0.07] bg-[#1a1e27] p-4 shadow-card transition duration-200 hover:border-white/12 hover:bg-[#1e232e]">
                   <button
                     type="button"
                     onClick={() => router.push(`/spaces/${space.id}`)}

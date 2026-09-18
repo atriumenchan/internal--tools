@@ -73,6 +73,48 @@ export function isOverdue(value: string | null | undefined, status?: string | nu
   return key < kolkataTodayKey();
 }
 
+export function formatRelative(value: string | Date | null | undefined) {
+  if (!value) return "—";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "—";
+  const now = Date.now();
+  const diff = now - date.getTime();
+  const abs = Math.abs(diff);
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (abs < minute) return "Just now";
+  if (abs < hour) {
+    const n = Math.round(abs / minute);
+    return `${n} min ${diff > 0 ? "ago" : "from now"}`;
+  }
+  const sameDay = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, day: "numeric", month: "numeric", year: "numeric" });
+  const todayKey = sameDay.format(new Date());
+  const thatKey = sameDay.format(date);
+  const clock = new Intl.DateTimeFormat("en-IN", {
+    timeZone: TZ,
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+  if (todayKey === thatKey) return `Today at ${clock}`;
+  const yest = new Date(now - day);
+  if (sameDay.format(yest) === thatKey) return `Yesterday at ${clock}`;
+  if (abs < 7 * day) {
+    const weekday = new Intl.DateTimeFormat("en-IN", { timeZone: TZ, weekday: "long" }).format(date);
+    return `${weekday} at ${clock}`;
+  }
+  return new Intl.DateTimeFormat("en-IN", {
+    timeZone: TZ,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
 export function hoursLabel(value: number | string | null | undefined) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";

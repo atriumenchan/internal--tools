@@ -25,3 +25,6 @@ create policy "own credentials update" on public.company_credentials
 create policy "own credentials delete" on public.company_credentials
   for delete to authenticated
   using (created_by = auth.uid());
+
+alter table public.company_credentials
+  alter column created_by set default auth.uid();

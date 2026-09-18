@@ -8,12 +8,19 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: "Cancelled",
 };
 
-export const TASK_COLUMNS: { status: TaskStatus; hint: string }[] = [
-  { status: "open", hint: "Not started" },
-  { status: "in_progress", hint: "In motion" },
-  { status: "in_review", hint: "Needs a yes" },
-  { status: "done", hint: "Finished" },
+export const TASK_COLUMNS: { status: TaskStatus; hint: string; accent: string; column: string }[] = [
+  { status: "open", hint: "Not started", accent: "bg-ink-soft", column: "border-white/10 bg-[#17191f]" },
+  { status: "in_progress", hint: "In motion", accent: "bg-blue", column: "border-blue/20 bg-[#121925]" },
+  { status: "in_review", hint: "Needs a yes", accent: "bg-warning", column: "border-warning/20 bg-[#1b1710]" },
+  { status: "done", hint: "Finished", accent: "bg-success", column: "border-success/20 bg-[#101c16]" },
 ];
+
+export const PRIORITY_BAR: Record<TaskPriority, string> = {
+  low: "bg-[#6b7380]",
+  medium: "bg-blue",
+  high: "bg-warning",
+  urgent: "bg-danger",
+};
 
 export const TASK_PRIORITIES: TaskPriority[] = ["low", "medium", "high", "urgent"];
 

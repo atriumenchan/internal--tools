@@ -4,27 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Button, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
-import { DatePicker } from "@/components/date-picker";
 import { PageFallback } from "@/components/app-nav";
 import { TaskCard } from "@/components/task-card";
+import { TaskForm, type TaskDraft } from "@/components/task-form";
 import { Avatar } from "@/components/avatar";
 import {
   displayName,
   missingPriorityColumn,
   missingSpacesSchema,
   TASK_COLUMNS,
-  TASK_PRIORITIES,
-  TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
-  taskPriority,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
 import { applyTaskStatus, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
-import type { Profile, Space, Task, TaskPriority, TaskStatus } from "@/lib/types";
+import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
 export default function SpaceDetailPage() {
   const app = useAppState();
@@ -111,17 +108,7 @@ export default function SpaceDetailPage() {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
   }
 
-  async function createTask(
-    status: TaskStatus,
-    values: {
-      title: string;
-      assigneeId: string;
-      dueDate: string;
-      priority: TaskPriority;
-      comment: string;
-      criteria: string;
-    }
-  ) {
+  async function createTask(status: TaskStatus, values: TaskDraft) {
     if (!space || !values.title.trim()) return false;
     setError(null);
     const supabase = createClient();
@@ -168,6 +155,40 @@ export default function SpaceDetailPage() {
     }
     setTasks((prev) => [task, ...prev]);
     setAddingStatus(null);
+    return true;
+  }
+
+  async function editTask(taskId: string, values: TaskDraft) {
+    const current = tasks.find((t) => t.id === taskId);
+    if (!current) return false;
+    setError(null);
+    const supabase = createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const userId = session?.user.id;
+    if (!userId) return false;
+    const assigneeId = values.assigneeId || null;
+    const payload = {
+      title: values.title.trim(),
+      description: values.comment.trim() || null,
+      completion_criteria: values.criteria.trim() || null,
+      assignee_id: assigneeId,
+      reviewer_id:
+        assigneeId && assigneeId !== userId ? current.reviewer_id || current.created_by : current.reviewer_id,
+      due_date: dueDateKey(values.dueDate),
+      priority: values.priority,
+    };
+    const { data, error: err } = await supabase.from("tasks").update(payload).eq("id", taskId).select("*").single();
+    if (err || !data) {
+      setError(
+        missingPriorityColumn(err?.message) || missingWorkflowColumn(err?.message)
+          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+          : err?.message || "Could not save the task."
+      );
+      return false;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
     return true;
   }
 
@@ -235,7 +256,7 @@ export default function SpaceDetailPage() {
       </p>
       <PageHeader
         title={space.name}
-        description="Drag a card, or use the four status buttons on it."
+        description="Drag cards between columns, or edit from the three-dot menu."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex -space-x-2">
@@ -290,33 +311,56 @@ export default function SpaceDetailPage() {
             }}
             onDrop={(e) => dropTask(col.status, e)}
             className={cn(
-              "flex min-h-[22rem] flex-col rounded-xl border bg-surface p-3 shadow-card transition duration-200",
-              dragOver === col.status ? "border-blue bg-blue/10" : "border-rule"
+              "flex min-h-[22rem] flex-col rounded-[10px] border p-3 transition duration-150",
+              dragOver === col.status
+                ? "border-dashed border-blue bg-blue/10"
+                : "border-rule bg-surface shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]"
             )}
           >
-            <div className="mb-3 flex items-baseline justify-between px-1">
-              <h2 className="font-semibold">{TASK_STATUS_LABELS[col.status]}</h2>
-              <span className="text-xs tabular-nums text-ink-soft">{columns[col.status].length}</span>
+            <div className="mb-3 flex items-center justify-between gap-2 px-1">
+              <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
+                <span className={cn("h-2 w-2 rounded-full", col.accent)} />
+                {TASK_STATUS_LABELS[col.status]}
+              </h2>
+              <span className="tabular rounded-[6px] bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-medium text-ink-soft">
+                {columns[col.status].length}
+              </span>
             </div>
             {addingStatus === col.status ? (
-              <AddTaskForm members={members} onCancel={() => setAddingStatus(null)} onSubmit={(values) => createTask(col.status, values)} />
+              <div className="mb-3">
+                <TaskForm
+                  members={members}
+                  submitLabel="Add"
+                  busyLabel="Adding…"
+                  onCancel={() => setAddingStatus(null)}
+                  onSubmit={(values) => createTask(col.status, values)}
+                />
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={() => setAddingStatus(col.status)}
-                className="mb-3 w-full rounded-[12px] border border-dashed border-rule bg-input px-3 py-2.5 text-left text-sm text-muted transition duration-200 hover:border-line-hover hover:text-ink"
+                className="mb-3 w-full cursor-pointer rounded-[10px] border border-dashed border-rule bg-transparent px-3 py-2.5 text-left text-[13px] text-muted transition duration-150 hover:border-line-hover hover:bg-white/[0.03] hover:text-ink"
               >
                 + Add a task
               </button>
             )}
-            <ul className="space-y-2">
+            <ul className="space-y-3">
+              {columns[col.status].length === 0 && addingStatus !== col.status ? (
+                <li className="flex flex-1 flex-col items-center justify-center px-3 py-10 text-center">
+                  <p className="text-[13px] font-medium text-ink-soft">No tasks yet</p>
+                  <p className="mt-1 text-[12px] text-muted">{col.hint}</p>
+                </li>
+              ) : null}
               {columns[col.status].map((task) => (
                 <li key={task.id}>
                   <TaskCard
                     task={task}
                     href={`/spaces/${space.id}/tasks/${task.id}`}
                     assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
+                    members={members}
                     onMove={(status) => void setStatus(task.id, status)}
+                    onEdit={(values) => editTask(task.id, values)}
                     onDelete={() => deleteTask(task.id)}
                   />
                 </li>
@@ -326,95 +370,5 @@ export default function SpaceDetailPage() {
         ))}
       </div>
     </div>
-  );
-}
-
-function AddTaskForm({
-  members,
-  onCancel,
-  onSubmit,
-}: {
-  members: Profile[];
-  onCancel: () => void;
-  onSubmit: (values: {
-    title: string;
-    assigneeId: string;
-    dueDate: string;
-    priority: TaskPriority;
-    comment: string;
-    criteria: string;
-  }) => Promise<boolean>;
-}) {
-  const [title, setTitle] = useState("");
-  const [assigneeId, setAssigneeId] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [priority, setPriority] = useState<TaskPriority>("medium");
-  const [comment, setComment] = useState("");
-  const [criteria, setCriteria] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        if (!title.trim() || busy) return;
-        setBusy(true);
-        const ok = await onSubmit({ title, assigneeId, dueDate, priority: taskPriority(priority), comment, criteria });
-        if (!ok) setBusy(false);
-      }}
-      className="mb-3 space-y-2 rounded-[12px] border border-rule bg-cream p-3"
-    >
-      <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Assign">
-          <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-            <option value="">Unassigned</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {displayName(m)}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Priority">
-          <Select value={priority} onChange={(e) => setPriority(taskPriority(e.target.value))}>
-            {TASK_PRIORITIES.map((key) => (
-              <option key={key} value={key}>
-                {TASK_PRIORITY_LABELS[key]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-      </div>
-      <Field label="Due">
-        <DatePicker value={dueDate || null} onChange={(v) => setDueDate(v || "")} placeholder="Due date" />
-      </Field>
-      <Field label="Comment">
-        <Textarea
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          className="min-h-[4.5rem]"
-          placeholder="Optional note for the person you assign"
-        />
-      </Field>
-      <Field label="Done looks like">
-        <Textarea
-          value={criteria}
-          onChange={(e) => setCriteria(e.target.value)}
-          rows={2}
-          className="min-h-[3.5rem]"
-          placeholder="Optional. What should be true when this is finished?"
-        />
-      </Field>
-      <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={busy}>
-          {busy ? "Adding…" : "Add"}
-        </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
-          Cancel
-        </Button>
-      </div>
-    </form>
   );
 }

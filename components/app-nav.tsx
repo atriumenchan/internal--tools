@@ -97,26 +97,26 @@ export function AppNav({
 
   return (
     <aside className="no-print flex flex-col border-b border-rule bg-sidebar text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between px-5 py-6 lg:block">
+      <div className="flex items-center justify-between px-4 py-6 lg:block">
         <div>
-          <p className="text-lg font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
-          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted">Workspace</p>
+          <p className="text-[18px] font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
+          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.2em] text-muted">Workspace</p>
         </div>
         <button
           onClick={signOut}
-          className="rounded-[10px] p-2 text-muted transition duration-200 hover:bg-white/5 hover:text-ink lg:hidden"
+          className="rounded-[10px] p-2 text-muted transition duration-150 hover:bg-white/[0.06] hover:text-ink lg:hidden"
           aria-label="Sign out"
         >
-          <LogOut size={16} />
+          <LogOut size={18} />
         </button>
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-5 lg:overflow-visible lg:px-3">
+      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
         {GROUPS.filter((group) => !group.operatorOnly || operator).map((group) => {
           const items = group.items.filter(visible);
           if (items.length === 0) return null;
           return (
             <div key={group.label} className="flex shrink-0 items-center gap-1 lg:block">
-              <p className="hidden px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted lg:block">
+              <p className="hidden px-3 pb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted lg:block">
                 {group.label}
               </p>
               {items.map((item) => {
@@ -129,22 +129,18 @@ export function AppNav({
                     href={item.href}
                     prefetch
                     className={cn(
-                      "relative flex items-center gap-2.5 rounded-[10px] px-3 py-2 text-sm whitespace-nowrap transition duration-200",
+                      "relative flex h-9 items-center gap-2.5 rounded-[10px] px-3 text-[13px] font-medium whitespace-nowrap",
+                      "transition-[background-color,color] duration-150 ease-out",
                       active
-                        ? "bg-terracotta/12 font-medium text-ink"
-                        : "text-muted hover:bg-white/[0.04] hover:text-ink"
+                        ? "bg-elevated text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]"
+                        : "text-ink-soft hover:bg-white/[0.04] hover:text-ink"
                     )}
                   >
                     {active ? <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-terracotta" /> : null}
-                    <Icon size={16} strokeWidth={1.75} className={active ? "text-terracotta" : "text-current"} />
+                    <Icon size={18} strokeWidth={1.75} className={active ? "text-terracotta" : "text-current"} />
                     {item.label}
                     {count > 0 ? (
-                      <span
-                        className={cn(
-                          "ml-auto rounded-md px-1.5 text-[10px] font-semibold",
-                          active ? "bg-terracotta/20 text-terracotta" : "bg-blue/15 text-blue-soft"
-                        )}
-                      >
+                      <span className="tabular ml-auto rounded-[6px] bg-white/[0.08] px-1.5 text-[11px] font-medium text-ink">
                         {count > 99 ? "99+" : count}
                       </span>
                     ) : null}
@@ -155,12 +151,12 @@ export function AppNav({
           );
         })}
       </nav>
-      <div className="mt-auto hidden border-t border-rule px-5 py-5 lg:block">
-        <p className="truncate text-sm font-medium">{profile.full_name || profile.email}</p>
-        <p className="text-xs text-muted">{roleLabel}</p>
+      <div className="mt-auto hidden border-t border-rule px-4 py-5 lg:block">
+        <p className="truncate text-[13px] font-medium text-ink">{profile.full_name || profile.email}</p>
+        <p className="mt-0.5 text-[12px] text-muted">{roleLabel}</p>
         <button
           onClick={signOut}
-          className="mt-3 flex items-center gap-2 text-xs text-muted transition duration-200 hover:text-ink"
+          className="mt-3 flex items-center gap-2 text-[12px] text-muted transition duration-150 hover:text-ink"
         >
           <LogOut size={14} /> Sign out
         </button>
@@ -178,10 +174,10 @@ export function SidebarFallback() {
 export function PageFallback() {
   return (
     <div className="animate-pulse space-y-4">
-      <div className="h-3 w-24 rounded bg-rule" />
-      <div className="h-8 w-64 rounded bg-rule" />
-      <div className="h-4 w-full max-w-xl rounded bg-rule/80" />
-      <div className="mt-8 h-48 rounded-xl border border-rule bg-cream shadow-card" />
+      <div className="h-3 w-24 rounded bg-elevated" />
+      <div className="h-8 w-64 rounded bg-elevated" />
+      <div className="h-4 w-full max-w-xl rounded bg-surface" />
+      <div className="mt-8 h-48 rounded-[10px] bg-surface shadow-card" />
     </div>
   );
 }
