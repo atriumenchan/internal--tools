@@ -1,76 +1,115 @@
-/*
-  DESIGN AUDIT (Part 1) — ADMEXO Workspace
-  1. Raw HTML defaults: native <select> (task move, assign, invite); native <input type=checkbox>
-     on announcements; unstyled overflow “…”; date-picker month cells without pressed state;
-     login inputs inherit browser autofill; no shared focus-visible on Links.
-  2. Spacing: Stat cards px-4 py-4 vs announcements p-4 vs kanban p-3 vs task cards p-3.5 vs
-     PageHeader mb-8. Nav py-2 vs group labels pb-1. Radii 10 / 12 / 14 mixed.
-  3. Flat hierarchy: Home 32/40, card titles 15 semibold, body 16, nav 14 all similar ink color.
-     Pinned + title same weight. Stat zeros same weight as overdue.
-  4. Vault: insert uses FormData + created_by=app.userId. After await, e.currentTarget.reset()
-     can throw (null currentTarget) so load() never runs — save looks like a no-op. Delete
-     ignores errors. No success feedback. RLS requires created_by = auth.uid().
-  5. Empty: kanban empty columns were blank/hint text only. Vault empty is one line.
-     Failed save = ErrorText if caught; vault silent if reset throws. Loading = PageFallback
-     or “Loading…” on announcements, not skeletons on stats.
-*/
-
 @import "tailwindcss";
+@config "../tailwind.config.js";
+
+:root {
+  --canvas: #eef3f0;
+  --page: #f6f9f7;
+  --surface: #ffffff;
+  --surface-2: #f0f4f1;
+  --border: rgba(28, 46, 38, 0.09);
+  --border-strong: rgba(28, 46, 38, 0.16);
+
+  --text: #1e2823;
+  --text-muted: #5e6e65;
+  --text-faint: #93a29a;
+
+  --amber: #b4690c;
+  --amber-soft: #e8a34c;
+  --amber-dim: rgba(180, 105, 12, 0.12);
+  --amber-line: rgba(180, 105, 12, 0.28);
+
+  --teal: #0c7e71;
+  --teal-soft: #3fae9f;
+  --teal-dim: rgba(12, 126, 113, 0.12);
+
+  --violet: #6c5fc4;
+  --violet-dim: rgba(108, 95, 196, 0.12);
+
+  --coral: #be4b3b;
+  --coral-dim: rgba(190, 75, 59, 0.12);
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 9px;
+
+  --shadow-card: 0 1px 2px rgba(20, 40, 32, 0.04);
+  --shadow-cta: 0 10px 22px -10px var(--amber-line);
+  --shadow-float: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
+}
 
 @theme {
   --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
+  --font-mono: var(--font-mono-face), ui-monospace, "Cascadia Code", monospace;
 
-  --color-paper: #0a0a0f;
-  --color-sidebar: #08080c;
-  --color-surface: #12131a;
-  --color-cream: #12131a;
-  --color-elevated: #1a1c24;
-  --color-overlay: #22242e;
-  --color-input: #0e0f16;
+  --color-canvas: var(--canvas);
+  --color-page: var(--page);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--text);
+  --color-muted: var(--text-muted);
+  --color-faint: var(--text-faint);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-amber-dim: var(--amber-dim);
+  --color-amber-line: var(--amber-line);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-teal-dim: var(--teal-dim);
+  --color-violet: var(--violet);
+  --color-violet-dim: var(--violet-dim);
+  --color-coral: var(--coral);
+  --color-coral-dim: var(--coral-dim);
 
-  --color-ink: rgb(255 255 255 / 0.95);
-  --color-ink-soft: rgb(255 255 255 / 0.62);
-  --color-muted: rgb(255 255 255 / 0.42);
-  --color-disabled: rgb(255 255 255 / 0.28);
+  --color-paper: var(--canvas);
+  --color-sidebar: var(--page);
+  --color-cream: var(--page);
+  --color-elevated: var(--surface-2);
+  --color-overlay: var(--surface-2);
+  --color-input: var(--surface);
+  --color-ink-soft: var(--text-muted);
+  --color-disabled: var(--text-faint);
+  --color-rule: var(--border);
+  --color-line-hover: var(--border-strong);
+  --color-terracotta: var(--amber);
+  --color-terracotta-hover: var(--amber-soft);
+  --color-terracotta-dark: var(--amber);
+  --color-blue: var(--teal);
+  --color-blue-soft: var(--teal);
+  --color-success: var(--teal);
+  --color-sage: var(--teal);
+  --color-sage-soft: var(--teal-dim);
+  --color-warning: var(--amber);
+  --color-gold: var(--amber);
+  --color-danger: var(--coral);
+  --color-sky: var(--teal);
+  --color-sky-soft: var(--teal-dim);
 
-  --color-rule: rgb(255 255 255 / 0.07);
-  --color-line-hover: rgb(255 255 255 / 0.12);
+  --radius-sm: 9px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-control: 9px;
+  --radius-card: 14px;
 
-  --color-terracotta: #ff6a33;
-  --color-terracotta-hover: #ff7d4d;
-  --color-terracotta-dark: #e85a24;
-
-  --color-blue: #6b93d6;
-  --color-blue-soft: #8aa8de;
-  --color-success: #5dba8a;
-  --color-sage: #5dba8a;
-  --color-sage-soft: #102018;
-  --color-warning: #d4a84b;
-  --color-gold: #d4a84b;
-  --color-danger: #d6766a;
-  --color-sky: #6b93d6;
-  --color-sky-soft: #121824;
-
-  --shadow-card: 0 0 0 1px rgb(255 255 255 / 0.04), 0 8px 24px rgb(0 0 0 / 0.35);
-  --shadow-elevated: 0 0 0 1px rgb(255 255 255 / 0.06), 0 16px 40px rgb(0 0 0 / 0.45);
-  --shadow-lift: 0 0 0 1px rgb(255 255 255 / 0.08), 0 12px 32px rgb(0 0 0 / 0.5);
-
-  --radius-sm: 6px;
-  --radius-control: 10px;
-  --radius-card: 10px;
-  --radius-lg: 14px;
+  --shadow-card: 0 1px 2px rgba(20, 40, 32, 0.04);
+  --shadow-elevated: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
+  --shadow-lift: 0 10px 22px -10px var(--amber-line);
+  --shadow-cta: 0 10px 22px -10px var(--amber-line);
+  --shadow-float: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html,
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--canvas);
+  color: var(--text);
 }
 
 body {
@@ -79,7 +118,11 @@ body {
   font-size: 15px;
   line-height: 1.5;
   letter-spacing: -0.011em;
-  font-feature-settings: "cv11", "ss01";
+}
+
+.tabular {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .sr-only {
@@ -95,12 +138,12 @@ body {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--color-terracotta) 32%, transparent);
-  color: var(--color-ink);
+  background: var(--amber-dim);
+  color: var(--text);
 }
 
 :focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--color-terracotta) 75%, white);
+  outline: 2px solid var(--amber);
   outline-offset: 2px;
 }
 
@@ -114,26 +157,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgb(255 255 255 / 0.1);
+  background: var(--border-strong);
   border-radius: 999px;
-  border: 2px solid var(--color-paper);
+  border: 2px solid var(--canvas);
 }
 
 .surface-card {
-  background: var(--color-surface);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-card);
-  border-radius: var(--radius-card);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.05),
-    var(--shadow-card);
 }
 
 .letter-sheet {
-  background: #fffdf8;
-  color: #161410;
-  box-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.04),
-    0 24px 60px rgba(0, 0, 0, 0.35);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-float);
 }
 
 .watermark {
@@ -142,18 +181,29 @@ body {
   inset: 0;
   display: grid;
   place-items: center;
-  font-family: var(--font-sans);
+  font-family: var(--font-display);
   font-size: 4.5rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255, 90, 31, 0.08);
+  color: var(--amber-dim);
   transform: rotate(-18deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @media print {
   body {
-    background: white;
-    color: #161410;
+    background: var(--surface);
+    color: var(--text);
   }
   .no-print {
     display: none !important;

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FileText } from "lucide-react";
+import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
@@ -302,22 +302,22 @@ export default function TaskPage() {
           </Card>
 
           <Card className="p-0">
-            <div className="border-b border-rule px-5 py-4">
-              <h2 className="text-xl font-semibold tracking-tight">Comments</h2>
+            <div className="border-b border-border px-5 py-4">
+              <h2 className="font-display text-xl font-medium tracking-tight">Comments</h2>
               <p className="mt-1 text-sm text-muted">Type @ to mention someone on this board.</p>
             </div>
             <div className="space-y-3 px-5 py-4">
               {comments.length === 0 ? (
-                <p className="rounded-[12px] border border-dashed border-rule bg-surface px-4 py-6 text-center text-sm text-ink-soft">
-                  No comments yet.
+                <p className="rounded-md border border-dashed border-border bg-page px-4 py-6 text-center text-sm text-faint">
+                  No comments yet
                 </p>
               ) : (
                 <ul className="space-y-3">
                   {comments.map((comment) => (
-                    <li key={comment.id} className="flex gap-3 rounded-[12px] border border-rule bg-surface px-4 py-3">
+                    <li key={comment.id} className="flex gap-3 rounded-md border border-border bg-page px-4 py-3">
                       <Avatar name={displayName(profiles[comment.author_id])} size="sm" />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] text-muted">
+                        <p className="font-mono text-[12px] text-muted">
                           <span className="font-medium text-ink">{displayName(profiles[comment.author_id])}</span>
                           {" · "}
                           {new Date(comment.created_at).toLocaleString()}
@@ -336,7 +336,7 @@ export default function TaskPage() {
                 </ul>
               )}
               <div ref={bottom} />
-              <form onSubmit={addComment} className="space-y-3 border-t border-rule pt-4">
+              <form onSubmit={addComment} className="space-y-3 border-t border-border pt-4">
                 <MentionField
                   value={body}
                   onChange={setBody}
@@ -356,10 +356,10 @@ export default function TaskPage() {
         </div>
 
         <aside>
-          <Card className="divide-y divide-rule p-0">
+          <Card className="divide-y divide-border p-0">
             <div className="px-4 py-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Status</p>
-              <div className="grid grid-cols-2 gap-1 rounded-[10px] border border-rule bg-input p-1">
+              <p className="mb-2 text-[12px] font-medium text-muted">Status</p>
+              <div className="grid grid-cols-2 gap-1 rounded-sm border border-border bg-surface-2 p-1">
                 {TASK_COLUMNS.map((col) => (
                   <button
                     key={col.status}
@@ -475,7 +475,7 @@ export default function TaskPage() {
               </Field>
             </div>
             <div className="px-4 py-4">
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Files</p>
+              <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
               <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. Up to 8 MB each." />
               {files.length > 0 ? (
                 <ul className="mt-3 space-y-2">
@@ -483,10 +483,10 @@ export default function TaskPage() {
                     <li key={file.id} className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-[10px] border border-rule bg-input px-3 py-2 text-left text-sm transition duration-200 hover:border-line-hover"
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-sm transition duration-200 hover:border-border-strong"
                         onClick={() => void openFile(file)}
                       >
-                        <FileText size={14} className="shrink-0 text-blue-soft" />
+                        <FileText size={18} weight="light" className="shrink-0 text-teal" />
                         <span className="min-w-0 truncate">{file.file_name}</span>
                       </button>
                       <ConfirmDelete

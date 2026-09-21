@@ -246,7 +246,7 @@ function ChatApp() {
     if (items.length === 0) return null;
     return (
       <div className="mb-4">
-        <p className="mb-1 px-2 text-[11px] uppercase tracking-[0.18em] text-ink-soft">{title}</p>
+        <p className="mb-1 px-2 text-[11px] font-medium tracking-[0.07em] text-faint uppercase">{title}</p>
         <ul className="space-y-0.5">
           {items.map((convo) => {
             const label = convoLabel(convo, memberships, profiles, myId || "");
@@ -258,18 +258,18 @@ function ChatApp() {
                   onClick={() => router.push(`/chat?c=${convo.id}`)}
                   className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200 ${
                     active
-                      ? "bg-terracotta/12 text-ink"
+                      ? "bg-amber-dim text-ink"
                       : convo.unread > 0
-                        ? "bg-blue/5 text-ink"
-                        : "text-ink-soft hover:bg-white/[0.04] hover:text-ink"
+                        ? "bg-teal-dim text-ink"
+                        : "text-muted hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <Avatar name={label} size="sm" className={active ? "bg-white/20" : undefined} />
+                  <Avatar name={label} size="sm" />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{label}</span>
                       {convo.unread > 0 ? (
-                        <span className={`rounded-md px-1.5 text-[10px] font-semibold ${active ? "bg-terracotta/20 text-terracotta" : "bg-blue/15 text-blue-soft"}`}>
+                        <span className={`rounded-sm px-1.5 font-mono text-[10px] font-medium ${active ? "bg-amber-dim text-amber" : "bg-teal-dim text-teal"}`}>
                           {convo.unread}
                         </span>
                       ) : null}
@@ -303,8 +303,8 @@ function ChatApp() {
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
       <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
       <ErrorText className="mb-3">{error}</ErrorText>
-      <div className="grid min-h-0 flex-1 overflow-hidden rounded-xl border border-rule bg-cream shadow-card lg:grid-cols-[280px_1fr]">
-        <aside className="min-h-0 overflow-y-auto border-b border-rule p-3 lg:border-b-0 lg:border-r">
+      <div className="grid min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-surface shadow-card lg:grid-cols-[280px_1fr]">
+        <aside className="min-h-0 overflow-y-auto border-b border-border p-3 lg:border-b-0 lg:border-r">
           <div className="mb-3 grid grid-cols-2 gap-2">
             <Button type="button" size="sm" variant={compose === "dm" ? "primary" : "secondary"} onClick={() => setCompose(compose === "dm" ? "idle" : "dm")}>
               New chat
@@ -314,15 +314,15 @@ function ChatApp() {
             </Button>
           </div>
           {compose === "dm" ? (
-            <div className="mb-4 rounded-[12px] border border-rule bg-surface p-2">
-              <p className="px-1 pb-2 text-xs text-ink-soft">Pick a person</p>
+            <div className="mb-4 rounded-md border border-border bg-page p-2">
+              <p className="px-1 pb-2 text-xs text-muted">Pick a person</p>
               <ul className="max-h-56 overflow-y-auto">
                 {others.map((p) => (
                   <li key={p.id}>
                     <button
                       type="button"
                       onClick={() => void openDm(p.id)}
-                      className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-white/5"
+                      className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-surface-2"
                     >
                       <Avatar name={displayName(p)} size="sm" />
                       {displayName(p)}
@@ -333,7 +333,7 @@ function ChatApp() {
             </div>
           ) : null}
           {compose === "group" ? (
-            <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-[12px] border border-rule bg-surface p-3">
+            <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-md border border-border bg-page p-3">
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
               </Field>
@@ -350,10 +350,10 @@ function ChatApp() {
         <section className="flex min-h-0 flex-col">
           {selected ? (
             <>
-              <div className="flex items-start justify-between gap-3 border-b border-rule px-4 py-3">
+              <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
                 <div>
                   <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
-                  <p className="text-xs capitalize text-ink-soft">
+                  <p className="text-xs capitalize text-muted">
                     {selected.type === "dm" ? "Direct message" : selected.type === "space" ? "Board channel" : "Group"}
                   </p>
                 </div>
@@ -372,15 +372,15 @@ function ChatApp() {
                   const canDelete = mine || admin;
                   return (
                     <div key={message.id} className={mine ? "ml-8 text-right" : "mr-8"}>
-                      <p className="text-[11px] text-muted">
+                      <p className="font-mono text-[11px] text-muted">
                         {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
                       </p>
                       <div className={`mt-1 inline-flex max-w-full items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
                         <p
-                          className={`whitespace-pre-wrap rounded-[12px] px-3 py-2 text-left text-sm ${
+                          className={`whitespace-pre-wrap rounded-md px-3 py-2 text-left text-sm ${
                             mine
-                              ? "bg-terracotta/15 text-ink ring-1 ring-terracotta/25"
-                              : "bg-elevated text-ink ring-1 ring-rule"
+                              ? "bg-amber-dim text-ink ring-1 ring-amber-line"
+                              : "bg-surface-2 text-ink ring-1 ring-border"
                           }`}
                         >
                           <MentionBody text={message.body} people={people} />
@@ -399,7 +399,7 @@ function ChatApp() {
                 })}
                 <div ref={bottom} />
               </div>
-              <form onSubmit={send} className="border-t border-rule bg-surface p-3">
+              <form onSubmit={send} className="border-t border-border bg-page p-3">
                 <MentionField
                   value={body}
                   onChange={setBody}
@@ -416,7 +416,7 @@ function ChatApp() {
               </form>
             </>
           ) : (
-            <div className="flex flex-1 items-center justify-center p-8 text-sm text-ink-soft">
+            <div className="flex flex-1 items-center justify-center p-8 text-sm text-faint">
               Pick a conversation, start a DM, or create a group.
             </div>
           )}

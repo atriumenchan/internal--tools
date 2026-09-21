@@ -46,7 +46,7 @@ export function HandbookHome() {
         }
       />
       {tab === "pdf" ? (
-        <iframe title="ADMEXO handbook" src={HANDBOOK_PDF} className="min-h-0 w-full flex-1 rounded-xl border border-rule bg-white shadow-card" />
+        <iframe title="ADMEXO handbook" src={HANDBOOK_PDF} className="min-h-0 w-full flex-1 rounded-md border border-border bg-surface shadow-card" />
       ) : (
         <KnowledgeDocs />
       )}

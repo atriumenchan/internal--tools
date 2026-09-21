@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, Eye, LayoutList, MessageSquare } from "lucide-react";
+import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
+import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
+import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
+import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
+import type { Icon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
@@ -34,7 +38,7 @@ function Stat({
   label: string;
   value: number;
   href: string;
-  icon: typeof LayoutList;
+  icon: Icon;
   tone?: "neutral" | "info" | "warn" | "danger";
   onSelect?: () => void;
 }) {
@@ -43,28 +47,36 @@ function Stat({
     <Link
       href={href}
       onClick={onSelect}
-      className="group block rounded-[10px] border border-rule bg-surface p-5 shadow-[inset_0_1px_0_rgb(255_255_255/0.05)] transition duration-150 ease-out hover:-translate-y-0.5 hover:shadow-lift"
+      className={cn(
+        "group block rounded-md border border-border border-t-[3px] bg-surface p-5 shadow-card",
+        "transition duration-150 ease-out hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
+        "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--amber-dim)]",
+        tone === "danger" && "border-t-coral",
+        tone === "warn" && "border-t-violet",
+        tone === "info" && "border-t-teal",
+        tone === "neutral" && "border-t-amber"
+      )}
     >
       <div className="flex items-center gap-2.5">
         <span
           className={cn(
-            "grid h-8 w-8 place-items-center rounded-[8px]",
-            tone === "danger" && "bg-danger/15 text-danger",
-            tone === "warn" && "bg-warning/15 text-warning",
-            tone === "info" && "bg-blue/15 text-blue-soft",
-            tone === "neutral" && "bg-white/[0.06] text-ink-soft"
+            "grid h-8 w-8 place-items-center rounded-sm",
+            tone === "danger" && "bg-coral-dim text-coral",
+            tone === "warn" && "bg-violet-dim text-violet",
+            tone === "info" && "bg-teal-dim text-teal",
+            tone === "neutral" && "bg-amber-dim text-amber"
           )}
         >
-          <Icon size={16} strokeWidth={1.75} />
+          <Icon size={18} weight="light" />
         </span>
-        <p className="text-[12px] font-medium text-ink-soft">{label}</p>
+        <p className="text-[12px] font-medium text-muted">{label}</p>
       </div>
       <p
         className={cn(
           "tabular mt-3 text-[32px] font-semibold leading-none",
-          zero && "text-muted",
-          !zero && tone === "danger" && "text-danger",
-          !zero && tone === "warn" && "text-warning",
+          zero && "text-faint",
+          !zero && tone === "danger" && "text-coral",
+          !zero && tone === "warn" && "text-violet",
           !zero && tone !== "danger" && tone !== "warn" && "text-ink"
         )}
       >
@@ -241,20 +253,20 @@ export default function DashboardPage() {
   return (
     <div>
       <PageHeader
-        title="Home"
+        title="Dashboard"
         description={formatWorkDate(kolkataTodayKey(), "long")}
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="My tasks" value={mine.length} href="/dashboard?work=mine" icon={LayoutList} tone="neutral" onSelect={() => setWorkFilter("mine")} />
+        <Stat label="My tasks" value={mine.length} href="/dashboard?work=mine" icon={ClipboardText} tone="neutral" onSelect={() => setWorkFilter("mine")} />
         <Stat label="To review" value={needsReview.length} href="/dashboard?work=review" icon={Eye} tone="warn" onSelect={() => setWorkFilter("review")} />
-        <Stat label="Overdue" value={overdue.length} href="/dashboard?work=overdue" icon={AlertTriangle} tone="danger" onSelect={() => setWorkFilter("overdue")} />
+        <Stat label="Overdue" value={overdue.length} href="/dashboard?work=overdue" icon={Warning} tone="danger" onSelect={() => setWorkFilter("overdue")} />
         <Stat
           label="Unread chat"
           value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}
           href="/chat"
-          icon={MessageSquare}
+          icon={ChatCircleDots}
           tone="info"
         />
       </div>
@@ -266,7 +278,7 @@ export default function DashboardPage() {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section>
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-xl font-semibold tracking-tight">Work</h2>
+            <h2 className="font-display text-xl font-medium tracking-tight">Work</h2>
             <Segmented
               value={workFilter}
               onChange={setWorkFilter}
@@ -281,21 +293,21 @@ export default function DashboardPage() {
           </div>
           {workFilter === "mine" && (needsAction.length > 0 || waiting.length > 0) ? (
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[12px] border border-rule bg-surface px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Needs your action</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{needsAction.length}</p>
-                <p className="mt-1 text-xs text-ink-soft">Reviews, overdue, and new assigns.</p>
+              <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
+                <p className="text-[12px] font-medium text-muted">Needs your action</p>
+                <p className="mt-1 font-display text-2xl font-medium tabular">{needsAction.length}</p>
+                <p className="mt-1 text-xs text-muted">Reviews, overdue, and new assigns.</p>
               </div>
-              <div className="rounded-[12px] border border-rule bg-surface px-3 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">Waiting on others</p>
-                <p className="mt-1 text-2xl font-semibold tabular-nums">{waiting.length}</p>
-                <p className="mt-1 text-xs text-ink-soft">Work you asked someone else for.</p>
+              <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
+                <p className="text-[12px] font-medium text-muted">Waiting on others</p>
+                <p className="mt-1 font-display text-2xl font-medium tabular">{waiting.length}</p>
+                <p className="mt-1 text-xs text-muted">Work you asked someone else for.</p>
               </div>
             </div>
           ) : null}
           {shown.length === 0 ? (
             <EmptyState>
-              Nothing in this list. Open Tasks to add work to a board.
+              No tasks yet
             </EmptyState>
           ) : (
             <ul className="space-y-2">
@@ -317,21 +329,21 @@ export default function DashboardPage() {
         </section>
 
         <aside className="space-y-4">
-          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
+          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Boards</h2>
-              <Link href="/spaces" className="text-xs font-medium text-blue-soft hover:text-blue">
+              <h2 className="font-display font-medium">Boards</h2>
+              <Link href="/spaces" className="text-xs font-medium text-teal hover:text-teal-soft">
                 All
               </Link>
             </div>
             {spaces.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-soft">No task boards yet.</p>
+              <p className="mt-3 text-sm text-faint">No task boards yet.</p>
             ) : (
               <ul className="mt-3 space-y-2">
                 {spaces.map((space) => (
                   <li key={space.id}>
-                    <Link href={`/spaces/${space.id}`} className="flex items-center gap-2 text-sm transition duration-200 hover:text-blue-soft">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
+                    <Link href={`/spaces/${space.id}`} className="flex items-center gap-2 text-sm transition duration-200 hover:text-teal">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color || "var(--amber)" }} />
                       {space.name}
                     </Link>
                   </li>
@@ -340,17 +352,17 @@ export default function DashboardPage() {
             )}
           </section>
 
-          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
+          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{operator ? "Attendance" : "Your day"}</h2>
+              <h2 className="font-display font-medium">{operator ? "Attendance" : "Your day"}</h2>
               {operator ? (
-                <Link href="/board" className="text-xs font-medium text-blue-soft hover:text-blue">
+                <Link href="/board" className="text-xs font-medium text-teal hover:text-teal-soft">
                   Full board
                 </Link>
               ) : null}
             </div>
             {operator ? (
-              <p className="mt-3 text-sm text-ink-soft">
+              <p className="mt-3 text-sm text-muted">
                 Present {present} · Absent {absent}
               </p>
             ) : employee ? (
@@ -360,27 +372,27 @@ export default function DashboardPage() {
                   {today?.hours_worked ? ` · ${hoursLabel(today.hours_worked)}` : ""}
                 </p>
                 {summary ? (
-                  <p className="text-ink-soft">
+                  <p className="text-muted">
                     This month · present {summary.present_days} · absent {summary.absent_days} · late {summary.late_days}
                   </p>
                 ) : (
-                  <p className="text-ink-soft">Month totals appear after the next Excel upload.</p>
+                  <p className="text-muted">Month totals appear after the next Excel upload.</p>
                 )}
               </div>
             ) : (
-              <p className="mt-3 text-sm text-ink-soft">Ask admin to link your login on Staff.</p>
+              <p className="mt-3 text-sm text-muted">Ask admin to link your login on Staff.</p>
             )}
           </section>
 
-          <section className="rounded-xl border border-rule bg-cream p-4 shadow-card">
+          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Chat</h2>
-              <Link href="/chat" className="text-xs font-medium text-blue-soft hover:text-blue">
+              <h2 className="font-display font-medium">Chat</h2>
+              <Link href="/chat" className="text-xs font-medium text-teal hover:text-teal-soft">
                 Open
               </Link>
             </div>
             {unreadChats.length === 0 ? (
-              <p className="mt-3 text-sm text-ink-soft">No unread messages.</p>
+              <p className="mt-3 text-sm text-faint">No unread messages.</p>
             ) : (
               <ul className="mt-3 space-y-2 text-sm">
                 {unreadChats.map((row) => {
@@ -392,10 +404,10 @@ export default function DashboardPage() {
                   }
                   return (
                     <li key={row.conversation_id}>
-                      <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-blue-soft">
+                      <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-teal">
                         <span className="font-medium">{label}</span>
-                        <span className="ml-2 rounded-md bg-blue/15 px-1.5 text-[10px] font-semibold text-blue-soft">{row.unread_count}</span>
-                        {row.last_body ? <span className="mt-0.5 block truncate text-xs text-ink-soft">{row.last_body}</span> : null}
+                        <span className="ml-2 rounded-sm bg-teal-dim px-1.5 font-mono text-[10px] font-medium text-teal">{row.unread_count}</span>
+                        {row.last_body ? <span className="mt-0.5 block truncate text-xs text-muted">{row.last_body}</span> : null}
                       </Link>
                     </li>
                   );

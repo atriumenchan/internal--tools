@@ -90,22 +90,22 @@ export default function AttendancePage() {
         description="Drop the weekly month-performance .xls here. Saturday, Sunday, and handbook holidays count as offs. It overwrites that month in Supabase."
       />
       <AttendanceUploader settings={settings} employees={employees} holidays={holidays} userId={app.userId} />
-      {error ? <p className="mt-4 text-sm text-danger">{error}</p> : null}
+      {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
 
       <section className="mt-12">
-        <h2 className="font-semibold tracking-tight text-2xl">Past uploads</h2>
-        <ul className="mt-4 divide-y divide-rule rounded-xl border border-rule bg-cream shadow-card">
+        <h2 className="font-display text-2xl font-medium tracking-tight">Past uploads</h2>
+        <ul className="mt-4 divide-y divide-border rounded-md border border-border bg-surface shadow-card">
           {uploads.length === 0 ? (
-            <li className="px-4 py-8 text-sm text-ink-soft">No files yet.</li>
+            <li className="px-4 py-8 text-sm text-faint">No files yet</li>
           ) : (
             uploads.map((upload) => (
               <li key={upload.id} className="flex items-center justify-between px-4 py-3 text-sm">
                 <div>
                   <p className="font-medium">{upload.file_name}</p>
-                  <p className="text-xs text-ink-soft">{monthLabel(upload.period_month, upload.period_year)}</p>
+                  <p className="text-xs text-muted">{monthLabel(upload.period_month, upload.period_year)}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <Link className="text-sm font-medium text-blue-soft hover:text-blue" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
+                  <Link className="text-sm font-medium text-teal hover:text-teal-soft" href={`/attendance/${upload.period_year}/${upload.period_month}`}>
                     Open month
                   </Link>
                   <ConfirmDelete

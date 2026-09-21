@@ -145,7 +145,7 @@ export function TeamPanel() {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
-      <form onSubmit={createUser} className="space-y-3 rounded-xl border border-rule bg-cream p-5 shadow-card">
+      <form onSubmit={createUser} className="space-y-3 rounded-md border border-border bg-surface p-5 shadow-card">
         <h2 className="text-xl font-semibold tracking-tight">New login</h2>
         <Field label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -166,18 +166,18 @@ export function TeamPanel() {
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
         {msg ? <p className="text-sm text-sage">{msg}</p> : null}
-        {err ? <p className="text-sm text-danger">{err}</p> : null}
+        {err ? <p className="text-sm text-coral">{err}</p> : null}
         <Button type="submit" disabled={busy || password.length < 6 || !employeeCode.trim() || !name.trim()}>
           {busy ? "Creating…" : "Create login"}
         </Button>
       </form>
 
-      <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
+      <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         {loading ? (
-          <p className="px-4 py-10 text-center text-sm text-ink-soft">Loading…</p>
+          <p className="px-4 py-10 text-center text-sm text-faint">Loading…</p>
         ) : (
           <table className="w-full text-sm">
-            <thead className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-soft">
+            <thead className="border-b border-border text-left text-[11px] font-semibold text-faint">
               <tr>
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Name</th>
@@ -188,13 +188,13 @@ export function TeamPanel() {
             </thead>
             <tbody>
               {users.map((user) => (
-                <tr key={user.id} className="border-t border-rule/70">
+                <tr key={user.id} className="border-t border-border hover:bg-surface-2">
                   <td className="px-4 py-3 font-mono text-xs">{user.employee_code || "—"}</td>
                   <td className="px-4 py-3 font-medium">{user.full_name || "—"}</td>
-                  <td className="px-4 py-3 text-ink-soft">{user.email}</td>
+                  <td className="px-4 py-3 text-muted">{user.email}</td>
                   <td className="px-4 py-3">
                     {isAdminUser({ email: user.email, role: user.role }) ? (
-                      <span className="text-xs text-ink-soft">Admin</span>
+                      <span className="text-xs text-muted">Admin</span>
                     ) : (
                       <Select
                         value={workspaceRole(user) === "manager" ? "manager" : "employee"}
@@ -207,7 +207,7 @@ export function TeamPanel() {
                   </td>
                   <td className="px-4 py-3">
                     {isAdminUser({ email: user.email, role: user.role }) ? (
-                      <p className="text-xs text-ink-soft">Kept</p>
+                      <p className="text-xs text-muted">Kept</p>
                     ) : resetId === user.id ? (
                       <div className="flex min-w-[12rem] flex-col gap-2">
                         <Input

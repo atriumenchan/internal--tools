@@ -238,9 +238,9 @@ export function AttendanceUploader({
       ) : null}
 
       {sheet && !report ? (
-        <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
-          <h3 className="font-semibold tracking-tight text-xl">Map columns</h3>
-          <p className="mt-1 text-sm text-ink-soft">
+        <div className="rounded-md border border-border bg-surface p-5 shadow-card">
+          <h3 className="font-display text-xl font-medium tracking-tight">Map columns</h3>
+          <p className="mt-1 text-sm text-muted">
             This file is not the month-performance layout. Map Emp Code, Name, Date, and Time (or In / Out).
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -266,7 +266,7 @@ export function AttendanceUploader({
       ) : null}
 
       {preview ? (
-        <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
+        <div className="rounded-md border border-border bg-surface p-5 shadow-card">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-semibold tracking-tight text-xl">
               Preview · {preview.summaries.length} people · through {formatWorkDate(kolkataTodayKey())}
@@ -278,7 +278,7 @@ export function AttendanceUploader({
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="text-left text-xs uppercase tracking-wide text-ink-soft">
+              <thead className="text-left text-[11px] font-semibold text-faint">
                 <tr>
                   <th className="py-2">Code</th>
                   <th>Name</th>
@@ -294,11 +294,11 @@ export function AttendanceUploader({
               </thead>
               <tbody>
                 {preview.summaries.map((row: ComputedSummary) => (
-                  <tr key={`${row.employee_code}-${row.employee_name}`} className="border-t border-rule">
+                  <tr key={`${row.employee_code}-${row.employee_name}`} className="border-t border-border hover:bg-surface-2">
                     <td className="py-2 font-mono text-xs">{row.employee_code}</td>
                     <td>
                       {row.employee_name}
-                      {!row.employee_id ? <span className="ml-2 text-xs text-terracotta">new</span> : null}
+                      {!row.employee_id ? <span className="ml-2 text-xs text-amber">new</span> : null}
                     </td>
                     <td>{hoursLabel(row.total_hours)}</td>
                     <td>{row.present_days}</td>
@@ -319,7 +319,7 @@ export function AttendanceUploader({
         </div>
       ) : null}
 
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p className="text-sm text-coral">{error}</p> : null}
     </div>
   );
 }

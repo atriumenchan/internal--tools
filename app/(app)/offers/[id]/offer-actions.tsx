@@ -107,7 +107,7 @@ export function OfferActions({
         description="The letter and signing link will be removed."
         onConfirm={() => remove()}
       />
-      {error ? <p className="w-full text-sm text-danger">{error}</p> : null}
+      {error ? <p className="w-full text-sm text-coral">{error}</p> : null}
     </div>
   );
 }

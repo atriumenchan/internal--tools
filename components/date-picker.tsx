@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
+import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
+import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
 import { formatWorkDate, kolkataTodayKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
@@ -119,25 +121,25 @@ export function DatePicker({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-[10px] border border-rule bg-input px-3 py-2.5 text-left text-sm outline-none transition duration-200 hover:border-line-hover focus:border-blue focus:ring-2 focus:ring-blue/20"
+        className="flex w-full items-center justify-between gap-2 rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-left text-sm outline-none transition duration-200 hover:border-amber-line focus:border-amber focus:shadow-[0_0_0_3px_var(--amber-dim)]"
       >
         <span className={selectedKey ? "text-ink" : "text-muted"}>
           {selectedKey ? formatWorkDate(selectedKey, "long") : placeholder}
         </span>
-        <CalendarDays size={16} className="shrink-0 text-ink-soft" />
+        <CalendarBlank size={18} weight="light" className="shrink-0 text-muted" />
       </button>
       {open ? (
-        <div className="absolute z-50 mt-2 w-[17.5rem] max-w-[calc(100vw-2rem)] rounded-xl border border-rule bg-elevated p-3 shadow-elevated">
+        <div className="absolute z-50 mt-2 w-[17.5rem] max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface p-3 shadow-float">
           <div className="mb-2 flex items-center justify-between">
-            <button type="button" className="rounded-lg p-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => shiftMonth(-1)}>
-              <ChevronLeft size={16} />
+            <button type="button" aria-label="Previous month" className="rounded-sm p-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => shiftMonth(-1)}>
+              <CaretLeft size={18} weight="light" />
             </button>
             <p className="text-sm font-medium capitalize">{heading}</p>
-            <button type="button" className="rounded-lg p-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => shiftMonth(1)}>
-              <ChevronRight size={16} />
+            <button type="button" aria-label="Next month" className="rounded-sm p-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => shiftMonth(1)}>
+              <CaretRight size={18} weight="light" />
             </button>
           </div>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] uppercase tracking-wide text-ink-soft">
+          <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-faint">
             {WEEKDAYS.map((d) => (
               <span key={d} className="py-1">
                 {d}
@@ -156,10 +158,10 @@ export function DatePicker({
                   type="button"
                   onClick={() => pick(key)}
                   className={cn(
-                    "h-8 rounded-lg text-sm",
-                    isSelected && "bg-terracotta text-white",
-                    !isSelected && isToday && "ring-1 ring-blue/50 text-ink",
-                    !isSelected && !isToday && "text-ink-soft hover:bg-white/5 hover:text-ink"
+                    "h-8 rounded-sm text-sm",
+                    isSelected && "bg-[linear-gradient(135deg,var(--amber-soft),var(--amber))] text-white",
+                    !isSelected && isToday && "ring-1 ring-teal/50 text-ink",
+                    !isSelected && !isToday && "text-muted hover:bg-surface-2 hover:text-ink"
                   )}
                 >
                   {day}
@@ -168,18 +170,18 @@ export function DatePicker({
             })}
           </div>
           <div className="mt-2 flex flex-wrap gap-1 text-[11px]">
-            <button type="button" className="rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(today)}>
+            <button type="button" className="rounded-sm px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => pick(today)}>
               Today
             </button>
             <button
               type="button"
-              className="rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink"
+              className="rounded-sm px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink"
               onClick={() => pick(shiftDay(today, 1))}
             >
               Tomorrow
             </button>
             {!required ? (
-              <button type="button" className="ml-auto rounded-md px-2 py-1 text-ink-soft hover:bg-white/5 hover:text-ink" onClick={() => pick(null)}>
+              <button type="button" className="ml-auto rounded-sm px-2 py-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => pick(null)}>
                 Clear
               </button>
             ) : null}

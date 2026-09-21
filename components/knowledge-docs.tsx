@@ -111,7 +111,7 @@ export function KnowledgeDocs() {
       <ErrorText className="mb-4">{error}</ErrorText>
 
       {canEdit ? (
-        <form onSubmit={save} className="mb-8 space-y-3 rounded-xl border border-rule bg-cream p-5 shadow-card">
+        <form onSubmit={save} className="mb-8 space-y-3 rounded-md border border-border bg-surface p-5 shadow-card">
           <div className="grid gap-3 sm:grid-cols-[1fr_160px]">
             <Field label="Title">
               <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -149,8 +149,8 @@ export function KnowledgeDocs() {
       ) : null}
 
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-rule bg-surface px-4 py-12 text-center text-sm text-ink-soft">
-          No short docs yet.{canEdit ? " Add the first one above." : " Ask a manager to add one."}
+        <p className="rounded-md border border-dashed border-border bg-surface px-4 py-12 text-center text-sm text-faint">
+          No short docs yet
         </p>
       ) : (
         <ul className="space-y-3">
@@ -159,8 +159,8 @@ export function KnowledgeDocs() {
               <Card>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{row.category}</p>
-                    <h2 className="mt-1 text-lg font-semibold">{row.title}</h2>
+                    <p className="text-[11px] font-medium text-faint">{row.category}</p>
+                    <h2 className="mt-1 font-display text-lg font-medium">{row.title}</h2>
                   </div>
                   {canEdit ? (
                     <div className="flex gap-2">
@@ -180,7 +180,7 @@ export function KnowledgeDocs() {
                     </div>
                   ) : null}
                 </div>
-                {row.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-ink-soft">{row.body}</p> : null}
+                {row.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">{row.body}</p> : null}
                 <p className="mt-3 text-[12px] text-muted">
                   Last edited by {displayName(people[row.updated_by || ""] || people[row.created_by || ""])} ·{" "}
                   {new Date(row.updated_at || row.created_at).toLocaleString()}

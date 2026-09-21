@@ -109,7 +109,7 @@ export function OfferForm({
       <Field label="Benefits">
         <Textarea name="benefits" rows={4} placeholder="Health cover, equipment, learning stipend…" />
       </Field>
-      {error ? <p className="text-sm text-danger">{error}</p> : null}
+      {error ? <p className="text-sm text-coral">{error}</p> : null}
       <div className="flex gap-3">
         <Button type="submit" disabled={busy}>
           {busy ? "Saving…" : "Save as draft"}

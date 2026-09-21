@@ -82,7 +82,7 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Please wait…" : "Sign in"}
       </Button>
-      <p className="text-center text-xs text-ink-soft">Ask admin if you need an account.</p>
+      <p className="text-center text-xs text-muted">Ask admin if you need an account.</p>
     </form>
   );
 }

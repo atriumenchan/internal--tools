@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Pin } from "lucide-react";
+import { PushPin } from "@phosphor-icons/react/dist/ssr/PushPin";
 import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Card, Checkbox, ErrorText, Field, Input, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -78,7 +78,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[18px] font-semibold tracking-tight">Announcements</h2>
+        <h2 className="font-display text-[18px] font-medium tracking-tight">Announcements</h2>
         {operator ? (
           <Button type="button" size="sm" variant={compose ? "secondary" : "primary"} onClick={() => setCompose((v) => !v)}>
             {compose ? "Cancel" : "Post"}
@@ -111,21 +111,21 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
           {rows.map((row) => (
             <li
               key={row.id}
-              className={`rounded-[10px] bg-elevated px-5 py-4 shadow-[inset_0_1px_0_rgb(255_255_255/0.05)] ${
-                row.pinned ? "border-l-[3px] border-l-terracotta pl-[17px]" : "border border-rule"
+              className={`rounded-sm bg-surface-2 px-5 py-4 ${
+                row.pinned ? "border-l-[3px] border-l-amber pl-[17px]" : "border border-border"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   {row.pinned ? (
                     <Badge tone="accent">
-                      <Pin size={11} />
+                      <PushPin size={12} weight="light" />
                       Pinned
                     </Badge>
                   ) : null}
                   <p className={`text-[15px] font-semibold tracking-tight text-ink ${row.pinned ? "mt-2" : ""}`}>{row.title}</p>
                   <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">{row.body}</p>
-                  <p className="mt-2 text-[12px] text-muted" title={new Date(row.created_at).toLocaleString()}>
+                  <p className="mt-2 font-mono text-[12px] text-muted" title={new Date(row.created_at).toLocaleString()}>
                     {formatRelative(row.created_at)}
                   </p>
                 </div>

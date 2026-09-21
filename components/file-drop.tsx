@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Upload } from "lucide-react";
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
 import { cn } from "@/lib/utils";
 
 export function FileDrop({
@@ -24,8 +24,8 @@ export function FileDrop({
   return (
     <label
       className={cn(
-        "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-[12px] border border-dashed px-3 py-5 text-center transition duration-200",
-        over ? "border-blue bg-blue/10" : "border-rule bg-input hover:border-line-hover"
+        "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-5 text-center transition duration-200",
+        over ? "border-amber bg-amber-dim" : "border-border bg-surface hover:border-border-strong"
       )}
       onDragOver={(e) => {
         e.preventDefault();
@@ -38,7 +38,7 @@ export function FileDrop({
         take(e.dataTransfer.files?.[0]);
       }}
     >
-      <Upload size={18} className="text-muted" />
+      <UploadSimple size={18} weight="light" className="text-muted" />
       <span className="text-sm font-medium text-ink">{label}</span>
       <span className="text-xs text-muted">{hint}</span>
       <input

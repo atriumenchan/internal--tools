@@ -15,15 +15,15 @@ export default function AppError({
   }, [error]);
 
   return (
-    <div className="mx-auto max-w-lg rounded-xl border border-rule bg-cream shadow-card p-8">
-      <h2 className="font-semibold tracking-tight text-2xl">Something went wrong</h2>
-      <p className="mt-2 text-sm text-ink-soft">
+    <div className="mx-auto max-w-lg rounded-md border border-border bg-surface p-8 shadow-card">
+      <h2 className="font-display text-2xl font-medium tracking-tight">Something went wrong</h2>
+      <p className="mt-2 text-sm text-muted">
         {error.message || "The page hit a client error. Try again, or go back to the board."}
       </p>
       <div className="mt-6 flex gap-3">
         <Button onClick={reset}>Try again</Button>
         <Button variant="secondary" onClick={() => (window.location.href = "/dashboard")}>
-          Back to home
+          Back to Dashboard
         </Button>
       </div>
     </div>

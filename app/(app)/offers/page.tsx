@@ -60,9 +60,9 @@ export default function OffersPage() {
       {!offers ? (
         <PageFallback />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
+        <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
           <table className="w-full text-sm">
-            <thead className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-soft">
+            <thead className="border-b border-border text-left text-[11px] font-semibold text-faint">
               <tr>
                 <th className="px-4 py-3">Candidate</th>
                 <th className="px-4 py-3">Role</th>
@@ -74,21 +74,21 @@ export default function OffersPage() {
             <tbody>
               {offers.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-ink-soft">
-                    No offers yet. Create one, then share the signing link.
+                  <td colSpan={5} className="px-4 py-10 text-center text-faint">
+                    No offers yet
                   </td>
                 </tr>
               ) : (
                 offers.map((offer) => (
-                  <tr key={offer.id} className="border-t border-rule/70">
+                  <tr key={offer.id} className="border-t border-border hover:bg-surface-2">
                     <td className="px-4 py-3">
                       <Link href={`/offers/${offer.id}`} className="font-medium hover:underline">
                         {offer.candidate_name}
                       </Link>
-                      <p className="text-xs text-ink-soft">{offer.candidate_email}</p>
+                      <p className="text-xs text-muted">{offer.candidate_email}</p>
                     </td>
                     <td className="px-4 py-3">{offer.position}</td>
-                    <td className="px-4 py-3 text-ink-soft">{formatDate(offer.created_at)}</td>
+                    <td className="px-4 py-3 font-mono text-muted">{formatDate(offer.created_at)}</td>
                     <td className="px-4 py-3">
                       <Badge tone={TONE[offer.status]}>{STATUS_LABELS[offer.status]}</Badge>
                     </td>

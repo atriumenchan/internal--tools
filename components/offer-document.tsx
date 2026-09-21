@@ -93,11 +93,11 @@ export function OfferDocument({ offer, letterDate }: { offer: OfferDocumentData;
 
       <div className="mt-12 grid gap-10 md:grid-cols-2">
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-soft">For {offer.company_name}</p>
+          <p className="text-xs text-muted">For {offer.company_name}</p>
           <div className="mt-10 border-t border-ink pt-2 text-sm">Authorized signatory</div>
         </div>
         <div>
-          <p className="text-xs uppercase tracking-[0.18em] text-ink-soft">Accepted by candidate</p>
+          <p className="text-xs text-muted">Accepted by candidate</p>
           {offer.signature_data ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={offer.signature_data} alt="Signature" className="mt-2 h-16 object-contain" />

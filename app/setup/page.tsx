@@ -6,9 +6,8 @@ export default function SetupPage() {
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-16">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Setup</p>
-      <h1 className="mt-2 text-4xl font-semibold tracking-tight">Connect Supabase, then come back</h1>
-      <p className="mt-3 text-ink-soft">
+      <h1 className="font-display mt-2 text-4xl font-medium tracking-tight">Connect Supabase, then come back</h1>
+      <p className="mt-3 text-muted">
         The app is ready. Create a Supabase project, run <code className="text-ink">supabase/schema.sql</code> then{" "}
         <code className="text-ink">supabase/spaces.sql</code>, then put the project URL and anon key in{" "}
         <code className="text-ink">.env.local</code>.
@@ -19,10 +18,10 @@ export default function SetupPage() {
           Keys look present. Go to <TextLink href="/login">sign in</TextLink>.
         </p>
       ) : (
-        <ol className="mt-8 list-decimal space-y-4 pl-5 text-sm leading-6 text-ink-soft">
+        <ol className="mt-8 list-decimal space-y-4 pl-5 text-sm leading-6 text-muted">
           <li>
             Create a project at{" "}
-            <a className="font-medium text-blue-soft hover:text-blue" href="https://supabase.com/dashboard" target="_blank" rel="noreferrer">
+            <a className="font-medium text-teal hover:text-teal-soft" href="https://supabase.com/dashboard" target="_blank" rel="noreferrer">
               supabase.com/dashboard
             </a>
             .
@@ -35,7 +34,7 @@ export default function SetupPage() {
           <li>
             Copy Project URL and anon public key from Settings → API into{" "}
             <code className="text-ink">.env.local</code>:
-            <pre className="mt-2 overflow-x-auto rounded-xl border border-rule bg-elevated p-4 text-xs text-ink">{`NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+            <pre className="mt-2 overflow-x-auto rounded-md border border-border bg-surface-2 p-4 font-mono text-xs text-ink">{`NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 NEXT_PUBLIC_APP_URL=http://localhost:3000`}</pre>
           </li>

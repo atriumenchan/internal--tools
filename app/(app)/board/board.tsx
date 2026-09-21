@@ -134,7 +134,7 @@ export function AttendanceBoard({
         <Stat label="Hours" value={hoursLabel(totals.hours)} />
       </div>
 
-      <div className="flex flex-wrap gap-3 rounded-xl border border-rule bg-cream shadow-card p-4">
+      <div className="flex flex-wrap gap-3 rounded-md border border-border bg-surface p-4 shadow-card">
         <Input className="max-w-xs" placeholder="Search name or code" value={query} onChange={(e) => setQuery(e.target.value)} />
         <Select className="max-w-xs" value={person} onChange={(e) => setPerson(e.target.value)}>
           <option value="all">All people</option>
@@ -186,7 +186,7 @@ export function AttendanceBoard({
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-medium">{row.employee_name}</p>
-                    <p className="text-xs text-ink-soft">
+                    <p className="font-mono text-xs text-muted">
                       {row.employee_code} · {visiblePeople.find((e) => e.employee_code === row.employee_code)?.department || "—"}
                     </p>
                   </div>
@@ -199,9 +199,9 @@ export function AttendanceBoard({
                     <Metric label="Late" value={row.late_days} />
                   </dl>
                 </div>
-                <div className="mt-4 overflow-x-auto border-t border-rule pt-3">
+                <div className="mt-4 overflow-x-auto border-t border-border pt-3">
                   <table className="w-full text-sm">
-                    <thead className="text-left text-xs uppercase text-ink-soft">
+                    <thead className="text-left text-[11px] font-semibold text-faint">
                       <tr>
                         <th className="py-1">Date</th>
                         <th>In</th>
@@ -212,7 +212,7 @@ export function AttendanceBoard({
                     </thead>
                     <tbody>
                       {personDays.map((day) => (
-                        <tr key={day.id} className="border-t border-rule/60">
+                        <tr key={day.id} className="border-t border-border hover:bg-surface-2">
                           <td className="py-1.5">{formatWorkDate(day.work_date)}</td>
                           <td>{formatClock(day.punch_in)}</td>
                           <td>{formatClock(day.punch_out)}</td>
@@ -231,15 +231,15 @@ export function AttendanceBoard({
               </Card>
             );
           })}
-          {filteredSummaries.length === 0 ? <p className="text-sm text-ink-soft">No rows match these filters.</p> : null}
+          {filteredSummaries.length === 0 ? <p className="text-sm text-faint">No rows match these filters.</p> : null}
         </div>
       ) : (
         <div className="space-y-4">
           {daysByDate.map(([date, rows]) => (
             <Card key={date}>
-              <h3 className="text-lg font-semibold tracking-tight">{formatWorkDate(date, "long")}</h3>
+              <h3 className="font-display text-lg font-medium tracking-tight">{formatWorkDate(date, "long")}</h3>
               <table className="mt-3 w-full text-sm">
-                <thead className="text-left text-xs uppercase text-ink-soft">
+                <thead className="text-left text-[11px] font-semibold text-faint">
                   <tr>
                     <th className="py-1">Code</th>
                     <th>Name</th>
@@ -254,7 +254,7 @@ export function AttendanceBoard({
                     .slice()
                     .sort((a, b) => (a.employee_name || "").localeCompare(b.employee_name || ""))
                     .map((day) => (
-                      <tr key={day.id} className="border-t border-rule/60">
+                      <tr key={day.id} className="border-t border-border hover:bg-surface-2">
                         <td className="py-1.5 font-mono text-xs">{day.employee_code}</td>
                         <td>{day.employee_name}</td>
                         <td>{formatClock(day.punch_in)}</td>
@@ -272,7 +272,7 @@ export function AttendanceBoard({
               </table>
             </Card>
           ))}
-          {daysByDate.length === 0 ? <p className="text-sm text-ink-soft">No days match these filters.</p> : null}
+          {daysByDate.length === 0 ? <p className="text-sm text-faint">No days match these filters.</p> : null}
         </div>
       )}
     </div>
@@ -281,9 +281,9 @@ export function AttendanceBoard({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-rule bg-cream p-4 shadow-card">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">{label}</p>
-      <p className="mt-2 text-[28px] font-semibold tabular-nums leading-none">{value}</p>
+    <div className="rounded-md border border-border bg-surface p-4 shadow-card">
+      <p className="text-[12px] font-medium text-muted">{label}</p>
+      <p className="tabular mt-2 text-[28px] font-semibold leading-none">{value}</p>
     </div>
   );
 }
@@ -291,7 +291,7 @@ function Stat({ label, value }: { label: string; value: string | number }) {
 function Metric({ label, value }: { label: string | number; value: string | number }) {
   return (
     <div>
-      <dt className="text-[11px] uppercase tracking-wide text-ink-soft">{label}</dt>
+      <dt className="text-[11px] font-medium text-faint">{label}</dt>
       <dd>{value}</dd>
     </div>
   );

@@ -67,7 +67,7 @@ export function TaskForm({
         });
         if (!ok) setBusy(false);
       }}
-      className="space-y-2.5 rounded-[10px] border border-rule bg-surface p-4 shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]"
+      className="space-y-2.5 rounded-md border border-border bg-surface p-4 shadow-card"
     >
       <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required autoFocus />
       <div className="grid grid-cols-2 gap-2">

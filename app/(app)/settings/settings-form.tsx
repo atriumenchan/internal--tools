@@ -76,7 +76,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
 
   return (
     <div className="grid gap-8 lg:grid-cols-2">
-      <form onSubmit={saveCompany} className="space-y-4 rounded-xl border border-rule bg-cream shadow-card p-5">
+      <form onSubmit={saveCompany} className="space-y-4 rounded-md border border-border bg-surface p-5 shadow-card">
         <h2 className="text-xl font-semibold">Company & letters</h2>
         <Field label="Company name">
           <Input name="company_name" defaultValue={settings.company_name} required />
@@ -137,7 +137,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
           </Field>
         </div>
         <div>
-          <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Weekly offs</p>
+          <p className="mb-1.5 text-xs font-medium text-muted">Weekly offs</p>
           <div className="flex flex-wrap gap-2">
             {WEEKDAYS.map((day) => {
               const on = offs.includes(day.value);
@@ -145,7 +145,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
                 <button
                   key={day.value}
                   type="button"
-                  className={`rounded-[10px] px-3 py-1.5 text-sm font-medium transition duration-200 ${on ? "bg-blue/15 text-blue-soft ring-1 ring-blue/25" : "border border-rule text-ink-soft hover:border-line-hover"}`}
+                  className={`rounded-sm px-3 py-1.5 text-sm font-medium transition duration-200 ${on ? "bg-teal-dim text-teal ring-1 ring-teal/25" : "border border-border text-muted hover:border-border-strong"}`}
                   onClick={() => {
                     if ((HANDBOOK_WEEKLY_OFFS as number[]).includes(day.value)) return;
                     setOffs((prev) =>
@@ -159,14 +159,14 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
             })}
           </div>
         </div>
-        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {error ? <p className="text-sm text-coral">{error}</p> : null}
         {message ? <p className="text-sm text-sage">{message}</p> : null}
         <Button type="submit">Save settings</Button>
       </form>
 
-      <div className="rounded-xl border border-rule bg-cream shadow-card p-5">
-        <h2 className="text-xl font-semibold">Holidays</h2>
-        <p className="mt-1 text-sm text-ink-soft">
+      <div className="rounded-md border border-border bg-surface p-5 shadow-card">
+        <h2 className="font-display text-xl font-medium">Holidays</h2>
+        <p className="mt-1 text-sm text-muted">
           Saturday and Sunday cannot be turned off. Fixed Noida 2026 holidays from the handbook count as holiday, not
           absence. Optional handbook holidays (Eid, Good Friday, Guru Nanak Jayanti) are chosen per person — add one
           here only if the whole office takes it.
@@ -176,7 +176,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
           <Input name="name" placeholder="Name" required />
           <Button type="submit">Add</Button>
         </form>
-        <ul className="mt-4 divide-y divide-rule">
+        <ul className="mt-4 divide-y divide-border">
           {holidays.map((holiday) => (
             <li key={holiday.id} className="flex items-center justify-between py-2 text-sm">
               <span>

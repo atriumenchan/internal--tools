@@ -51,18 +51,18 @@ export default function NotificationsPage() {
         }
       />
       {rows.length === 0 ? (
-        <EmptyState>Nothing yet. When someone messages you or assigns a task, it lands here.</EmptyState>
+        <EmptyState>Nothing yet</EmptyState>
       ) : (
-        <ul className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
+        <ul className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
           {rows.map((row) => (
-            <li key={row.id} className={row.read_at ? "border-b border-rule last:border-0" : "border-b border-rule last:border-0 bg-blue/[0.04]"}>
-              <Link href={row.href || "/dashboard"} className="block px-4 py-3.5 transition duration-200 hover:bg-white/[0.03]">
+            <li key={row.id} className={row.read_at ? "border-b border-border last:border-0" : "border-b border-border last:border-0 bg-teal-dim"}>
+              <Link href={row.href || "/dashboard"} className="block px-4 py-3.5 transition duration-200 hover:bg-surface-2">
                 <div className="flex items-start gap-3">
-                  {!row.read_at ? <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-blue" /> : <span className="mt-1.5 h-1.5 w-1.5 shrink-0" />}
+                  {!row.read_at ? <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-coral" /> : <span className="mt-1.5 h-[7px] w-[7px] shrink-0" />}
                   <div className="min-w-0 flex-1">
-                    <p className={row.read_at ? "font-medium text-ink-soft" : "font-semibold text-ink"}>{row.title}</p>
+                    <p className={row.read_at ? "font-medium text-muted" : "font-semibold text-ink"}>{row.title}</p>
                     {row.body ? <p className="mt-0.5 truncate text-sm text-muted">{row.body}</p> : null}
-                    <p className="mt-1 text-[12px] text-muted">{new Date(row.created_at).toLocaleString()}</p>
+                    <p className="mt-1 font-mono text-[12px] text-faint">{new Date(row.created_at).toLocaleString()}</p>
                   </div>
                 </div>
               </Link>

@@ -250,7 +250,7 @@ export default function SpaceDetailPage() {
   return (
     <div>
       <p className="mb-3 text-sm">
-        <Link href="/spaces" className="text-ink-soft hover:text-ink">
+        <Link href="/spaces" className="text-muted hover:text-ink">
           ← All boards
         </Link>
       </p>
@@ -278,7 +278,7 @@ export default function SpaceDetailPage() {
           </div>
         }
       />
-      {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
+      {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
       {outsiders.length > 0 ? (
         <form onSubmit={invite} className="mb-5 flex max-w-md items-center gap-2">
@@ -311,18 +311,18 @@ export default function SpaceDetailPage() {
             }}
             onDrop={(e) => dropTask(col.status, e)}
             className={cn(
-              "flex min-h-[22rem] flex-col rounded-[10px] border p-3 transition duration-150",
+              "flex min-h-[22rem] flex-col rounded-md border p-3 transition duration-150",
               dragOver === col.status
-                ? "border-dashed border-blue bg-blue/10"
-                : "border-rule bg-surface shadow-[inset_0_1px_0_rgb(255_255_255/0.04)]"
+                ? "border-dashed border-amber bg-amber-dim"
+                : "border-border bg-page shadow-card"
             )}
           >
             <div className="mb-3 flex items-center justify-between gap-2 px-1">
               <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
-                <span className={cn("h-2 w-2 rounded-full", col.accent)} />
+                <span className={cn("h-2.5 w-2.5 rounded-[2px]", col.accent)} />
                 {TASK_STATUS_LABELS[col.status]}
               </h2>
-              <span className="tabular rounded-[6px] bg-white/[0.06] px-1.5 py-0.5 text-[11px] font-medium text-ink-soft">
+              <span className="tabular rounded-sm bg-surface-2 px-1.5 py-0.5 text-[11px] font-medium text-muted">
                 {columns[col.status].length}
               </span>
             </div>
@@ -340,7 +340,7 @@ export default function SpaceDetailPage() {
               <button
                 type="button"
                 onClick={() => setAddingStatus(col.status)}
-                className="mb-3 w-full cursor-pointer rounded-[10px] border border-dashed border-rule bg-transparent px-3 py-2.5 text-left text-[13px] text-muted transition duration-150 hover:border-line-hover hover:bg-white/[0.03] hover:text-ink"
+                className="mb-3 w-full cursor-pointer rounded-sm border border-dashed border-border bg-transparent px-3 py-2.5 text-left text-[13px] text-muted transition duration-150 hover:border-border-strong hover:bg-surface-2 hover:text-ink"
               >
                 + Add a task
               </button>
@@ -348,8 +348,7 @@ export default function SpaceDetailPage() {
             <ul className="space-y-3">
               {columns[col.status].length === 0 && addingStatus !== col.status ? (
                 <li className="flex flex-1 flex-col items-center justify-center px-3 py-10 text-center">
-                  <p className="text-[13px] font-medium text-ink-soft">No tasks yet</p>
-                  <p className="mt-1 text-[12px] text-muted">{col.hint}</p>
+                  <p className="text-[13px] text-faint">{col.hint}</p>
                 </li>
               ) : null}
               {columns[col.status].map((task) => (

@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { MoreHorizontal, Trash2 } from "lucide-react";
+import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree";
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -89,8 +90,8 @@ export function ConfirmDelete({
           <div
             ref={pop}
             className={cn(
-              "fixed z-[80] rounded-xl border border-rule bg-elevated shadow-elevated",
-              mode === "confirm" ? "border-danger/20 p-3.5" : "p-1"
+              "fixed z-[80] rounded-md border border-border bg-surface shadow-float",
+              mode === "confirm" ? "border-coral/20 p-3.5" : "p-1"
             )}
             style={{ top: box.top, left: box.left, width }}
             onClick={(e) => e.stopPropagation()}
@@ -106,7 +107,7 @@ export function ConfirmDelete({
                       setMode("closed");
                       item.onSelect();
                     }}
-                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-ink transition duration-200 hover:bg-white/[0.06]"
+                    className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm font-medium text-ink transition duration-200 hover:bg-surface-2"
                   >
                     {item.icon}
                     {item.label}
@@ -115,9 +116,9 @@ export function ConfirmDelete({
                 <button
                   type="button"
                   onClick={() => setMode("confirm")}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-danger transition duration-200 hover:bg-danger/10"
+                  className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm font-medium text-coral transition duration-200 hover:bg-coral-dim"
                 >
-                  <Trash2 size={14} />
+                  <Trash size={18} weight="light" />
                   {label}
                 </button>
               </div>
@@ -153,11 +154,11 @@ export function ConfirmDelete({
           setMode((m) => (m === "closed" ? "menu" : "closed"));
         }}
         className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-full text-muted transition duration-150 hover:bg-white/[0.08] hover:text-ink",
-          open && "bg-white/[0.08] text-ink"
+          "inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted transition duration-150 hover:bg-surface-2 hover:text-ink",
+          open && "bg-surface-2 text-ink"
         )}
       >
-        <MoreHorizontal size={15} />
+        <DotsThree size={18} weight="light" />
       </button>
       {panel}
     </div>

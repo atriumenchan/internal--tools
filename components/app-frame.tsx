@@ -159,7 +159,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   if (!state || !state.handbookAcknowledged) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-paper text-sm text-ink-soft">
+      <div className="flex min-h-screen items-center justify-center bg-page text-sm text-muted">
         {state && !state.handbookAcknowledged ? "Opening the handbook…" : "Loading…"}
       </div>
     );
@@ -167,7 +167,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   return (
     <AppStateContext.Provider value={state}>
-      <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[256px_1fr]">
+      <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[256px_1fr]">
         {state ? (
           <AppNav
             profile={state.profile}
@@ -179,7 +179,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
         ) : (
           <SidebarFallback />
         )}
-        <main className="min-w-0 bg-paper px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">{children}</main>
       </div>
     </AppStateContext.Provider>
   );

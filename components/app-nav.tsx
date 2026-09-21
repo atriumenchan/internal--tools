@@ -1,22 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import {
-  Bell,
-  BookOpen,
-  ClipboardList,
-  FileSignature,
-  KeyRound,
-  LayoutDashboard,
-  LogOut,
-  MessageSquare,
-  Settings,
-  Shield,
-  SquareKanban,
-  Timer,
-  Users,
-} from "lucide-react";
+import type { Icon } from "@phosphor-icons/react";
+import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
+import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
+import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
+import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
+import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
+import { GearSix } from "@phosphor-icons/react/dist/ssr/GearSix";
+import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
+import { Key } from "@phosphor-icons/react/dist/ssr/Key";
+import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
+import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut";
+import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour";
+import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
+import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
@@ -26,7 +26,7 @@ import { WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
 type NavItem = {
   href: string;
   label: string;
-  icon: typeof LayoutDashboard;
+  icon: Icon;
   adminOnly?: boolean;
   operatorOnly?: boolean;
 };
@@ -35,16 +35,16 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
   {
     label: "Work",
     items: [
-      { href: "/dashboard", label: "Home", icon: LayoutDashboard },
-      { href: "/spaces", label: "Tasks", icon: SquareKanban },
-      { href: "/chat", label: "Chat", icon: MessageSquare },
+      { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
+      { href: "/spaces", label: "Tasks", icon: ClipboardText },
+      { href: "/chat", label: "Chat", icon: ChatCircleDots },
       { href: "/notifications", label: "Alerts", icon: Bell },
     ],
   },
   {
     label: "You",
     items: [
-      { href: "/vault", label: "Logins", icon: KeyRound },
+      { href: "/vault", label: "Logins", icon: Key },
       { href: "/handbook", label: "Handbook", icon: BookOpen },
     ],
   },
@@ -52,15 +52,46 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "Office",
     operatorOnly: true,
     items: [
-      { href: "/board", label: "Board", icon: ClipboardList, operatorOnly: true },
-      { href: "/attendance", label: "Upload", icon: Timer, operatorOnly: true },
-      { href: "/offers", label: "Offers", icon: FileSignature, operatorOnly: true },
-      { href: "/employees", label: "People", icon: Users, operatorOnly: true },
-      { href: "/team", label: "Staff", icon: Shield, adminOnly: true, operatorOnly: true },
-      { href: "/settings", label: "Settings", icon: Settings, operatorOnly: true },
+      { href: "/board", label: "Board", icon: Kanban, operatorOnly: true },
+      { href: "/attendance", label: "Upload", icon: UploadSimple, operatorOnly: true },
+      { href: "/offers", label: "Offers", icon: FileText, operatorOnly: true },
+      { href: "/employees", label: "People", icon: UsersThree, operatorOnly: true },
+      { href: "/team", label: "Staff", icon: ShieldCheck, adminOnly: true, operatorOnly: true },
+      { href: "/settings", label: "Settings", icon: GearSix, operatorOnly: true },
     ],
   },
 ];
+
+function NoidaClock() {
+  const [time, setTime] = useState("");
+
+  useEffect(() => {
+    const tick = () => {
+      setTime(
+        new Date().toLocaleTimeString("en-IN", {
+          timeZone: "Asia/Kolkata",
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    };
+    tick();
+    const id = window.setInterval(tick, 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 shadow-card">
+      <span className="flex items-center gap-2 text-[12px] text-muted">
+        <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-teal" aria-hidden />
+        Noida · IST
+      </span>
+      <time className="font-mono text-[13px] font-medium text-ink tabular-nums" dateTime={time || undefined}>
+        {time || "--:--"}
+      </time>
+    </div>
+  );
+}
 
 export function AppNav({
   profile,
@@ -96,18 +127,18 @@ export function AppNav({
   }
 
   return (
-    <aside className="no-print flex flex-col border-b border-rule bg-sidebar text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
+    <aside className="no-print flex flex-col border-b border-border bg-page text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
       <div className="flex items-center justify-between px-4 py-6 lg:block">
         <div>
-          <p className="text-[18px] font-semibold tracking-tight">{companyName || "ADMEXO"}</p>
-          <p className="mt-1 text-[11px] font-medium uppercase tracking-[0.2em] text-muted">Workspace</p>
+          <p className="font-display text-[20px] font-medium tracking-tight">{companyName || "ADMEXO"}</p>
+          <p className="mt-1 text-[11px] font-medium text-faint">Workspace</p>
         </div>
         <button
           onClick={signOut}
-          className="rounded-[10px] p-2 text-muted transition duration-150 hover:bg-white/[0.06] hover:text-ink lg:hidden"
+          className="rounded-sm p-2 text-muted transition duration-150 hover:bg-surface-2 hover:text-ink lg:hidden"
           aria-label="Sign out"
         >
-          <LogOut size={18} />
+          <SignOut size={18} weight="light" />
         </button>
       </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
@@ -116,7 +147,7 @@ export function AppNav({
           if (items.length === 0) return null;
           return (
             <div key={group.label} className="flex shrink-0 items-center gap-1 lg:block">
-              <p className="hidden px-3 pb-2 text-[11px] font-medium uppercase tracking-[0.18em] text-muted lg:block">
+              <p className="hidden px-3 pb-2 text-[11px] font-medium tracking-[0.07em] text-faint uppercase lg:block">
                 {group.label}
               </p>
               {items.map((item) => {
@@ -130,18 +161,17 @@ export function AppNav({
                     prefetch
                     className={cn(
                       "relative flex h-9 items-center gap-2.5 rounded-[10px] px-3 text-[13px] font-medium whitespace-nowrap",
-                      "transition-[background-color,color] duration-150 ease-out",
-                      active
-                        ? "bg-elevated text-ink shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]"
-                        : "text-ink-soft hover:bg-white/[0.04] hover:text-ink"
+                      "transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none",
+                      "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--amber-dim)]",
+                      active ? "bg-amber-dim text-amber" : "text-muted hover:bg-surface-2 hover:text-ink"
                     )}
                   >
-                    {active ? <span className="absolute inset-y-1.5 left-0 w-[2px] rounded-full bg-terracotta" /> : null}
-                    <Icon size={18} strokeWidth={1.75} className={active ? "text-terracotta" : "text-current"} />
+                    <Icon size={18} weight={active ? "regular" : "light"} className="text-current" />
                     {item.label}
                     {count > 0 ? (
-                      <span className="tabular ml-auto rounded-[6px] bg-white/[0.08] px-1.5 text-[11px] font-medium text-ink">
-                        {count > 99 ? "99+" : count}
+                      <span className="ml-auto flex items-center gap-1.5" title={`${count} unread`}>
+                        <span className="h-[7px] w-[7px] rounded-full bg-coral" aria-hidden />
+                        <span className="font-mono text-[11px] text-muted tabular-nums">{count > 99 ? "99+" : count}</span>
                       </span>
                     ) : null}
                   </Link>
@@ -151,15 +181,18 @@ export function AppNav({
           );
         })}
       </nav>
-      <div className="mt-auto hidden border-t border-rule px-4 py-5 lg:block">
-        <p className="truncate text-[13px] font-medium text-ink">{profile.full_name || profile.email}</p>
-        <p className="mt-0.5 text-[12px] text-muted">{roleLabel}</p>
-        <button
-          onClick={signOut}
-          className="mt-3 flex items-center gap-2 text-[12px] text-muted transition duration-150 hover:text-ink"
-        >
-          <LogOut size={14} /> Sign out
-        </button>
+      <div className="mt-auto hidden space-y-4 border-t border-border px-4 py-5 lg:block">
+        <NoidaClock />
+        <div>
+          <p className="truncate text-[13px] font-medium text-ink">{profile.full_name || profile.email}</p>
+          <p className="mt-0.5 text-[12px] text-muted">{roleLabel}</p>
+          <button
+            onClick={signOut}
+            className="mt-3 flex items-center gap-2 text-[12px] text-muted transition duration-150 hover:text-ink"
+          >
+            <SignOut size={18} weight="light" /> Sign out
+          </button>
+        </div>
       </div>
     </aside>
   );
@@ -167,17 +200,16 @@ export function AppNav({
 
 export function SidebarFallback() {
   return (
-    <aside className="no-print min-h-[4.5rem] border-b border-rule bg-sidebar lg:min-h-screen lg:border-b-0 lg:border-r" />
+    <aside className="no-print min-h-[4.5rem] border-b border-border bg-page lg:min-h-screen lg:border-b-0 lg:border-r" />
   );
 }
 
 export function PageFallback() {
   return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-3 w-24 rounded bg-elevated" />
-      <div className="h-8 w-64 rounded bg-elevated" />
-      <div className="h-4 w-full max-w-xl rounded bg-surface" />
-      <div className="mt-8 h-48 rounded-[10px] bg-surface shadow-card" />
+    <div className="animate-pulse space-y-4 motion-reduce:animate-none">
+      <div className="h-8 w-64 rounded-sm bg-surface-2" />
+      <div className="h-4 w-full max-w-xl rounded-sm bg-surface-2" />
+      <div className="mt-8 h-48 rounded-md bg-surface shadow-card" />
     </div>
   );
 }

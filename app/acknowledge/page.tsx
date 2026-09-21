@@ -118,35 +118,34 @@ export default function AcknowledgePage() {
   }
 
   return (
-    <div className="min-h-screen bg-paper">
-      <header className="flex items-center justify-between border-b border-rule bg-sidebar px-5 py-4">
+    <div className="min-h-screen bg-canvas">
+      <header className="flex items-center justify-between border-b border-border bg-page px-5 py-4">
         <div>
-          <p className="text-xl font-semibold tracking-tight">ADMEXO</p>
-          <p className="text-[11px] uppercase tracking-[0.22em] text-ink-soft">Handbook v{version}</p>
+          <p className="font-display text-xl font-medium tracking-tight">ADMEXO</p>
+          <p className="text-[11px] text-faint">Handbook v{version}</p>
         </div>
-        <button onClick={signOut} className="text-sm text-ink-soft hover:text-ink">
+        <button onClick={signOut} className="text-sm text-muted hover:text-ink">
           Sign out
         </button>
       </header>
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 lg:grid-cols-[1.2fr_0.8fr]">
         <div>
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">Required</p>
-          <h1 className="text-[32px] font-semibold tracking-tight md:text-[40px]">Read and sign the handbook</h1>
-          <p className="mt-2 text-sm text-ink-soft">
+          <h1 className="font-display text-[32px] font-medium tracking-tight md:text-[40px]">Read and sign the handbook</h1>
+          <p className="mt-2 text-sm text-muted">
             Everyone signs once for this version before Spaces, Chat, and the rest of the internal tools.
           </p>
           <iframe
             title="ADMEXO handbook"
             src={HANDBOOK_PDF}
-            className="mt-6 min-h-[70vh] w-full rounded-xl border border-rule bg-white shadow-card"
+            className="mt-6 min-h-[70vh] w-full rounded-md border border-border bg-surface shadow-card"
           />
-          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-medium text-blue-soft hover:text-blue">
+          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-medium text-teal hover:text-teal-soft">
             Open PDF in a new tab
           </a>
         </div>
-        <form onSubmit={submit} className="h-fit space-y-4 rounded-xl border border-rule bg-cream shadow-card p-5">
-          <h2 className="text-xl font-semibold">Confirm</h2>
-          <p className="text-sm text-ink-soft">
+        <form onSubmit={submit} className="h-fit space-y-4 rounded-md border border-border bg-surface p-5 shadow-card">
+          <h2 className="font-display text-xl font-medium">Confirm</h2>
+          <p className="text-sm text-muted">
             I have read the ADMEXO employee & intern handbook v{version} and agree to follow it.
           </p>
           <Field label="Type your name as you spell it">
@@ -155,7 +154,7 @@ export default function AcknowledgePage() {
           <Field label="Signature style">
             <SignaturePad name={name} onChange={setSignature} />
           </Field>
-          {error ? <p className="text-sm text-danger">{error}</p> : null}
+          {error ? <p className="text-sm text-coral">{error}</p> : null}
           <Button type="submit" disabled={busy}>
             {busy ? "Saving…" : "Sign and continue"}
           </Button>

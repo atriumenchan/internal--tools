@@ -58,7 +58,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
-      <form onSubmit={add} className="space-y-3 rounded-xl border border-rule bg-cream shadow-card p-5">
+      <form onSubmit={add} className="space-y-3 rounded-md border border-border bg-surface p-5 shadow-card">
         <h2 className="font-semibold tracking-tight text-xl">Add a person</h2>
         <Field label="Employee code">
           <Input name="employee_code" required placeholder="A001" />
@@ -78,12 +78,12 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
         <Field label="Joining date">
           <DatePicker name="joining_date" placeholder="Joining date" />
         </Field>
-        {error ? <p className="text-sm text-danger">{error}</p> : null}
+        {error ? <p className="text-sm text-coral">{error}</p> : null}
         <Button type="submit">Save</Button>
       </form>
-      <div className="overflow-hidden rounded-xl border border-rule bg-cream shadow-card">
+      <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
         <table className="w-full text-sm">
-          <thead className="border-b border-rule text-left text-xs uppercase tracking-wide text-ink-soft">
+          <thead className="border-b border-border text-left text-[11px] font-semibold text-faint">
             <tr>
               <th className="px-4 py-3">Code</th>
               <th className="px-4 py-3">Name</th>
@@ -94,19 +94,19 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
           </thead>
           <tbody>
             {employees.map((employee) => (
-              <tr key={employee.id} className="border-t border-rule/70">
+              <tr key={employee.id} className="border-t border-border hover:bg-surface-2">
                 <td className="px-4 py-3 font-mono text-xs">{employee.employee_code}</td>
                 <td className="px-4 py-3">
                   {employee.full_name}
-                  <p className="text-xs text-ink-soft">{employee.email}</p>
+                  <p className="text-xs text-muted">{employee.email}</p>
                 </td>
-                <td className="px-4 py-3 text-ink-soft">
+                <td className="px-4 py-3 text-muted">
                   {[employee.designation, employee.department].filter(Boolean).join(" · ") || "—"}
                 </td>
-                <td className="px-4 py-3 text-xs text-ink-soft">{employee.user_id ? "Has login" : "No login yet"}</td>
+                <td className="px-4 py-3 text-xs text-muted">{employee.user_id ? "Has login" : "No login yet"}</td>
                 <td className="px-4 py-3 text-right">
                   <div className="flex items-center justify-end gap-2">
-                    <button className="text-xs font-medium text-blue-soft hover:text-blue" onClick={() => toggle(employee)}>
+                    <button className="text-xs font-medium text-teal hover:text-teal-soft" onClick={() => toggle(employee)}>
                       {employee.is_active ? "Deactivate" : "Reactivate"}
                     </button>
                     <ConfirmDelete

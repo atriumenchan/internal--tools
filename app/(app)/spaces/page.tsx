@@ -96,14 +96,14 @@ export default function SpacesPage() {
           ) : null
         }
       />
-      {error ? <p className="mb-4 text-sm text-danger">{error}</p> : null}
+      {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
       {allowCreate && creating ? (
-        <form onSubmit={create} className="mb-8 flex flex-wrap items-end gap-3 rounded-xl border border-rule bg-cream p-4 shadow-card">
+        <form onSubmit={create} className="mb-8 flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4 shadow-card">
           <Field label="Board name" className="min-w-[16rem] flex-1">
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ops, Hiring, Launch…" required autoFocus />
           </Field>
           <div>
-            <p className="mb-1.5 text-xs font-medium uppercase tracking-wide text-ink-soft">Color</p>
+            <p className="mb-1.5 text-xs font-medium text-muted">Color</p>
             <div className="flex gap-2">
               {SPACE_COLORS.map((c) => (
                 <button
@@ -111,7 +111,7 @@ export default function SpacesPage() {
                   type="button"
                   onClick={() => setColor(c)}
                   className="h-8 w-8 rounded-full border-2"
-                  style={{ background: c, borderColor: color === c ? "#fff" : "transparent" }}
+                  style={{ background: c, borderColor: color === c ? "var(--text)" : "transparent" }}
                   aria-label={c}
                 />
               ))}
@@ -125,8 +125,8 @@ export default function SpacesPage() {
       {spaces === null ? (
         <PageFallback />
       ) : spaces.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-rule bg-surface px-4 py-12 text-center text-sm text-ink-soft">
-          No boards yet. Create one to start assigning work.
+        <p className="rounded-md border border-dashed border-border bg-surface px-4 py-12 text-center text-sm text-faint">
+          No boards yet
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -134,18 +134,18 @@ export default function SpacesPage() {
             const c = counts.get(space.id) ?? { open: 0, overdue: 0 };
             return (
               <li key={space.id}>
-                <div className="flex items-stretch gap-2 rounded-[14px] border border-white/[0.07] bg-[#1a1e27] p-4 shadow-card transition duration-200 hover:border-white/12 hover:bg-[#1e232e]">
+                <div className="flex items-stretch gap-2 rounded-md border border-border bg-surface p-4 shadow-card transition duration-200 hover:bg-surface-2">
                   <button
                     type="button"
                     onClick={() => router.push(`/spaces/${space.id}`)}
                     className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: space.color || "#FF5A1F" }} />
+                    <span className="h-10 w-1.5 shrink-0 rounded-full" style={{ background: space.color || "var(--amber)" }} />
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{space.name}</span>
-                      <span className="text-xs text-ink-soft">
+                      <span className="text-xs text-muted">
                         {c.open} open
-                        {c.overdue ? <span className="text-danger"> · {c.overdue} overdue</span> : null}
+                        {c.overdue ? <span className="text-coral"> · {c.overdue} overdue</span> : null}
                       </span>
                     </span>
                   </button>

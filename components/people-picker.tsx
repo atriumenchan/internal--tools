@@ -40,33 +40,33 @@ export function PeoplePicker({
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p.id)}
-                className="rounded-md bg-blue/10 px-2 py-0.5 text-[11px] font-medium text-blue-soft hover:bg-blue/20"
+                className="rounded-sm bg-teal-dim px-2 py-0.5 text-[11px] font-medium text-teal hover:bg-teal/20"
               >
                 {displayName(p)} ×
               </button>
             ))}
         </div>
       ) : null}
-      <ul className="mt-2 max-h-48 overflow-y-auto rounded-[10px] border border-rule bg-input">
+      <ul className="mt-2 max-h-48 overflow-y-auto rounded-sm border border-border bg-surface">
         {filtered.length === 0 ? (
-          <li className="px-3 py-2 text-sm text-ink-soft">No one matches.</li>
+          <li className="px-3 py-2 text-sm text-faint">No one matches.</li>
         ) : (
           filtered.map((person) => {
             const on = selected.includes(person.id);
             return (
-              <li key={person.id} className="border-b border-rule last:border-0">
+              <li key={person.id} className="border-b border-border last:border-0">
                 <button
                   type="button"
                   onClick={() => toggle(person.id)}
                   className={cn(
                     "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm",
-                    on ? "bg-blue/10" : "hover:bg-white/5"
+                    on ? "bg-teal-dim" : "hover:bg-surface-2"
                   )}
                 >
                   <span
                     className={cn(
-                      "flex h-4 w-4 items-center justify-center rounded border",
-                      on ? "border-blue bg-blue text-[10px] text-white" : "border-rule"
+                      "flex h-4 w-4 items-center justify-center rounded-sm border",
+                      on ? "border-teal bg-teal text-[10px] text-white" : "border-border-strong"
                     )}
                   >
                     {on ? "✓" : null}

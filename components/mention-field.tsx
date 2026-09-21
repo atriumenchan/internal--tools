@@ -11,7 +11,7 @@ export function MentionBody({ text, people }: { text: string; people: MentionPer
     <>
       {parts.map((part, i) =>
         part.mention ? (
-          <span key={`${i}-${part.value}`} className="font-medium text-blue-soft">
+          <span key={`${i}-${part.value}`} className="font-medium text-teal">
             {part.value}
           </span>
         ) : (
@@ -72,12 +72,12 @@ export function MentionField({
         onClick={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
       />
       {active && options.length > 0 ? (
-        <ul className="absolute bottom-full z-10 mb-1 w-full overflow-hidden rounded-[10px] border border-rule bg-elevated shadow-elevated">
+        <ul className="absolute bottom-full z-10 mb-1 w-full overflow-hidden rounded-sm border border-border bg-surface shadow-float">
           {options.map((person) => (
             <li key={person.id}>
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-white/5"
+                className="block w-full px-3 py-2 text-left text-sm hover:bg-surface-2"
                 onMouseDown={(e) => {
                   e.preventDefault();
                   pick(person);

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy, Eye, EyeOff } from "lucide-react";
+import { Check } from "@phosphor-icons/react/dist/ssr/Check";
+import { Copy } from "@phosphor-icons/react/dist/ssr/Copy";
+import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
+import { EyeSlash } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, EmptyState, ErrorText, Field, Input, PageHeader, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -109,7 +112,7 @@ export default function VaultPage() {
         title="Your credentials"
         description="Only you can see what you save here. Other staff cannot, and admin cannot see your rows in the app."
       />
-      <p className="mb-6 rounded-[10px] border border-rule bg-surface px-5 py-3 text-[13px] text-ink-soft shadow-[inset_0_1px_0_rgb(255_255_255/0.05)]">
+      <p className="mb-6 rounded-md border border-border bg-surface-2 px-5 py-3 text-[13px] text-muted">
         Use this for logins you personally need (TeamOffice, ads accounts, domain panels). Do not put personal banking
         passwords here.
       </p>
@@ -118,7 +121,7 @@ export default function VaultPage() {
       <div className="grid gap-8 lg:grid-cols-[340px_1fr]">
         <form ref={formRef} onSubmit={add} className="space-y-3">
           <Card>
-            <h2 className="text-[18px] font-semibold tracking-tight">Add a record</h2>
+            <h2 className="font-display text-[18px] font-medium tracking-tight">Add a record</h2>
             <div className="mt-4 space-y-3">
               <Field label="What is this" htmlFor="vault-title">
                 <Input id="vault-title" name="title" required placeholder="Meta ads, Google Workspace…" />
@@ -145,18 +148,18 @@ export default function VaultPage() {
           {rows === null ? (
             <PageFallback />
           ) : rows.length === 0 ? (
-            <EmptyState>No credentials saved yet. Add one on the left.</EmptyState>
+            <EmptyState>No credentials saved yet</EmptyState>
           ) : (
             rows.map((row) => (
               <Card key={row.id} className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="text-[15px] font-semibold tracking-tight">{row.title}</h3>
-                    {row.username ? <p className="mt-1 text-[13px] text-ink-soft">{row.username}</p> : null}
+                    {row.username ? <p className="mt-1 text-[13px] text-muted">{row.username}</p> : null}
                     {row.url ? (
                       <a
                         href={row.url}
-                        className="mt-1 inline-block text-[13px] font-medium text-blue-soft hover:text-blue"
+                        className="mt-1 inline-block text-[13px] font-medium text-teal hover:text-teal-soft"
                         target="_blank"
                         rel="noreferrer"
                       >
@@ -171,28 +174,28 @@ export default function VaultPage() {
                   />
                 </div>
                 {row.secret ? (
-                  <div className="mt-3 flex items-center gap-2 rounded-[10px] bg-input px-3 py-2 font-mono text-[13px]">
+                  <div className="mt-3 flex items-center gap-2 rounded-sm bg-surface-2 px-3 py-2 font-mono text-[13px]">
                     <span className="min-w-0 flex-1 truncate">{shown[row.id] ? row.secret : "••••••••••••"}</span>
                     <button
                       type="button"
-                      className="rounded-[6px] p-1.5 text-muted hover:bg-white/[0.06] hover:text-ink"
+                      className="rounded-sm p-1.5 text-muted hover:bg-surface hover:text-ink"
                       aria-label={shown[row.id] ? "Hide password" : "Show password"}
                       onClick={() => setShown((s) => ({ ...s, [row.id]: !s[row.id] }))}
                     >
-                      {shown[row.id] ? <EyeOff size={15} /> : <Eye size={15} />}
+                      {shown[row.id] ? <EyeSlash size={18} weight="light" /> : <Eye size={18} weight="light" />}
                     </button>
                     <button
                       type="button"
-                      className="rounded-[6px] p-1.5 text-muted hover:bg-white/[0.06] hover:text-ink"
+                      className="rounded-sm p-1.5 text-muted hover:bg-surface hover:text-ink"
                       aria-label="Copy password"
                       onClick={() => void copySecret(row.id, row.secret || "")}
                     >
-                      {copied === row.id ? <Check size={15} className="text-success" /> : <Copy size={15} />}
+                      {copied === row.id ? <Check size={18} weight="light" className="text-teal" /> : <Copy size={18} weight="light" />}
                     </button>
-                    {copied === row.id ? <span className="text-[12px] font-sans text-success">Copied</span> : null}
+                    {copied === row.id ? <span className="text-[12px] font-sans text-teal">Copied</span> : null}
                   </div>
                 ) : null}
-                {row.notes ? <p className="mt-2 text-[13px] text-ink-soft">{row.notes}</p> : null}
+                {row.notes ? <p className="mt-2 text-[13px] text-muted">{row.notes}</p> : null}
               </Card>
             ))
           )}
