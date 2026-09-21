@@ -1,25 +1,18 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, Field, Input, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { parseAppRole, WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
-import type { AppRole } from "@/lib/types";
-
-type StaffUser = {
-  id: string;
-  email: string | null;
-  full_name: string;
-  role: AppRole;
-  employee_code: string | null;
-  created_at: string;
-  last_sign_in_at: string | null;
-};
+import type { Employee, StaffUser } from "@/lib/types";
 
 export function TeamPanel() {
-  const [users, setUsers] = useState<StaffUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cache = useWorkspaceCache();
+  const users = cache?.staffUsers ?? [];
+  const employees = cache?.employees ?? [];
+  const loading = Boolean(cache && !cache.ready && users.length === 0);
   const [name, setName] = useState("");
   const [employeeCode, setEmployeeCode] = useState("");
   const [email, setEmail] = useState("");
@@ -27,27 +20,26 @@ export function TeamPanel() {
   const [role, setRole] = useState<"employee" | "manager">("employee");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(cache?.staffError ?? null);
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/users");
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "Could not load users");
-      setUsers(json.users);
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not load users");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const openCodes = useMemo(
+    () => employees.filter((e) => !e.user_id).sort((a, b) => a.employee_code.localeCompare(b.employee_code, undefined, { numeric: true })),
+    [employees]
+  );
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  function pickPerson(person: Employee | undefined) {
+    if (!person) {
+      setEmployeeCode("");
+      setName("");
+      setEmail("");
+      return;
+    }
+    setEmployeeCode(person.employee_code);
+    setName(person.full_name);
+    setEmail(person.email || "");
+  }
 
   async function createUser(e: React.FormEvent) {
     e.preventDefault();
@@ -74,7 +66,7 @@ export function TeamPanel() {
       setEmail("");
       setPassword("");
       setRole("employee");
-      await load();
+      await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Create failed");
     } finally {
@@ -118,7 +110,7 @@ export function TeamPanel() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not change access level");
-      setUsers((prev) => prev.map((row) => (row.id === user.id ? { ...row, role: parsed } : row)));
+      await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not change access level");
     } finally {
@@ -135,7 +127,7 @@ export function TeamPanel() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Delete failed");
       setMsg("Login deleted.");
-      await load();
+      await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Delete failed");
     } finally {
@@ -146,12 +138,28 @@ export function TeamPanel() {
   return (
     <div className="grid gap-8 lg:grid-cols-[320px_1fr]">
       <form onSubmit={createUser} className="space-y-3 rounded-md border border-border bg-surface p-5 shadow-card">
-        <h2 className="text-xl font-semibold tracking-tight">New login</h2>
+        <h2 className="font-display text-xl font-medium tracking-tight">New login</h2>
+        <Field label="Employee code">
+          <Select
+            value={employeeCode}
+            required
+            onChange={(e) => {
+              const code = e.target.value;
+              pickPerson(openCodes.find((p) => p.employee_code === code));
+            }}
+          >
+            <option value="">
+              {openCodes.length === 0 ? "No codes left. Add a person on People first." : "Select a code"}
+            </option>
+            {openCodes.map((person) => (
+              <option key={person.id} value={person.employee_code}>
+                {person.employee_code} · {person.full_name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <Field label="Name">
           <Input value={name} onChange={(e) => setName(e.target.value)} required />
-        </Field>
-        <Field label="Employee code">
-          <Input value={employeeCode} onChange={(e) => setEmployeeCode(e.target.value)} required />
         </Field>
         <Field label="Access level">
           <Select value={role} onChange={(e) => setRole(e.target.value === "manager" ? "manager" : "employee")}>
@@ -166,8 +174,8 @@ export function TeamPanel() {
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
         {msg ? <p className="text-sm text-sage">{msg}</p> : null}
-        {err ? <p className="text-sm text-coral">{err}</p> : null}
-        <Button type="submit" disabled={busy || password.length < 6 || !employeeCode.trim() || !name.trim()}>
+        {err || cache?.staffError ? <p className="text-sm text-coral">{err || cache?.staffError}</p> : null}
+        <Button type="submit" disabled={busy || password.length < 6 || !employeeCode.trim() || !name.trim() || openCodes.length === 0}>
           {busy ? "Creating…" : "Create login"}
         </Button>
       </form>

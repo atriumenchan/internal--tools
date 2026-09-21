@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/client";
 import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { AppNav, SidebarFallback } from "@/components/app-nav";
 import { mustSignHandbook } from "@/lib/handbook";
-import type { Profile } from "@/lib/types";
+import { loadChatBootstrap, loadEmployees, loadStaffBundle } from "@/lib/chat-bootstrap";
+import { missingSpacesSchema } from "@/lib/spaces";
+import type { ChatBootstrap, Employee, Profile, StaffUser } from "@/lib/types";
 
 export type AppState = {
   userId: string;
@@ -17,8 +19,21 @@ export type AppState = {
   handbookAcknowledged: boolean;
 };
 
+export type WorkspaceCache = {
+  employees: Employee[];
+  staffUsers: StaffUser[] | null;
+  staffError: string | null;
+  chat: ChatBootstrap | null;
+  chatError: string | null;
+  ready: boolean;
+  refreshStaff: () => Promise<void>;
+  refreshChat: () => Promise<void>;
+};
+
 const AppStateContext = createContext<AppState | null>(null);
-const CACHE_KEY = "it-shell-v3";
+const WorkspaceContext = createContext<WorkspaceCache | null>(null);
+const CACHE_KEY = "it-shell-v4";
+const WORK_KEY = "it-workspace-v1";
 
 function readCache(): AppState | null {
   try {
@@ -29,12 +44,35 @@ function readCache(): AppState | null {
   }
 }
 
+function readWork(): Partial<WorkspaceCache> | null {
+  try {
+    const raw = sessionStorage.getItem(WORK_KEY);
+    return raw ? (JSON.parse(raw) as Partial<WorkspaceCache>) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeWork(next: { employees: Employee[]; staffUsers: StaffUser[] | null; chat: ChatBootstrap | null }) {
+  sessionStorage.setItem(WORK_KEY, JSON.stringify(next));
+}
+
 export function useAppState() {
   return useContext(AppStateContext);
 }
 
+export function useWorkspaceCache() {
+  return useContext(WorkspaceContext);
+}
+
 export function AppFrame({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [staffUsers, setStaffUsers] = useState<StaffUser[] | null>(null);
+  const [staffError, setStaffError] = useState<string | null>(null);
+  const [chat, setChat] = useState<ChatBootstrap | null>(null);
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const [notifUnread, setNotifUnread] = useState(0);
   const router = useRouter();
@@ -43,6 +81,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     const cached = readCache();
     if (cached) setState(cached);
+    const work = readWork();
+    if (work?.employees) setEmployees(work.employees);
+    if (work?.staffUsers) setStaffUsers(work.staffUsers);
+    if (work?.chat) setChat(work.chat);
 
     const supabase = createClient();
     void (async () => {
@@ -121,6 +163,81 @@ export function AppFrame({ children }: { children: ReactNode }) {
     }
   }, [state, router, pathname]);
 
+  async function refreshStaff() {
+    if (!state || !isAdminUser(state.profile)) return;
+    const bundle = await loadStaffBundle();
+    if ("error" in bundle) {
+      setStaffError(bundle.error);
+      const roster = await loadEmployees();
+      setEmployees(roster);
+      writeWork({ employees: roster, staffUsers, chat });
+      return;
+    }
+    setStaffError(null);
+    setStaffUsers(bundle.users);
+    setEmployees(bundle.employees);
+    writeWork({ employees: bundle.employees, staffUsers: bundle.users, chat });
+  }
+
+  async function refreshChat() {
+    if (!state) return;
+    try {
+      const next = await loadChatBootstrap(state.userId);
+      setChatError(null);
+      setChat(next);
+      writeWork({ employees, staffUsers, chat: next });
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load chat";
+      setChatError(
+        missingSpacesSchema(message) ? "Chat is not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor." : message
+      );
+    }
+  }
+
+  useEffect(() => {
+    if (!state?.handbookAcknowledged) return;
+    let cancelled = false;
+    void (async () => {
+      const admin = isAdminUser(state.profile);
+      const [roster, staff, inbox] = await Promise.all([
+        admin ? Promise.resolve(null) : loadEmployees().catch(() => [] as Employee[]),
+        admin ? loadStaffBundle() : Promise.resolve(null),
+        loadChatBootstrap(state.userId).catch((e) => e as Error),
+      ]);
+      if (cancelled) return;
+      if (staff && "error" in staff) {
+        setStaffError(staff.error);
+        const fallback = roster ?? (await loadEmployees().catch(() => [] as Employee[]));
+        setEmployees(fallback);
+      } else if (staff && "users" in staff) {
+        setStaffError(null);
+        setStaffUsers(staff.users);
+        setEmployees(staff.employees);
+      } else {
+        setEmployees(roster ?? []);
+      }
+      if (inbox instanceof Error) {
+        setChatError(
+          missingSpacesSchema(inbox.message)
+            ? "Chat is not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor."
+            : inbox.message
+        );
+      } else {
+        setChat(inbox);
+        setChatError(null);
+      }
+      const emp = staff && "employees" in staff ? staff.employees : roster ?? [];
+      const users = staff && "users" in staff ? staff.users : staffUsers;
+      const chatNext = inbox instanceof Error ? chat : inbox;
+      writeWork({ employees: emp, staffUsers: users, chat: chatNext });
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state?.userId, state?.handbookAcknowledged, state?.profile.id]);
+
   useEffect(() => {
     if (!state?.handbookAcknowledged) {
       setChatUnread(0);
@@ -131,12 +248,12 @@ export function AppFrame({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function loadBadges() {
-      const [chat, notifs] = await Promise.all([
+      const [chatCount, notifs] = await Promise.all([
         supabase.rpc("chat_unread_count"),
         supabase.rpc("unread_notification_count"),
       ]);
       if (cancelled) return;
-      if (!chat.error && typeof chat.data === "number") setChatUnread(chat.data);
+      if (!chatCount.error && typeof chatCount.data === "number") setChatUnread(chatCount.data);
       if (!notifs.error && typeof notifs.data === "number") setNotifUnread(notifs.data);
     }
 
@@ -165,22 +282,35 @@ export function AppFrame({ children }: { children: ReactNode }) {
     );
   }
 
+  const workspace: WorkspaceCache = {
+    employees,
+    staffUsers,
+    staffError,
+    chat,
+    chatError,
+    ready,
+    refreshStaff,
+    refreshChat,
+  };
+
   return (
     <AppStateContext.Provider value={state}>
-      <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[256px_1fr]">
-        {state ? (
-          <AppNav
-            profile={state.profile}
-            companyName={state.companyName}
-            operator={state.operator}
-            chatUnread={chatUnread}
-            notifUnread={notifUnread}
-          />
-        ) : (
-          <SidebarFallback />
-        )}
-        <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">{children}</main>
-      </div>
+      <WorkspaceContext.Provider value={workspace}>
+        <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[256px_1fr]">
+          {state ? (
+            <AppNav
+              profile={state.profile}
+              companyName={state.companyName}
+              operator={state.operator}
+              chatUnread={chatUnread}
+              notifUnread={notifUnread}
+            />
+          ) : (
+            <SidebarFallback />
+          )}
+          <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">{children}</main>
+        </div>
+      </WorkspaceContext.Provider>
     </AppStateContext.Provider>
   );
 }

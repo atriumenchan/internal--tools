@@ -359,12 +359,12 @@ export default function TaskPage() {
           <Card className="divide-y divide-border p-0">
             <div className="px-4 py-4">
               <p className="mb-2 text-[12px] font-medium text-muted">Status</p>
-              <div className="grid grid-cols-2 gap-1 rounded-sm border border-border bg-surface-2 p-1">
+              <div className="flex flex-col gap-0.5 rounded-sm border border-border bg-surface-2 p-1">
                 {TASK_COLUMNS.map((col) => (
                   <button
                     key={col.status}
                     type="button"
-                    className={`rounded-md px-2 py-1.5 text-xs font-semibold transition duration-200 ${taskStatusClass(col.status, task.status === col.status)}`}
+                    className={`rounded-sm px-3 py-2 text-left text-[13px] font-medium ${taskStatusClass(col.status, task.status === col.status)}`}
                     onClick={() => void setStatus(col.status)}
                   >
                     {TASK_STATUS_LABELS[col.status]}

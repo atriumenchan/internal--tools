@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Input } from "@/components/ui";
+import { OverflowStrip } from "@/components/overflow-strip";
 import { Avatar } from "@/components/avatar";
 import { displayName } from "@/lib/spaces";
 import { cn } from "@/lib/utils";
@@ -32,7 +33,8 @@ export function PeoplePicker({
     <div>
       <Input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} />
       {selected.length > 0 ? (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 min-w-0">
+          <OverflowStrip moreLabel="More">
           {people
             .filter((p) => selected.includes(p.id))
             .map((p) => (
@@ -40,11 +42,12 @@ export function PeoplePicker({
                 key={p.id}
                 type="button"
                 onClick={() => toggle(p.id)}
-                className="rounded-sm bg-teal-dim px-2 py-0.5 text-[11px] font-medium text-teal hover:bg-teal/20"
+                className="shrink-0 rounded-sm bg-teal-dim px-2 py-0.5 text-[11px] font-medium text-teal hover:bg-teal/20"
               >
                 {displayName(p)} ×
               </button>
             ))}
+          </OverflowStrip>
         </div>
       ) : null}
       <ul className="mt-2 max-h-48 overflow-y-auto rounded-sm border border-border bg-surface">

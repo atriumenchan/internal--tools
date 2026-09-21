@@ -277,9 +277,10 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
         <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-xl font-medium tracking-tight">Work</h2>
+          <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
+            <h2 className="font-display shrink-0 text-xl font-medium tracking-tight">Work</h2>
             <Segmented
+              className="min-w-0"
               value={workFilter}
               onChange={setWorkFilter}
               options={[

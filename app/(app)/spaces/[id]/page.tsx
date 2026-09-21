@@ -258,11 +258,19 @@ export default function SpaceDetailPage() {
         title={space.name}
         description="Drag cards between columns, or edit from the three-dot menu."
         actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="flex -space-x-2">
-              {members.slice(0, 6).map((m) => (
-                <Avatar key={m.id} name={displayName(m)} className="border border-paper" />
+          <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden">
+            <div className="flex shrink-0 -space-x-2">
+              {members.slice(0, 3).map((m) => (
+                <Avatar key={m.id} name={displayName(m)} className="border border-page" />
               ))}
+              {members.length > 3 ? (
+                <span
+                  title={members.map((m) => displayName(m)).join(", ")}
+                  className="grid h-8 w-8 place-items-center rounded-full border border-page bg-surface-2 text-[11px] font-medium text-muted"
+                >
+                  +{members.length - 3}
+                </span>
+              ) : null}
             </div>
             {conversationId ? (
               <Link href={`/chat?c=${conversationId}`}>
@@ -296,7 +304,7 @@ export default function SpaceDetailPage() {
         </form>
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {TASK_COLUMNS.map((col) => (
           <section
             key={col.status}
@@ -311,7 +319,7 @@ export default function SpaceDetailPage() {
             }}
             onDrop={(e) => dropTask(col.status, e)}
             className={cn(
-              "flex min-h-[22rem] flex-col rounded-md border p-3 transition duration-150",
+              "flex min-h-[22rem] min-w-0 flex-col rounded-md border p-3 transition duration-150",
               dragOver === col.status
                 ? "border-dashed border-amber bg-amber-dim"
                 : "border-border bg-page shadow-card"

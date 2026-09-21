@@ -218,36 +218,4 @@ export function EmptyState({ children, className }: { children: React.ReactNode;
   );
 }
 
-export function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-  className,
-}: {
-  value: T;
-  options: { id: T; label: string }[];
-  onChange: (id: T) => void;
-  className?: string;
-}) {
-  return (
-    <div className={cn("inline-flex flex-wrap rounded-sm bg-surface-2 p-1", className)}>
-      {options.map((option) => {
-        const active = option.id === value;
-        return (
-          <button
-            key={option.id}
-            type="button"
-            onClick={() => onChange(option.id)}
-            className={cn(
-              "cursor-pointer rounded-sm px-3 py-1.5 text-[13px] font-medium",
-              interactive,
-              active ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink hover:bg-surface/70"
-            )}
-          >
-            {option.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+export { Segmented } from "./overflow-strip";

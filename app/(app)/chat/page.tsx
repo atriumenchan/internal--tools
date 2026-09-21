@@ -2,23 +2,20 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PeoplePicker } from "@/components/people-picker";
 import { Avatar } from "@/components/avatar";
+import { ConversationMark } from "@/components/conversation-mark";
 import { PageFallback } from "@/components/app-nav";
-import { useAppState } from "@/components/app-frame";
+import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
+import { loadChatBootstrap } from "@/lib/chat-bootstrap";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
-import type { ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
-
-type InboxRow = {
-  conversation_id: string;
-  unread_count: number;
-  last_body: string | null;
-};
+import type { ChatInboxRow, ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
 type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
 
@@ -33,21 +30,65 @@ function convoLabel(
   return displayName(other ? profiles[other.user_id] : null);
 }
 
+function memberNames(
+  convo: Conversation,
+  members: ConversationMember[],
+  profiles: Record<string, Profile>,
+  myId: string
+) {
+  const ids = members.filter((m) => m.conversation_id === convo.id).map((m) => m.user_id);
+  const others = ids.filter((id) => id !== myId);
+  const source = others.length ? others : ids;
+  return source.map((id) => displayName(profiles[id]));
+}
+
+function memberCount(convo: Conversation, members: ConversationMember[]) {
+  return members.filter((m) => m.conversation_id === convo.id).length;
+}
+
+function GroupPeople({ names, total }: { names: string[]; total: number }) {
+  const [open, setOpen] = useState(false);
+  const extra = Math.max(0, names.length - 2);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
+      >
+        <UsersThree size={14} weight="light" />
+        {total} {total === 1 ? "person" : "people"}
+        {extra > 0 ? <span className="rounded-sm bg-surface-2 px-1 font-mono text-[10px]">+{extra}</span> : null}
+      </button>
+      {open ? (
+        <ul className="absolute top-full left-0 z-20 mt-1 min-w-[10rem] rounded-md border border-border bg-surface p-2 text-xs shadow-card">
+          {names.map((name) => (
+            <li key={name} className="px-1 py-1 text-ink">
+              {name}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
+  );
+}
+
 function ChatApp() {
   const app = useAppState();
+  const cache = useWorkspaceCache();
   const router = useRouter();
   const search = useSearchParams();
   const selectedId = search.get("c");
-  const [people, setPeople] = useState<Profile[]>([]);
-  const [convos, setConvos] = useState<Conversation[]>([]);
-  const [memberships, setMemberships] = useState<ConversationMember[]>([]);
+  const [people, setPeople] = useState<Profile[]>(cache?.chat?.people ?? []);
+  const [convos, setConvos] = useState<Conversation[]>(cache?.chat?.convos ?? []);
+  const [memberships, setMemberships] = useState<ConversationMember[]>(cache?.chat?.memberships ?? []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(cache?.chatError ?? null);
   const [body, setBody] = useState("");
   const [groupName, setGroupName] = useState("");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [compose, setCompose] = useState<"idle" | "dm" | "group">("idle");
-  const [inbox, setInbox] = useState<InboxRow[]>([]);
+  const [inbox, setInbox] = useState<ChatInboxRow[]>(cache?.chat?.inbox ?? []);
   const [busy, setBusy] = useState(false);
   const bottom = useRef<HTMLDivElement>(null);
   const myId = app?.userId;
@@ -67,7 +108,7 @@ function ChatApp() {
           last_body: info?.last_body ?? null,
         };
       })
-      .sort((a, b) => (b.unread - a.unread) || (b.last_body ? 1 : 0) || a.created_at.localeCompare(b.created_at));
+      .sort((a, b) => b.unread - a.unread || (b.last_body ? 1 : 0) || a.created_at.localeCompare(b.created_at));
   }, [convos, memberships, myId, inbox]);
 
   const grouped = useMemo(() => {
@@ -75,41 +116,33 @@ function ChatApp() {
     return { dm: bucket("dm"), group: bucket("group"), space: bucket("space") };
   }, [rows]);
 
+  function applyBootstrap(next: NonNullable<typeof cache>["chat"]) {
+    if (!next) return;
+    setPeople(next.people);
+    setConvos(next.convos);
+    setMemberships(next.memberships);
+    setInbox(next.inbox);
+  }
+
   async function loadConversations() {
     if (!myId) return;
-    const supabase = createClient();
-    const [peopleRes, mineRes] = await Promise.all([
-      supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
-      supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").eq("user_id", myId),
-    ]);
-    if (mineRes.error) {
-      setError(
-        missingSpacesSchema(mineRes.error.message)
-          ? "Chat is not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor."
-          : mineRes.error.message
-      );
-      return;
+    try {
+      const next = await loadChatBootstrap(myId);
+      applyBootstrap(next);
+      await cache?.refreshChat();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Could not load chat";
+      setError(missingSpacesSchema(message) ? "Chat is not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor." : message);
     }
-    const ids = (mineRes.data ?? []).map((row) => row.conversation_id as string);
-    setPeople((peopleRes.data ?? []) as Profile[]);
-    if (ids.length === 0) {
-      setConvos([]);
-      setMemberships([]);
-      setInbox([]);
-      return;
-    }
-    const [convRes, memberRes] = await Promise.all([
-      supabase.from("conversations").select("*").in("id", ids).order("created_at"),
-      supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").in("conversation_id", ids),
-    ]);
-    setConvos((convRes.data ?? []) as Conversation[]);
-    setMemberships((memberRes.data ?? []) as ConversationMember[]);
-    const inboxRes = await supabase.rpc("chat_inbox");
-    if (!inboxRes.error) setInbox((inboxRes.data ?? []) as InboxRow[]);
   }
 
   useEffect(() => {
-    if (myId) void loadConversations();
+    if (cache?.chat) applyBootstrap(cache.chat);
+    if (cache?.chatError) setError(cache.chatError);
+  }, [cache?.chat, cache?.chatError]);
+
+  useEffect(() => {
+    if (myId && !cache?.chat) void loadConversations();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myId]);
 
@@ -133,7 +166,7 @@ function ChatApp() {
       setMessages((data ?? []) as ChatMessage[]);
       await supabase.rpc("mark_conversation_read", { p_conversation_id: selectedId });
       const inboxRes = await supabase.rpc("chat_inbox");
-      if (!inboxRes.error) setInbox((inboxRes.data ?? []) as InboxRow[]);
+      if (!inboxRes.error) setInbox((inboxRes.data ?? []) as ChatInboxRow[]);
     })();
 
     const channel = supabase
@@ -221,6 +254,7 @@ function ChatApp() {
     }
     setConvos((prev) => prev.filter((c) => c.id !== conversationId));
     setMessages((prev) => (selectedId === conversationId ? [] : prev));
+    await cache?.refreshChat();
     if (selectedId === conversationId) router.push("/chat");
   }
 
@@ -241,6 +275,8 @@ function ChatApp() {
   const selected = convos.find((c) => c.id === selectedId);
   const others = people.filter((p) => p.id !== myId);
   const admin = app ? isAdminUser(app.profile) : false;
+  const selectedNames = selected ? memberNames(selected, memberships, profiles, myId || "") : [];
+  const selectedCount = selected ? memberCount(selected, memberships) : 0;
 
   function Section({ title, items }: { title: string; items: ConvoRow[] }) {
     if (items.length === 0) return null;
@@ -250,6 +286,8 @@ function ChatApp() {
         <ul className="space-y-0.5">
           {items.map((convo) => {
             const label = convoLabel(convo, memberships, profiles, myId || "");
+            const names = memberNames(convo, memberships, profiles, myId || "");
+            const count = memberCount(convo, memberships);
             const active = convo.id === selectedId;
             return (
               <li key={convo.id} className="group flex items-center gap-1">
@@ -264,10 +302,13 @@ function ChatApp() {
                         : "text-muted hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <Avatar name={label} size="sm" />
+                  <ConversationMark type={convo.type} names={names.length ? names : [label]} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{label}</span>
+                      {convo.type === "group" ? (
+                        <span className="shrink-0 font-mono text-[10px] text-faint">{count}</span>
+                      ) : null}
                       {convo.unread > 0 ? (
                         <span className={`rounded-sm px-1.5 font-mono text-[10px] font-medium ${active ? "bg-amber-dim text-amber" : "bg-teal-dim text-teal"}`}>
                           {convo.unread}
@@ -298,6 +339,13 @@ function ChatApp() {
   }
 
   if (!app) return <PageFallback />;
+
+  const composerHint =
+    selected?.type === "space"
+      ? "Message the board — type @ to mention someone"
+      : selected?.type === "group"
+        ? "Message the group — type @ to mention someone"
+        : `Message ${selected ? convoLabel(selected, memberships, profiles, myId || "") : ""} — type @ to mention someone`;
 
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
@@ -350,12 +398,27 @@ function ChatApp() {
         <section className="flex min-h-0 flex-col">
           {selected ? (
             <>
-              <div className="flex items-start justify-between gap-3 border-b border-border px-4 py-3">
-                <div>
-                  <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
-                  <p className="text-xs capitalize text-muted">
-                    {selected.type === "dm" ? "Direct message" : selected.type === "space" ? "Board channel" : "Group"}
-                  </p>
+              <div
+                className={`flex items-start justify-between gap-3 border-b px-4 py-3 ${
+                  selected.type === "space"
+                    ? "border-teal bg-teal-dim"
+                    : selected.type === "group"
+                      ? "border-border bg-surface-2"
+                      : "border-border bg-surface"
+                }`}
+              >
+                <div className="flex min-w-0 items-start gap-3">
+                  <ConversationMark type={selected.type} names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]} />
+                  <div className="min-w-0">
+                    <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
+                    {selected.type === "group" ? (
+                      <GroupPeople names={selectedNames} total={selectedCount || selectedNames.length} />
+                    ) : (
+                      <p className="text-xs text-muted">
+                        {selected.type === "dm" ? "Direct message" : "Board channel"}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 {selected.type !== "space" ? (
                   <ConfirmDelete
@@ -399,15 +462,17 @@ function ChatApp() {
                 })}
                 <div ref={bottom} />
               </div>
-              <form onSubmit={send} className="border-t border-border bg-page p-3">
-                <MentionField
-                  value={body}
-                  onChange={setBody}
-                  people={people}
-                  rows={2}
-                  placeholder="Message — type @ to mention someone"
-                  required
-                />
+              <form
+                onSubmit={send}
+                className={`border-t p-3 ${
+                  selected.type === "space"
+                    ? "border-teal bg-teal-dim"
+                    : selected.type === "group"
+                      ? "border-border bg-surface-2"
+                      : "border-border bg-page"
+                }`}
+              >
+                <MentionField value={body} onChange={setBody} people={people} rows={2} placeholder={composerHint} required />
                 <div className="mt-2 flex justify-end">
                   <Button type="submit" disabled={busy}>
                     Send

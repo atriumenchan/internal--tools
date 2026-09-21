@@ -62,6 +62,8 @@ export default function AcknowledgePage() {
     await supabase.auth.signOut();
     sessionStorage.removeItem("it-shell-v2");
     sessionStorage.removeItem("it-shell-v3");
+    sessionStorage.removeItem("it-shell-v4");
+    sessionStorage.removeItem("it-workspace-v1");
     router.push("/login");
   }
 
@@ -105,6 +107,8 @@ export default function AcknowledgePage() {
     }
     sessionStorage.removeItem("it-shell-v2");
     sessionStorage.removeItem("it-shell-v3");
+    sessionStorage.removeItem("it-shell-v4");
+    sessionStorage.removeItem("it-workspace-v1");
     router.replace("/dashboard");
     router.refresh();
   }

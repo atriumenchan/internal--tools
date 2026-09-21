@@ -160,6 +160,29 @@ export type Employee = {
   is_active: boolean;
 };
 
+export type StaffUser = {
+  id: string;
+  email: string | null;
+  full_name: string;
+  role: AppRole;
+  employee_code: string | null;
+  created_at: string;
+  last_sign_in_at: string | null;
+};
+
+export type ChatInboxRow = {
+  conversation_id: string;
+  unread_count: number;
+  last_body: string | null;
+};
+
+export type ChatBootstrap = {
+  people: Profile[];
+  convos: Conversation[];
+  memberships: ConversationMember[];
+  inbox: ChatInboxRow[];
+};
+
 export type Holiday = {
   id: string;
   holiday_date: string;

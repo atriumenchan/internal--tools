@@ -1,10 +1,12 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical";
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { Badge } from "@/components/ui";
+import { OverflowStrip } from "@/components/overflow-strip";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { Avatar } from "@/components/avatar";
 import { TaskForm, draftFromTask, type TaskDraft } from "@/components/task-form";
@@ -50,6 +52,114 @@ export function priorityTone(value: TaskPriority | string | null | undefined): "
   if (key === "high") return "danger";
   if (key === "low") return "neutral";
   return "warn";
+}
+
+function StatusMoveControl({
+  status,
+  onMove,
+}: {
+  status: TaskStatus;
+  onMove: (status: TaskStatus) => void;
+}) {
+  const trigger = useRef<HTMLButtonElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
+  const [box, setBox] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open || !trigger.current) return;
+    function place() {
+      const el = trigger.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const width = Math.max(r.width, 176);
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - width - 8));
+      setBox({ top: r.bottom + 6, left, width });
+    }
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    function onPointer(e: PointerEvent) {
+      const node = e.target as Node;
+      if (trigger.current?.contains(node) || pop.current?.contains(node)) return;
+      setOpen(false);
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("pointerdown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div className="mt-3 min-w-0">
+      <button
+        ref={trigger}
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        title="Change status"
+        className={cn(
+          "flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2.5 py-1.5 text-left text-[12px] font-medium",
+          taskStatusClass(status, true)
+        )}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
+      >
+        <span className="min-w-0 truncate">{TASK_STATUS_LABELS[status]}</span>
+        <span className="shrink-0 text-[11px] opacity-70">More</span>
+      </button>
+      {open && box && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              ref={pop}
+              role="listbox"
+              aria-label="Task status"
+              className="fixed z-[80] rounded-md border border-border bg-surface p-1 shadow-float"
+              style={{ top: box.top, left: box.left, width: box.width }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {TASK_COLUMNS.map((col) => (
+                <button
+                  key={col.status}
+                  type="button"
+                  role="option"
+                  aria-selected={status === col.status}
+                  className={cn(
+                    "flex w-full rounded-sm px-3 py-2 text-left text-[13px] font-medium",
+                    taskStatusClass(col.status, status === col.status)
+                  )}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setOpen(false);
+                    if (status !== col.status) onMove(col.status);
+                  }}
+                >
+                  {TASK_STATUS_LABELS[col.status]}
+                </button>
+              ))}
+            </div>,
+            document.body
+          )
+        : null}
+    </div>
+  );
 }
 
 export function TaskCard({
@@ -113,7 +223,7 @@ export function TaskCard({
         }, 50);
       }}
       className={cn(
-        "relative overflow-hidden rounded-md border border-border bg-surface-2 p-4 shadow-card",
+        "relative rounded-md border border-border bg-surface-2 p-4 shadow-card",
         "border-l-[3px] transition-[box-shadow,transform,opacity] duration-200 ease-out motion-reduce:transition-none",
         task.status === "done" && "border-l-teal",
         task.status === "in_review" && "border-l-violet",
@@ -137,7 +247,7 @@ export function TaskCard({
               onClick={(e) => {
                 if (dragged.current) e.preventDefault();
               }}
-              className="line-clamp-2 text-[15px] font-semibold leading-snug tracking-tight text-ink hover:text-teal"
+              className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-ink hover:text-teal"
             >
               {task.title}
             </Link>
@@ -163,39 +273,24 @@ export function TaskCard({
               ) : null}
             </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-[12px] text-ink-soft">
+          <OverflowStrip className="mt-2" moreLabel="More">
             <Badge tone={priorityTone(priority)} dot>
               {TASK_PRIORITY_LABELS[priority]}
             </Badge>
-            {spaceName ? <span className="text-muted">{spaceName}</span> : null}
-            <span className="inline-flex items-center gap-1.5">
+            {spaceName ? <span className="shrink-0 text-muted">{spaceName}</span> : null}
+            <span className="inline-flex shrink-0 items-center gap-1.5">
               <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
               {assignee ? displayName(assignee) : "Unassigned"}
             </span>
-            {due ? <span className={cn("font-mono text-[12px]", late && "font-medium text-coral")}>{late ? `Overdue · ${due}` : due}</span> : null}
-          </div>
+            {due ? (
+              <span className={cn("shrink-0 font-mono text-[12px]", late && "font-medium text-coral")}>
+                {late ? `Overdue · ${due}` : due}
+              </span>
+            ) : null}
+          </OverflowStrip>
           {note ? <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-ink-soft">{note}</p> : null}
           {onMove ? (
-            <div className="mt-3 grid grid-cols-4 gap-0.5 rounded-sm bg-surface p-1">
-              {TASK_COLUMNS.map((col) => (
-                <button
-                  key={col.status}
-                  type="button"
-                  title={`Move to ${TASK_STATUS_LABELS[col.status]}`}
-                  className={cn(
-                    "rounded-sm px-1 py-1.5 text-[11px] font-medium transition duration-150",
-                    taskStatusClass(col.status, task.status === col.status)
-                  )}
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    if (task.status !== col.status) onMove(col.status);
-                  }}
-                >
-                  {TASK_STATUS_LABELS[col.status]}
-                </button>
-              ))}
-            </div>
+            <StatusMoveControl status={task.status} onMove={onMove} />
           ) : (
             <div className="mt-2.5">
               <Badge tone={taskBadgeTone(task)} dot>
