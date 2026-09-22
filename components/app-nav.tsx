@@ -171,7 +171,7 @@ export function AppNav({
                     )}
                   >
                     <Icon size={18} weight={active ? "regular" : "light"} className="text-current" />
-                    {item.label}
+                    {item.href === "/my-attendance" && operator ? "Reports" : item.label}
                     {count > 0 ? (
                       <span className="ml-auto flex items-center gap-1.5" title={`${count} unread`}>
                         <span className="h-[7px] w-[7px] rounded-full bg-coral" aria-hidden />

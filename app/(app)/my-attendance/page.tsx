@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { PageHeader, Badge, Button, Card } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
 import { rangeLabel } from "@/lib/periodic-attendance";
 import { lastWeekBounds, latestUploadRange } from "@/lib/own-attendance";
+import { normalizeEmpCode } from "@/lib/admin";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus } from "@/lib/types";
 
 const TONE: Record<DayStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
@@ -23,6 +25,7 @@ export default function MyAttendancePage() {
   const app = useAppState();
   const [days, setDays] = useState<AttendanceDay[] | null>(null);
   const [linked, setLinked] = useState(true);
+  const [team, setTeam] = useState(false);
 
   useEffect(() => {
     if (!app) return;
@@ -31,15 +34,12 @@ export default function MyAttendancePage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setLinked(false);
+        setTeam(false);
         setDays([]);
         return;
       }
-      if (!json.linked) {
-        setLinked(false);
-        setDays([]);
-        return;
-      }
-      setLinked(true);
+      setTeam(Boolean(json.team));
+      setLinked(Boolean(json.linked || json.team));
       setDays((json.days ?? []) as AttendanceDay[]);
     })();
   }, [app]);
@@ -61,6 +61,8 @@ export default function MyAttendancePage() {
       exportSummariesWorkbook(
         filename,
         rows.map((day) => ({
+          Code: day.employee_code ?? "",
+          Name: day.employee_name ?? "",
           Date: day.work_date,
           In: day.punch_in ?? "",
           Out: day.punch_out ?? "",
@@ -77,14 +79,27 @@ export default function MyAttendancePage() {
   return (
     <div>
       <PageHeader
-        eyebrow="You"
-        title="My attendance"
-        description="Your punches from the weekly Excel. Last week is the Monday–Sunday of the newest date in your file."
+        eyebrow={team ? "Office" : "You"}
+        title={team ? "Team attendance" : "My attendance"}
+        description={
+          team
+            ? "Last week for everyone in the latest Excel. Board still has the full filter view."
+            : "Your punches from the weekly Excel. Last week is the Monday–Sunday of the newest date in your file."
+        }
+        actions={
+          team ? (
+            <Link href="/board" className="text-sm font-medium text-teal hover:text-teal-soft">
+              Full board
+            </Link>
+          ) : null
+        }
       />
       {!linked ? (
         <p className="text-sm text-muted">Ask admin to link your login on Staff so this page can match your employee code.</p>
       ) : days.length === 0 ? (
-        <p className="text-sm text-muted">No attendance in Supabase for you yet. It appears after the next weekly upload.</p>
+        <p className="text-sm text-muted">
+          {team ? "No attendance uploaded yet. Drop the weekly Excel on Upload." : "No attendance in Supabase for you yet. It appears after the next weekly upload."}
+        </p>
       ) : (
         <div className="space-y-8">
           {week ? (
@@ -103,7 +118,7 @@ export default function MyAttendancePage() {
                   Download last week
                 </Button>
               </div>
-              <DayTable rows={weekDays} />
+              {team ? <TeamTables rows={weekDays} /> : <DayTable rows={weekDays} />}
             </Card>
           ) : null}
 
@@ -114,11 +129,43 @@ export default function MyAttendancePage() {
                 <h2 className="font-display text-xl font-medium tracking-tight">{rangeLabel(latest.start, latest.end)}</h2>
                 <p className="mt-1 text-sm text-muted">{totalsLine(latestDays)}</p>
               </div>
-              <DayTable rows={latestDays} />
+              {team ? <TeamTables rows={latestDays} /> : <DayTable rows={latestDays} />}
             </Card>
           ) : null}
         </div>
       )}
+    </div>
+  );
+}
+
+function personKey(day: AttendanceDay) {
+  return `${normalizeEmpCode(day.employee_code)}::${(day.employee_name || "").toLowerCase()}`;
+}
+
+function TeamTables({ rows }: { rows: AttendanceDay[] }) {
+  const groups = useMemo(() => {
+    const map = new Map<string, AttendanceDay[]>();
+    for (const day of rows) {
+      const key = personKey(day);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(day);
+    }
+    return [...map.entries()].sort((a, b) => (a[1][0]?.employee_name || "").localeCompare(b[1][0]?.employee_name || ""));
+  }, [rows]);
+
+  if (!rows.length) return <p className="text-sm text-faint">No days in this window.</p>;
+
+  return (
+    <div className="space-y-6">
+      {groups.map(([key, personDays]) => (
+        <div key={key}>
+          <p className="mb-2 font-medium">
+            {personDays[0]?.employee_name || "—"}
+            <span className="ml-2 text-xs font-normal text-muted">{personDays[0]?.employee_code || ""}</span>
+          </p>
+          <DayTable rows={personDays} />
+        </div>
+      ))}
     </div>
   );
 }
