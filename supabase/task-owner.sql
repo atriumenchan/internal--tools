@@ -61,6 +61,9 @@ returns trigger
 language plpgsql
 as $$
 begin
+  if auth.role() = 'service_role' then
+    return new;
+  end if;
   if not public.can_manage_task(old.created_by) then
     raise exception 'Only the person who created this task, or a manager, can change it.';
   end if;

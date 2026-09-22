@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser, isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
+import { rehomeStaffWork } from "@/lib/delete-staff";
 import { parseAppRole } from "@/lib/roles";
 import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
@@ -222,14 +223,25 @@ export async function DELETE(request: Request) {
     if (target && isAdminUser({ email: target.email, role: target.role })) {
       return NextResponse.json({ error: "The admin login cannot be deleted." }, { status: 400 });
     }
-    await admin.from("employees").update({ user_id: null }).eq("user_id", id);
-    // Spaces/tasks keep a required created_by, so hand those rows to the acting admin first.
-    const { error: spaceErr } = await admin.from("spaces").update({ created_by: gate.user.id }).eq("created_by", id);
-    if (spaceErr) return NextResponse.json({ error: spaceErr.message }, { status: 400 });
-    const { error: taskErr } = await admin.from("tasks").update({ created_by: gate.user.id }).eq("created_by", id);
-    if (taskErr) return NextResponse.json({ error: taskErr.message }, { status: 400 });
+    await admin.rpc("prepare_staff_delete", {
+      p_user_id: id,
+      p_successor_id: gate.user.id,
+    });
+    await rehomeStaffWork(admin, id, gate.user.id);
+
+    await admin.from("profiles").delete().eq("id", id);
     const { error } = await admin.auth.admin.deleteUser(id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) {
+      await rehomeStaffWork(admin, id, gate.user.id);
+      await admin.from("profiles").delete().eq("id", id);
+      const retry = await admin.auth.admin.deleteUser(id);
+      if (retry.error) {
+        return NextResponse.json(
+          { error: retry.error.message.replace(/Database error deleting user/i, "Could not remove this login. Their boards or tasks are still attached.") },
+          { status: 400 }
+        );
+      }
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
     return NextResponse.json(
