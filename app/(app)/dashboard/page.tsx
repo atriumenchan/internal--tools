@@ -135,23 +135,18 @@ export default function DashboardPage() {
       setMembers((memberRes.data ?? []) as { conversation_id: string; user_id: string }[]);
       const me = (empRes.data as Employee | null) ?? null;
       setEmployee(me);
-      if (me) {
-        const [sumRes, dayRes] = await Promise.all([
-          supabase
-            .from("monthly_summaries")
-            .select("*")
-            .eq("period_year", year)
-            .eq("period_month", month)
-            .eq("employee_code", me.employee_code)
-            .maybeSingle(),
-          supabase.from("attendance_days").select("*").eq("employee_code", me.employee_code).eq("work_date", todayKey).maybeSingle(),
-        ]);
-        setSummary((sumRes.data as MonthlySummary | null) ?? null);
-        setToday((dayRes.data as AttendanceDay | null) ?? null);
-      }
       if (operator) {
         const { data } = await supabase.from("attendance_days").select("*").eq("work_date", todayKey);
         setTeamToday((data ?? []) as AttendanceDay[]);
+      }
+      const mineRes = await fetch("/api/attendance/mine");
+      if (mineRes.ok) {
+        const mineJson = await mineRes.json();
+        if (mineJson.linked && mineJson.employee) setEmployee(mineJson.employee as Employee);
+        const ownDays = (mineJson.days ?? []) as AttendanceDay[];
+        setToday(ownDays.find((d) => d.work_date === todayKey) ?? null);
+        const ownSums = (mineJson.summaries ?? []) as MonthlySummary[];
+        setSummary(ownSums.find((s) => s.period_year === year && s.period_month === month) ?? ownSums[0] ?? null);
       }
     })();
   }, [app, operator]);
@@ -381,7 +376,11 @@ export default function DashboardPage() {
                 <Link href="/board" className="text-xs font-medium text-teal hover:text-teal-soft">
                   Full board
                 </Link>
-              ) : null}
+              ) : (
+                <Link href="/my-attendance" className="text-xs font-medium text-teal hover:text-teal-soft">
+                  Last week
+                </Link>
+              )}
             </div>
             {operator ? (
               <p className="mt-3 text-sm text-muted">
