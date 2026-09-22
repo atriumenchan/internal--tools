@@ -235,6 +235,21 @@ export default function SpaceDetailPage() {
     setInviteId("");
   }
 
+  async function inviteEveryone() {
+    if (!space || outsiders.length === 0) return;
+    const supabase = createClient();
+    const added: Profile[] = [];
+    for (const person of outsiders) {
+      const { error: err } = await supabase.rpc("add_space_member", { p_space_id: space.id, p_user_id: person.id });
+      if (err) {
+        setError(err.message);
+        break;
+      }
+      added.push(person);
+    }
+    if (added.length) setMembers((prev) => [...prev, ...added]);
+  }
+
   function dropTask(status: TaskStatus, event: React.DragEvent) {
     event.preventDefault();
     setDragOver(null);
@@ -289,8 +304,8 @@ export default function SpaceDetailPage() {
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
       {outsiders.length > 0 ? (
-        <form onSubmit={invite} className="mb-5 flex max-w-md items-center gap-2">
-          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required>
+        <form onSubmit={invite} className="mb-5 flex max-w-xl flex-wrap items-center gap-2">
+          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
             <option value="">Add a person to this board</option>
             {outsiders.map((p) => (
               <option key={p.id} value={p.id}>
@@ -300,6 +315,9 @@ export default function SpaceDetailPage() {
           </Select>
           <Button type="submit" size="sm" variant="secondary">
             Add
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
+            Add everyone
           </Button>
         </form>
       ) : null}
