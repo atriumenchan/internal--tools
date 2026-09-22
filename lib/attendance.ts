@@ -1,7 +1,7 @@
 import { format, getDaysInMonth } from "date-fns";
 import type { CompanySettings, DayStatus, Employee, Holiday } from "@/lib/types";
 import type { RawDayRow, RawPunch } from "@/lib/excel-rows";
-import { isIgnoredEmployee } from "@/lib/admin";
+import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { kolkataTodayKey } from "@/lib/datetime";
 import { fixedHolidayName, resolveHandbookStatus, HANDBOOK_HOLIDAYS_2026 } from "@/lib/handbook-calendar";
 
@@ -59,10 +59,10 @@ function classifyStatusToken(value?: string): DayStatus | null {
 }
 
 function matchEmployee(code: string, name: string, employees: Employee[]) {
-  const codeNorm = (code || "").trim().toLowerCase();
+  const codeNorm = normalizeEmpCode(code);
   const nameNorm = (name || "").trim().toLowerCase();
-  if (codeNorm) {
-    const byCode = employees.find((e) => (e.employee_code || "").trim().toLowerCase() === codeNorm);
+  if (code) {
+    const byCode = employees.find((e) => normalizeEmpCode(e.employee_code) === codeNorm);
     if (byCode) return byCode;
   }
   return employees.find((e) => (e.full_name || "").trim().toLowerCase() === nameNorm) ?? null;

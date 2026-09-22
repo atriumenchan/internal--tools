@@ -1,6 +1,8 @@
+import { isManagerUser } from "@/lib/roles";
 import type { Task, TaskStatus } from "@/lib/types";
 
 type TaskPeople = Pick<Task, "created_by" | "assignee_id" | "reviewer_id" | "status">;
+type Actor = { id: string; email?: string | null; role?: string | null };
 
 export function isTerminalStatus(status: TaskStatus) {
   return status === "done" || status === "cancelled";
@@ -16,48 +18,34 @@ export function effectiveReviewer(task: Pick<TaskPeople, "created_by" | "assigne
   return null;
 }
 
+export function canManageTask(task: Pick<Task, "created_by">, actor: Actor | null | undefined) {
+  if (!actor?.id) return false;
+  if (actor.id === task.created_by) return true;
+  return isManagerUser(actor);
+}
+
 export function canCompleteDirectly(task: Pick<TaskPeople, "created_by" | "assignee_id">, userId: string) {
-  if (isAssignedByOther(task)) return false;
-  return userId === task.created_by || userId === task.assignee_id;
+  return userId === task.created_by;
 }
 
 export function canApproveReview(task: Pick<TaskPeople, "created_by" | "assignee_id" | "reviewer_id">, userId: string) {
-  const reviewer = effectiveReviewer(task);
-  return Boolean(reviewer && reviewer === userId);
+  return userId === task.created_by;
 }
 
 export function applyTaskStatus(
   task: TaskPeople,
   next: TaskStatus,
-  userId: string
+  userId: string,
+  actor?: Omit<Actor, "id"> | null
 ): { status: TaskStatus; error?: string } {
   if (task.status === next) return { status: next };
-
-  if (isTerminalStatus(task.status) && next !== task.status) {
-    return { status: task.status, error: "Finished or cancelled work stays that way." };
+  const allowed = userId === task.created_by || isManagerUser({ email: actor?.email, role: actor?.role });
+  if (!allowed) {
+    return {
+      status: task.status,
+      error: "Only the person who created this task, or a manager, can change it. You can still comment.",
+    };
   }
-
-  if (next === "cancelled") {
-    if (userId === task.created_by || userId === task.assignee_id) return { status: "cancelled" };
-    return { status: task.status, error: "Only the requester or assignee can cancel." };
-  }
-
-  if (next === "done") {
-    if (canCompleteDirectly(task, userId) || canApproveReview(task, userId)) return { status: "done" };
-    if (isAssignedByOther(task) && userId === task.assignee_id) {
-      if (task.status === "in_review") {
-        return { status: "in_review", error: "This task needs reviewer approval before it can be marked done." };
-      }
-      return { status: "in_review" };
-    }
-    return { status: task.status, error: "This task needs reviewer approval before it can be marked done." };
-  }
-
-  if (next === "in_review") {
-    if (userId === task.assignee_id || userId === task.created_by) return { status: "in_review" };
-    return { status: task.status, error: "Only the assignee can submit this for review." };
-  }
-
   return { status: next };
 }
 

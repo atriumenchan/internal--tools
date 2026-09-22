@@ -182,6 +182,34 @@ as $$
     );
 $$;
 
+create or replace function public.is_manager()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = auth.uid()
+      and (
+        role in ('admin', 'hr', 'manager')
+        or lower(email) = 'ryan@admexo.com'
+        or public.is_admin()
+      )
+  );
+$$;
+
+create or replace function public.can_manage_task(p_created_by uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select p_created_by = auth.uid() or public.is_manager();
+$$;
+
 create or replace function public.is_space_member(p_space_id uuid)
 returns boolean
 language sql
@@ -537,6 +565,8 @@ $$;
 
 grant execute on function public.has_signed_handbook() to authenticated;
 grant execute on function public.can_create_spaces() to authenticated;
+grant execute on function public.is_manager() to authenticated;
+grant execute on function public.can_manage_task(uuid) to authenticated;
 grant execute on function public.is_space_member(uuid) to authenticated;
 grant execute on function public.is_space_member_user(uuid, uuid) to authenticated;
 grant execute on function public.is_conversation_member(uuid) to authenticated;
@@ -612,16 +642,25 @@ create policy "members insert tasks"
 
 create policy "members update tasks"
   on public.tasks for update to authenticated
-  using (public.has_signed_handbook() and public.is_space_member(space_id))
+  using (
+    public.has_signed_handbook()
+    and public.is_space_member(space_id)
+    and public.can_manage_task(created_by)
+  )
   with check (
     public.has_signed_handbook()
     and public.is_space_member(space_id)
+    and public.can_manage_task(created_by)
     and (assignee_id is null or public.is_space_member_user(space_id, assignee_id))
   );
 
 create policy "members delete tasks"
   on public.tasks for delete to authenticated
-  using (public.has_signed_handbook() and public.is_space_member(space_id));
+  using (
+    public.has_signed_handbook()
+    and public.is_space_member(space_id)
+    and public.can_manage_task(created_by)
+  );
 
 create policy "members delete spaces"
   on public.spaces for delete to authenticated

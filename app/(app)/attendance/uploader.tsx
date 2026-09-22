@@ -11,8 +11,9 @@ import {
   type ParsedSheet,
 } from "@/lib/excel-rows";
 import { monthPerformanceToAttendance, type MonthPerformanceReport } from "@/lib/month-performance";
-import { computeAttendance, type ComputedSummary } from "@/lib/attendance";
-import { isIgnoredEmployee } from "@/lib/admin";
+import { periodicToAttendance, rangeLabel, type PeriodicReport } from "@/lib/periodic-attendance";
+import { computeAttendance, summarizeDays, type ComputedSummary } from "@/lib/attendance";
+import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
 import { Button, Field, Input, Select } from "@/components/ui";
@@ -46,7 +47,9 @@ export function AttendanceUploader({
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [fileName, setFileName] = useState("");
+  const [sourceFile, setSourceFile] = useState<File | null>(null);
   const [report, setReport] = useState<MonthPerformanceReport | null>(null);
+  const [periodic, setPeriodic] = useState<PeriodicReport | null>(null);
   const [sheet, setSheet] = useState<ParsedSheet | null>(null);
   const [mapping, setMapping] = useState<ColumnMapping>({});
   const [busy, setBusy] = useState(false);
@@ -55,6 +58,9 @@ export function AttendanceUploader({
 
   const preview = useMemo(() => {
     try {
+      if (periodic) {
+        return periodicToAttendance(periodic, employees, resolvedSettings, holidays);
+      }
       if (report) {
         return monthPerformanceToAttendance(report, employees, resolvedSettings, holidays);
       }
@@ -74,28 +80,38 @@ export function AttendanceUploader({
       console.error(err);
       return null;
     }
-  }, [report, sheet, mapping, month, year, resolvedSettings, employees, holidays]);
+  }, [periodic, report, sheet, mapping, month, year, resolvedSettings, employees, holidays]);
 
   async function onFile(file: File) {
     setError(null);
     setFileName(file.name);
+    setSourceFile(file);
     setReport(null);
+    setPeriodic(null);
     setSheet(null);
     try {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch("/api/attendance/parse", { method: "POST", body: form });
       const data = (await res.json()) as {
-        kind?: "month-performance" | "sheet";
-        report?: MonthPerformanceReport;
+        kind?: "periodic" | "month-performance" | "sheet";
+        report?: MonthPerformanceReport | PeriodicReport;
         sheet?: ParsedSheet;
         error?: string;
       };
       if (!res.ok) throw new Error(data.error || "Could not read this file");
-      if (data.kind === "month-performance" && data.report) {
-        setReport(data.report);
-        setMonth(data.report.month);
-        setYear(data.report.year);
+      if (data.kind === "periodic" && data.report && "records" in data.report) {
+        const next = data.report as PeriodicReport;
+        setPeriodic(next);
+        const end = new Date(`${next.endDate}T00:00:00`);
+        setMonth(end.getMonth() + 1);
+        setYear(end.getFullYear());
+        return;
+      }
+      if (data.kind === "month-performance" && data.report && "people" in data.report) {
+        setReport(data.report as MonthPerformanceReport);
+        setMonth((data.report as MonthPerformanceReport).month);
+        setYear((data.report as MonthPerformanceReport).year);
         return;
       }
       if (data.kind === "sheet" && data.sheet) {
@@ -109,13 +125,41 @@ export function AttendanceUploader({
     }
   }
 
+  async function downloadReport() {
+    if (!sourceFile) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("file", sourceFile);
+      const res = await fetch("/api/attendance/report", { method: "POST", body: form });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "Could not build the report");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `attendance-report-${periodic ? rangeLabel(periodic.startDate, periodic.endDate).replace(/\s+/g, "-") : "export"}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not build the report");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save() {
     if (!preview) return;
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    const periodMonth = report?.month ?? month;
-    const periodYear = report?.year ?? year;
+    const rangeStart = periodic?.startDate ?? ("startDate" in preview ? preview.startDate : null);
+    const rangeEnd = periodic?.endDate ?? ("endDate" in preview ? preview.endDate : null);
+    const periodMonth = rangeEnd ? new Date(`${rangeEnd}T00:00:00`).getMonth() + 1 : report?.month ?? month;
+    const periodYear = rangeEnd ? new Date(`${rangeEnd}T00:00:00`).getFullYear() : report?.year ?? year;
 
     try {
       const employeeList = [...employees];
@@ -124,9 +168,14 @@ export function AttendanceUploader({
           (s) => !s.employee_id && !isIgnoredEmployee(s.employee_code, s.employee_name)
         );
         for (const person of missing) {
+          const fromPeriodic = periodic?.records.find(
+            (p) =>
+              normalizeEmpCode(p.empCode) === normalizeEmpCode(person.employee_code) ||
+              p.name.toLowerCase() === person.employee_name.toLowerCase()
+          );
           const fromFile = report?.people.find(
             (p) =>
-              p.employee_code === person.employee_code ||
+              normalizeEmpCode(p.employee_code) === normalizeEmpCode(person.employee_code) ||
               p.employee_name.toLowerCase() === person.employee_name.toLowerCase()
           );
           const code =
@@ -137,7 +186,7 @@ export function AttendanceUploader({
             .insert({
               employee_code: code,
               full_name: person.employee_name,
-              department: fromFile?.department || null,
+              department: fromPeriodic?.department || fromFile?.department || null,
               is_active: true,
             })
             .select("*")
@@ -147,17 +196,25 @@ export function AttendanceUploader({
         }
       }
 
-      const recomputed = report
-        ? monthPerformanceToAttendance(report, employeeList, resolvedSettings, holidays)
-        : computeAttendance({
-            month: periodMonth,
-            year: periodYear,
-            settings: resolvedSettings,
-            employees: employeeList,
-            holidays,
-            punches: mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet!, mapping),
-            daily: mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet!, mapping) : [],
-          });
+      const recomputed = periodic
+        ? periodicToAttendance(periodic, employeeList, resolvedSettings, holidays)
+        : report
+          ? monthPerformanceToAttendance(report, employeeList, resolvedSettings, holidays)
+          : computeAttendance({
+              month: periodMonth,
+              year: periodYear,
+              settings: resolvedSettings,
+              employees: employeeList,
+              holidays,
+              punches: mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet!, mapping),
+              daily: mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet!, mapping) : [],
+            });
+
+      const start =
+        rangeStart || `${periodYear}-${String(periodMonth).padStart(2, "0")}-01`;
+      const endDate = new Date(periodYear, periodMonth, 0).getDate();
+      const end =
+        rangeEnd || `${periodYear}-${String(periodMonth).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
 
       const { data: upload, error: upErr } = await supabase
         .from("attendance_uploads")
@@ -172,12 +229,7 @@ export function AttendanceUploader({
         .single();
       if (upErr) throw upErr;
 
-      const start = `${periodYear}-${String(periodMonth).padStart(2, "0")}-01`;
-      const endDate = new Date(periodYear, periodMonth, 0).getDate();
-      const end = `${periodYear}-${String(periodMonth).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
-
       await supabase.from("attendance_days").delete().gte("work_date", start).lte("work_date", end);
-      await supabase.from("monthly_summaries").delete().eq("period_month", periodMonth).eq("period_year", periodYear);
 
       const dayChunks = chunk(
         recomputed.days.map((d) => ({ ...d, upload_id: upload.id })),
@@ -188,8 +240,23 @@ export function AttendanceUploader({
         if (dayErr) throw dayErr;
       }
 
-      const { error: sumErr } = await supabase.from("monthly_summaries").insert(recomputed.summaries);
-      if (sumErr) throw sumErr;
+      const months = new Set(recomputed.days.map((d) => d.work_date.slice(0, 7)));
+      for (const ym of months) {
+        const [y, m] = ym.split("-").map(Number);
+        const monthStart = `${ym}-01`;
+        const monthEnd = `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+        const { data: monthDays } = await supabase
+          .from("attendance_days")
+          .select("*")
+          .gte("work_date", monthStart)
+          .lte("work_date", monthEnd);
+        await supabase.from("monthly_summaries").delete().eq("period_month", m).eq("period_year", y);
+        const summaries = summarizeDays((monthDays ?? []) as never, m, y, resolvedSettings);
+        if (summaries.length) {
+          const { error: sumErr } = await supabase.from("monthly_summaries").insert(summaries);
+          if (sumErr) throw sumErr;
+        }
+      }
 
       router.push(`/attendance/${periodYear}/${periodMonth}`);
       router.refresh();
@@ -211,7 +278,7 @@ export function AttendanceUploader({
         <Field label="Excel file" className="min-w-56 flex-1">
           <FileDrop
             accept=".xlsx,.xls,.csv"
-            hint="Month-performance .xls, .xlsx, or .csv"
+            hint="Periodic Datewise or month-performance .xls / .xlsx"
             label="Drop the Excel file or click to choose"
             onFile={(file) => void onFile(file)}
           />
@@ -228,6 +295,14 @@ export function AttendanceUploader({
         </Button>
       </div>
 
+      {periodic ? (
+        <p className="rounded-xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
+          Detected Periodic Datewise export{periodic.company ? ` for ${periodic.company}` : ""}. Updated from{" "}
+          <strong>{rangeLabel(periodic.startDate, periodic.endDate)}</strong>
+          {periodic.period ? ` (file period ${periodic.period})` : ""}. {periodic.records.length} day rows, mapped
+          by employee code.
+        </p>
+      ) : null}
       {report ? (
         <p className="rounded-xl border border-sage/20 bg-sage-soft px-4 py-3 text-sm text-sage">
           Detected biometric <strong>month performance</strong> report
@@ -269,7 +344,10 @@ export function AttendanceUploader({
         <div className="rounded-md border border-border bg-surface p-5 shadow-card">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <h3 className="font-semibold tracking-tight text-xl">
-              Preview · {preview.summaries.length} people · through {formatWorkDate(kolkataTodayKey())}
+              Preview · {preview.summaries.length} people
+              {periodic
+                ? ` · updated ${rangeLabel(periodic.startDate, periodic.endDate)}`
+                : ` · through ${formatWorkDate(kolkataTodayKey())}`}
             </h3>
             <label className="flex items-center gap-2 text-sm">
               <input type="checkbox" checked={createMissing} onChange={(e) => setCreateMissing(e.target.checked)} />
@@ -313,9 +391,16 @@ export function AttendanceUploader({
               </tbody>
             </table>
           </div>
-          <Button className="mt-5" onClick={save} disabled={busy}>
-            {busy ? "Saving…" : "Save this month"}
-          </Button>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Button onClick={save} disabled={busy}>
+              {busy ? "Saving…" : periodic ? `Save ${rangeLabel(periodic.startDate, periodic.endDate)}` : "Save this month"}
+            </Button>
+            {periodic ? (
+              <Button type="button" variant="secondary" disabled={busy || !sourceFile} onClick={() => void downloadReport()}>
+                Download report
+              </Button>
+            ) : null}
+          </div>
         </div>
       ) : null}
 

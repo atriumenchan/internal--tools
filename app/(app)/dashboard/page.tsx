@@ -18,7 +18,7 @@ import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
-import { effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { cn } from "@/lib/utils";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
 
@@ -223,7 +223,7 @@ export default function DashboardPage() {
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this task. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this task. Paste supabase/task-owner.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -233,6 +233,11 @@ export default function DashboardPage() {
 
   async function editTask(taskId: string, values: TaskDraft) {
     if (!app) return false;
+    const current = (tasks ?? []).find((t) => t.id === taskId);
+    if (!current || !canManageTask(current, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
+      setError("Only the person who created this task, or a manager, can change it. You can still comment.");
+      return false;
+    }
     const supabase = createClient();
     const assigneeId = values.assigneeId || null;
     const payload = {
@@ -328,8 +333,16 @@ export default function DashboardPage() {
                     spaceName={spaceMap[task.space_id]?.name}
                     assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
                     members={people}
-                    onEdit={(values) => editTask(task.id, values)}
-                    onDelete={() => deleteTask(task.id)}
+                    onEdit={
+                      canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })
+                        ? (values) => editTask(task.id, values)
+                        : undefined
+                    }
+                    onDelete={
+                      canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })
+                        ? () => deleteTask(task.id)
+                        : undefined
+                    }
                   />
                 </li>
               ))}

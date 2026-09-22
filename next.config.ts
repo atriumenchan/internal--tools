@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ["xlsx"],
+  serverExternalPackages: ["xlsx", "exceljs"],
   experimental: {
     optimizePackageImports: ["@phosphor-icons/react", "date-fns"],
   },

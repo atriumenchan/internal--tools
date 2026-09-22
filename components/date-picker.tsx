@@ -46,6 +46,7 @@ export function DatePicker({
   name,
   placeholder = "Pick a date",
   required,
+  disabled,
   className,
 }: {
   value?: string | null;
@@ -53,6 +54,7 @@ export function DatePicker({
   name?: string;
   placeholder?: string;
   required?: boolean;
+  disabled?: boolean;
   className?: string;
 }) {
   const controlled = value !== undefined;
@@ -120,8 +122,12 @@ export function DatePicker({
       {name ? <input type="hidden" name={name} value={selectedKey || ""} required={required} /> : null}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between gap-2 rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-left text-sm outline-none transition duration-200 hover:border-amber-line focus:border-amber focus:shadow-[0_0_0_3px_var(--amber-dim)]"
+        onClick={() => {
+          if (disabled) return;
+          setOpen((v) => !v);
+        }}
+        disabled={disabled}
+        className="flex w-full items-center justify-between gap-2 rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-left text-sm outline-none transition duration-200 hover:border-amber-line focus:border-amber focus:shadow-[0_0_0_3px_var(--amber-dim)] disabled:cursor-not-allowed disabled:text-faint"
       >
         <span className={selectedKey ? "text-ink" : "text-muted"}>
           {selectedKey ? formatWorkDate(selectedKey, "long") : placeholder}

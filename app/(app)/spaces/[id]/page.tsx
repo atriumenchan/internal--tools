@@ -18,7 +18,7 @@ import {
   TASK_STATUS_LABELS,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
@@ -82,13 +82,14 @@ export default function SpaceDetailPage() {
 
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
+  const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
 
   async function setStatus(taskId: string, status: TaskStatus) {
     const current = tasks.find((t) => t.id === taskId);
     if (!current || current.status === status) return;
     const userId = app?.userId;
     if (!userId) return;
-    const next = applyTaskStatus(current, status, userId);
+    const next = applyTaskStatus(current, status, userId, app.profile);
     if (next.error && next.status === current.status) {
       setError(next.error);
       return;
@@ -198,7 +199,7 @@ export default function SpaceDetailPage() {
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this task. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this task. Paste supabase/task-owner.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -254,6 +255,11 @@ export default function SpaceDetailPage() {
     event.preventDefault();
     setDragOver(null);
     const taskId = event.dataTransfer.getData("text/plain");
+    const current = tasks.find((t) => t.id === taskId);
+    if (!current || !canManageTask(current, actor)) {
+      setError("Only the person who created this task, or a manager, can change status.");
+      return;
+    }
     if (taskId) void setStatus(taskId, status);
   }
 
@@ -384,9 +390,9 @@ export default function SpaceDetailPage() {
                     href={`/spaces/${space.id}/tasks/${task.id}`}
                     assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
                     members={members}
-                    onMove={(status) => void setStatus(task.id, status)}
-                    onEdit={(values) => editTask(task.id, values)}
-                    onDelete={() => deleteTask(task.id)}
+                    onMove={canManageTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                    onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
+                    onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
                   />
                 </li>
               ))}

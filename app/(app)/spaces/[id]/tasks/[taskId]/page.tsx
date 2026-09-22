@@ -25,7 +25,7 @@ import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, canApproveReview, canCompleteDirectly, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
 
 export default function TaskPage() {
@@ -97,14 +97,20 @@ export default function TaskPage() {
   }, [comments.length]);
 
   async function saveTask(patch: Partial<Task>) {
-    if (!task) return;
+    if (!task || !app) return;
+    if (!canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
+      setError("Only the person who created this task, or a manager, can change it. You can still comment.");
+      return;
+    }
     const supabase = createClient();
     const { data, error: err } = await supabase.from("tasks").update(patch).eq("id", task.id).select("*").single();
     if (err) {
       setError(
-        missingPriorityColumn(err.message) || missingWorkflowColumn(err.message)
-          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
-          : err.message
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Only the person who created this task, or a manager, can change it. Paste supabase/task-owner.sql in the Supabase SQL editor if this keeps failing."
+          : missingPriorityColumn(err.message) || missingWorkflowColumn(err.message)
+            ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+            : err.message
       );
       return;
     }
@@ -114,6 +120,10 @@ export default function TaskPage() {
 
   async function uploadFile(file: File) {
     if (!task || !app) return;
+    if (!canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
+      setError("Only the person who created this task, or a manager, can add files. You can still comment.");
+      return;
+    }
     if (file.size > 8 * 1024 * 1024) {
       setError("Each file must be 8 MB or smaller.");
       return;
@@ -222,13 +232,15 @@ export default function TaskPage() {
 
   async function setStatus(status: TaskStatus) {
     if (!task || !app) return;
-    const next = applyTaskStatus(task, status, app.userId);
+    const next = applyTaskStatus(task, status, app.userId, app.profile);
     if (next.error && next.status === task.status) {
       setError(next.error);
       return;
     }
     await saveTask({ status: next.status });
   }
+
+  const locked = !app || !task || !canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role });
 
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
@@ -244,14 +256,22 @@ export default function TaskPage() {
       </p>
       <PageHeader
         title={task.title}
-        description={space?.name ? `On ${space.name} · edit the fields below, they save when you leave a box.` : undefined}
+        description={
+          locked
+            ? `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
+            : space?.name
+              ? `On ${space.name} · edit the fields below, they save when you leave a box.`
+              : undefined
+        }
         actions={
-          <ConfirmDelete
-            label="Delete task"
-            title="Delete this task?"
-            description="The task, comments, and files will be removed."
-            onConfirm={() => deleteTask()}
-          />
+          locked ? undefined : (
+            <ConfirmDelete
+              label="Delete task"
+              title="Delete this task?"
+              description="The task, comments, and files will be removed."
+              onConfirm={() => deleteTask()}
+            />
+          )
         }
       />
       <ErrorText className="mb-4">{error}</ErrorText>
@@ -262,6 +282,7 @@ export default function TaskPage() {
             <Field label="Title">
               <Input
                 value={titleDraft}
+                disabled={locked}
                 onChange={(e) => setTitleDraft(e.target.value)}
                 onBlur={() => {
                   if (titleDraft.trim() && titleDraft.trim() !== task.title) void saveTask({ title: titleDraft.trim() });
@@ -279,6 +300,7 @@ export default function TaskPage() {
               <Field label="Brief">
               <Textarea
                 value={task.description || ""}
+                disabled={locked}
                 onChange={(e) => setTask({ ...task, description: e.target.value })}
                 onBlur={() => void saveTask({ description: task.description })}
                 rows={6}
@@ -291,6 +313,7 @@ export default function TaskPage() {
               <Field label="Done looks like">
                 <Textarea
                   value={task.completion_criteria || ""}
+                  disabled={locked}
                   onChange={(e) => setTask({ ...task, completion_criteria: e.target.value })}
                   onBlur={() => void saveTask({ completion_criteria: task.completion_criteria })}
                   rows={4}
@@ -364,40 +387,21 @@ export default function TaskPage() {
                   <button
                     key={col.status}
                     type="button"
+                    disabled={locked}
                     className={`rounded-sm px-3 py-2 text-left text-[13px] font-medium ${taskStatusClass(col.status, task.status === col.status)}`}
-                    onClick={() => void setStatus(col.status)}
+                    onClick={() => {
+                      if (!locked) void setStatus(col.status);
+                    }}
                   >
                     {TASK_STATUS_LABELS[col.status]}
                   </button>
                 ))}
               </div>
-              {app ? (
+              {!locked ? (
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {task.status !== "done" && task.status !== "cancelled" && isAssignedByOther(task) && task.assignee_id === app.userId ? (
-                    <Button size="sm" onClick={() => void setStatus("in_review")}>
-                      Submit for review
-                    </Button>
-                  ) : null}
-                  {task.status === "in_review" && canApproveReview(task, app.userId) ? (
-                    <>
-                      <Button size="sm" onClick={() => void setStatus("done")}>
-                        Approve
-                      </Button>
-                      <Button size="sm" variant="secondary" onClick={() => void setStatus("in_progress")}>
-                        Request changes
-                      </Button>
-                    </>
-                  ) : null}
-                  {task.status !== "done" && task.status !== "cancelled" && canCompleteDirectly(task, app.userId) ? (
-                    <Button size="sm" onClick={() => void setStatus("done")}>
-                      Mark done
-                    </Button>
-                  ) : null}
-                  {task.status !== "done" && task.status !== "cancelled" && (app.userId === task.created_by || app.userId === task.assignee_id) ? (
-                    <Button size="sm" variant="ghost" onClick={() => void setStatus("cancelled")}>
-                      Cancel task
-                    </Button>
-                  ) : null}
+                  <Button size="sm" variant="ghost" onClick={() => void setStatus("cancelled")}>
+                    Cancel task
+                  </Button>
                 </div>
               ) : null}
             </div>
@@ -405,6 +409,7 @@ export default function TaskPage() {
               <Field label="Priority">
                 <Select
                   value={taskPriority(task.priority)}
+                  disabled={locked}
                   onChange={(e) => {
                     const priority = taskPriority(e.target.value);
                     setTask({ ...task, priority });
@@ -423,6 +428,7 @@ export default function TaskPage() {
               <Field label="Assignee">
                 <Select
                   value={task.assignee_id || ""}
+                  disabled={locked}
                   onChange={(e) => {
                     const assignee_id = e.target.value || null;
                     setTask({ ...task, assignee_id });
@@ -447,13 +453,14 @@ export default function TaskPage() {
               <Field label="Reviewer">
                 <Select
                   value={task.reviewer_id || ""}
+                  disabled={locked}
                   onChange={(e) => {
                     const reviewer_id = e.target.value || null;
                     setTask({ ...task, reviewer_id });
                     void saveTask({ reviewer_id });
                   }}
                 >
-                  <option value="">{isAssignedByOther(task) ? "Requester (default)" : "None — mark done yourself"}</option>
+                  <option value="">None</option>
                   {members.map((m) => (
                     <option key={m.id} value={m.id}>
                       {displayName(m)}
@@ -466,6 +473,7 @@ export default function TaskPage() {
               <Field label="Due date">
                 <DatePicker
                   value={dueDateKey(task.due_date)}
+                  disabled={locked}
                   onChange={(due_date) => {
                     setTask({ ...task, due_date });
                     void saveTask({ due_date });
@@ -476,7 +484,7 @@ export default function TaskPage() {
             </div>
             <div className="px-4 py-4">
               <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
-              <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. Up to 8 MB each." />
+              {locked ? null : <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. Up to 8 MB each." />}
               {files.length > 0 ? (
                 <ul className="mt-3 space-y-2">
                   {files.map((file) => (
@@ -489,11 +497,13 @@ export default function TaskPage() {
                         <FileText size={18} weight="light" className="shrink-0 text-teal" />
                         <span className="min-w-0 truncate">{file.file_name}</span>
                       </button>
+                      {locked ? null : (
                       <ConfirmDelete
                         label="Delete file"
                         title="Delete this file?"
                         onConfirm={() => deleteFile(file)}
                       />
+                      )}
                     </li>
                   ))}
                 </ul>
