@@ -1,45 +1,71 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
-import { isIgnoredEmployee } from "@/lib/admin";
+import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { useWorkspaceCache } from "@/components/app-frame";
 import type { Employee } from "@/lib/types";
 
 export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
   const router = useRouter();
   const cache = useWorkspaceCache();
+  const [rows, setRows] = useState(employees);
   const [error, setError] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    setRows(employees);
+  }, [employees]);
 
   async function add(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
-    const form = new FormData(e.currentTarget);
+    setMsg(null);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const employee_code = String(form.get("employee_code") || "").trim();
     const full_name = String(form.get("full_name") || "").trim();
     if (isIgnoredEmployee(employee_code, full_name)) {
       setError("Ryan Ray is excluded and cannot be added.");
       return;
     }
-    const supabase = createClient();
-    const { error: err } = await supabase.from("employees").insert({
-      employee_code,
-      full_name,
-      email: String(form.get("email") || "").trim() || null,
-      department: String(form.get("department") || "").trim() || null,
-      designation: String(form.get("designation") || "").trim() || null,
-      joining_date: String(form.get("joining_date") || "") || null,
-    });
-    if (err) {
-      setError(err.message);
+    const taken = rows.find((row) => normalizeEmpCode(row.employee_code) === normalizeEmpCode(employee_code));
+    if (taken) {
+      setError(`Employee code ${taken.employee_code} is already used by ${taken.full_name}. Pick another code.`);
       return;
     }
-    e.currentTarget.reset();
+
+    const supabase = createClient();
+    const { data, error: err } = await supabase
+      .from("employees")
+      .insert({
+        employee_code,
+        full_name,
+        email: String(form.get("email") || "").trim() || null,
+        department: String(form.get("department") || "").trim() || null,
+        designation: String(form.get("designation") || "").trim() || null,
+        joining_date: String(form.get("joining_date") || "") || null,
+      })
+      .select("*")
+      .single();
+    if (err) {
+      setError(
+        err.code === "23505" || /duplicate key/i.test(err.message)
+          ? `Employee code ${employee_code} is already on People. If you do not see them, they may be inactive — pick another code.`
+          : err.message
+      );
+      return;
+    }
+    formEl.reset();
+    if (data) {
+      setRows((prev) =>
+        [...prev, data as Employee].sort((a, b) => a.employee_code.localeCompare(b.employee_code, undefined, { numeric: true }))
+      );
+    }
     setMsg(`Created ${full_name} (${employee_code}). They are on People. Open Staff to create their login if they need access.`);
     await cache?.refreshStaff();
     router.refresh();
@@ -48,7 +74,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
   async function toggle(employee: Employee) {
     const supabase = createClient();
     await supabase.from("employees").update({ is_active: !employee.is_active }).eq("id", employee.id);
-    router.refresh();
+    setRows((prev) => prev.map((row) => (row.id === employee.id ? { ...row, is_active: !employee.is_active } : row)));
   }
 
   async function remove(employee: Employee) {
@@ -58,7 +84,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
       setError(err.message);
       return;
     }
-    router.refresh();
+    setRows((prev) => prev.filter((row) => row.id !== employee.id));
   }
 
   return (
@@ -99,7 +125,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
             </tr>
           </thead>
           <tbody>
-            {employees.map((employee) => (
+            {rows.map((employee) => (
               <tr key={employee.id} className="border-t border-border hover:bg-surface-2">
                 <td className="px-4 py-3 font-mono text-xs">{employee.employee_code}</td>
                 <td className="px-4 py-3">
