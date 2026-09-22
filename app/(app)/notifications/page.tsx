@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, EmptyState, PageHeader } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
+import { useWorkspaceCache } from "@/components/app-frame";
 import type { NotificationItem } from "@/lib/types";
 
 export default function NotificationsPage() {
+  const cache = useWorkspaceCache();
   const [rows, setRows] = useState<NotificationItem[] | null>(null);
 
   async function load() {
@@ -34,6 +36,16 @@ export default function NotificationsPage() {
     const supabase = createClient();
     await supabase.rpc("mark_notifications_read");
     await load();
+    await cache?.refreshBadges();
+  }
+
+  async function openRow(row: NotificationItem) {
+    if (!row.read_at) {
+      const supabase = createClient();
+      await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("id", row.id);
+      setRows((prev) => (prev ?? []).map((item) => (item.id === row.id ? { ...item, read_at: new Date().toISOString() } : item)));
+      await cache?.refreshBadges();
+    }
   }
 
   if (!rows) return <PageFallback />;
@@ -56,7 +68,11 @@ export default function NotificationsPage() {
         <ul className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
           {rows.map((row) => (
             <li key={row.id} className={row.read_at ? "border-b border-border last:border-0" : "border-b border-border last:border-0 bg-teal-dim"}>
-              <Link href={row.href || "/dashboard"} className="block px-4 py-3.5 transition duration-200 hover:bg-surface-2">
+              <Link
+                href={row.href || "/dashboard"}
+                onClick={() => void openRow(row)}
+                className="block px-4 py-3.5 transition duration-200 hover:bg-surface-2"
+              >
                 <div className="flex items-start gap-3">
                   {!row.read_at ? <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-coral" /> : <span className="mt-1.5 h-[7px] w-[7px] shrink-0" />}
                   <div className="min-w-0 flex-1">

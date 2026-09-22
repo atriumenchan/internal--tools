@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -9,11 +10,14 @@ import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { canCreateSpace, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
 import { isOverdue } from "@/lib/datetime";
+import { effectiveReviewer } from "@/lib/task-workflow";
 import type { Space, Task } from "@/lib/types";
 
-export default function SpacesPage() {
+function SpacesPageInner() {
   const app = useAppState();
   const router = useRouter();
+  const search = useSearchParams();
+  const filter = search.get("filter");
   const [spaces, setSpaces] = useState<Space[] | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +31,7 @@ export default function SpacesPage() {
     const supabase = createClient();
     void Promise.all([
       supabase.from("spaces").select("id, name, color, created_by, created_at").order("name"),
-      supabase.from("tasks").select("id, space_id, status, due_date"),
+      supabase.from("tasks").select("*").order("created_at", { ascending: false }),
     ]).then(([spaceRes, taskRes]) => {
       if (spaceRes.error) {
         setError(
@@ -53,6 +57,18 @@ export default function SpacesPage() {
     }
     return map;
   }, [tasks]);
+
+  const myId = app?.userId;
+  const listed = useMemo(() => {
+    if (!myId) return [];
+    if (filter === "review") return tasks.filter((t) => t.status === "in_review" && effectiveReviewer(t) === myId);
+    if (filter === "overdue") return tasks.filter((t) => isOverdue(t.due_date, t.status));
+    if (filter === "mine") {
+      return tasks.filter((t) => t.assignee_id === myId && t.status !== "done" && t.status !== "cancelled");
+    }
+    return [];
+  }, [filter, tasks, myId]);
+  const listTitle = filter === "review" ? "To review" : filter === "overdue" ? "Overdue" : "Your tasks";
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -97,6 +113,35 @@ export default function SpacesPage() {
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
+      {filter && listed.length === 0 ? (
+        <p className="mb-6 rounded-md border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-faint">
+          No {listTitle.toLowerCase()} right now.
+        </p>
+      ) : null}
+      {filter && listed.length > 0 ? (
+        <section className="mb-8">
+          <h2 className="mb-3 font-display text-xl font-medium tracking-tight">{listTitle}</h2>
+          <ul className="space-y-2">
+            {listed.map((task) => {
+              const board = spaces?.find((s) => s.id === task.space_id);
+              return (
+                <li key={task.id}>
+                  <Link
+                    href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                    className="block rounded-md border border-border bg-surface px-4 py-3 shadow-card transition duration-150 hover:bg-surface-2"
+                  >
+                    <span className="block font-medium text-ink">{task.title}</span>
+                    <span className="mt-0.5 block text-xs text-muted">
+                      {board?.name || "Board"}
+                      {task.status === "in_review" ? " · Review" : null}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
       {allowCreate && creating ? (
         <form onSubmit={create} className="mb-8 flex flex-wrap items-end gap-3 rounded-md border border-border bg-surface p-4 shadow-card">
           <Field label="Board name" className="min-w-[16rem] flex-1">
@@ -162,5 +207,13 @@ export default function SpacesPage() {
         </ul>
       )}
     </div>
+  );
+}
+
+export default function SpacesPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <SpacesPageInner />
+    </Suspense>
   );
 }

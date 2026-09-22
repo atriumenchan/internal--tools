@@ -7,11 +7,14 @@ import { Button, Field, Input } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { useWorkspaceCache } from "@/components/app-frame";
 import type { Employee } from "@/lib/types";
 
 export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
   const router = useRouter();
+  const cache = useWorkspaceCache();
   const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
 
   async function add(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -37,6 +40,8 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
       return;
     }
     e.currentTarget.reset();
+    setMsg(`Created ${full_name} (${employee_code}). They are on People. Open Staff to create their login if they need access.`);
+    await cache?.refreshStaff();
     router.refresh();
   }
 
@@ -78,6 +83,7 @@ export function EmployeeDirectory({ employees }: { employees: Employee[] }) {
         <Field label="Joining date">
           <DatePicker name="joining_date" placeholder="Joining date" />
         </Field>
+        {msg ? <p className="text-sm text-teal">{msg}</p> : null}
         {error ? <p className="text-sm text-coral">{error}</p> : null}
         <Button type="submit">Save</Button>
       </form>

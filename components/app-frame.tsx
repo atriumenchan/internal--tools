@@ -28,6 +28,7 @@ export type WorkspaceCache = {
   ready: boolean;
   refreshStaff: () => Promise<void>;
   refreshChat: () => Promise<void>;
+  refreshBadges: () => Promise<void>;
 };
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -194,6 +195,16 @@ export function AppFrame({ children }: { children: ReactNode }) {
     }
   }
 
+  async function refreshBadges() {
+    const supabase = createClient();
+    const [chatCount, notifs] = await Promise.all([
+      supabase.rpc("chat_unread_count"),
+      supabase.rpc("unread_notification_count"),
+    ]);
+    if (!chatCount.error && typeof chatCount.data === "number") setChatUnread(chatCount.data);
+    if (!notifs.error && typeof notifs.data === "number") setNotifUnread(notifs.data);
+  }
+
   useEffect(() => {
     if (!state?.handbookAcknowledged) return;
     let cancelled = false;
@@ -291,6 +302,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
     ready,
     refreshStaff,
     refreshChat,
+    refreshBadges,
   };
 
   return (

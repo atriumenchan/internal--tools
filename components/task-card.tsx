@@ -233,7 +233,15 @@ export function TaskCard({
         lifting && "rotate-1 scale-[1.02] opacity-80 shadow-float motion-reduce:rotate-0 motion-reduce:scale-100"
       )}
     >
-      <div className="flex items-start gap-2">
+      <Link
+        href={href}
+        aria-label={task.title}
+        onClick={(e) => {
+          if (dragged.current) e.preventDefault();
+        }}
+        className="absolute inset-0 z-0 rounded-md"
+      />
+      <div className="pointer-events-none relative z-[1] flex items-start gap-2">
         {onMove ? (
           <span className="mt-1 shrink-0 text-muted" title="Drag to move" aria-label="Drag to move">
             <DotsSixVertical size={18} weight="light" />
@@ -241,17 +249,10 @@ export function TaskCard({
         ) : null}
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
-            <Link
-              href={href}
-              title={task.title}
-              onClick={(e) => {
-                if (dragged.current) e.preventDefault();
-              }}
-              className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-ink hover:text-teal"
-            >
+            <p title={task.title} className="line-clamp-2 min-w-0 text-[15px] font-semibold leading-snug tracking-tight text-ink">
               {task.title}
-            </Link>
-            <div className="flex shrink-0 items-center gap-1">
+            </p>
+            <div className="pointer-events-auto relative z-[2] flex shrink-0 items-center gap-1">
               {onDelete ? (
                 <ConfirmDelete
                   label="Delete task"
@@ -273,7 +274,7 @@ export function TaskCard({
               ) : null}
             </div>
           </div>
-          <OverflowStrip className="mt-2" moreLabel="More">
+          <OverflowStrip className="pointer-events-auto mt-2" moreLabel="More">
             <Badge tone={priorityTone(priority)} dot>
               {TASK_PRIORITY_LABELS[priority]}
             </Badge>
@@ -290,7 +291,9 @@ export function TaskCard({
           </OverflowStrip>
           {note ? <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-ink-soft">{note}</p> : null}
           {onMove ? (
-            <StatusMoveControl status={task.status} onMove={onMove} />
+            <div className="pointer-events-auto">
+              <StatusMoveControl status={task.status} onMove={onMove} />
+            </div>
           ) : (
             <div className="mt-2.5">
               <Badge tone={taskBadgeTone(task)} dot>

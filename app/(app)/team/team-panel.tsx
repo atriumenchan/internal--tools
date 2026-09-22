@@ -60,7 +60,7 @@ export function TeamPanel() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Create failed");
-      setMsg(`Login created for ${json.employee_code} (${json.email}).`);
+      setMsg(`Login created for ${json.full_name || name} (${json.employee_code}). They can sign in with ${json.email} and the password you set.`);
       setName("");
       setEmployeeCode("");
       setEmail("");

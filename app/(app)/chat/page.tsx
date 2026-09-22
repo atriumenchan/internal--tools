@@ -4,11 +4,9 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { createClient } from "@/lib/supabase/client";
-import { Button, ErrorText, Field, Input, PageHeader } from "@/components/ui";
+import { Button, ErrorText, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
-import { PeoplePicker } from "@/components/people-picker";
-import { Avatar } from "@/components/avatar";
 import { ConversationMark } from "@/components/conversation-mark";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
@@ -93,7 +91,41 @@ function ChatApp() {
   const bottom = useRef<HTMLDivElement>(null);
   const myId = app?.userId;
 
-  const profiles = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
+  const employees = cache?.employees ?? [];
+
+  const chatPeople = useMemo(() => {
+    const byId = new Map<string, Profile>();
+    for (const person of people) byId.set(person.id, person);
+    for (const employee of employees) {
+      if (!employee.user_id || byId.has(employee.user_id)) continue;
+      byId.set(employee.user_id, {
+        id: employee.user_id,
+        email: employee.email || "",
+        full_name: employee.full_name,
+        role: "employee",
+      });
+    }
+    return [...byId.values()];
+  }, [people, employees]);
+
+  const profiles = useMemo(() => Object.fromEntries(chatPeople.map((p) => [p.id, p])), [chatPeople]);
+
+  const dmOptions = useMemo(() => {
+    const rows: { id: string; label: string }[] = [];
+    const seen = new Set<string>();
+    for (const employee of [...employees].sort((a, b) =>
+      a.employee_code.localeCompare(b.employee_code, undefined, { numeric: true })
+    )) {
+      if (!employee.user_id || employee.user_id === myId) continue;
+      seen.add(employee.user_id);
+      rows.push({ id: employee.user_id, label: `${employee.employee_code} · ${employee.full_name}` });
+    }
+    for (const person of chatPeople) {
+      if (!person.id || person.id === myId || seen.has(person.id)) continue;
+      rows.push({ id: person.id, label: displayName(person) });
+    }
+    return rows;
+  }, [employees, chatPeople, myId]);
 
   const rows: ConvoRow[] = useMemo(() => {
     const byId = Object.fromEntries(inbox.map((row) => [row.conversation_id, row]));
@@ -165,8 +197,11 @@ function ChatApp() {
       }
       setMessages((data ?? []) as ChatMessage[]);
       await supabase.rpc("mark_conversation_read", { p_conversation_id: selectedId });
+      setInbox((prev) => prev.map((row) => (row.conversation_id === selectedId ? { ...row, unread_count: 0 } : row)));
       const inboxRes = await supabase.rpc("chat_inbox");
       if (!inboxRes.error) setInbox((inboxRes.data ?? []) as ChatInboxRow[]);
+      await supabase.from("notifications").update({ read_at: new Date().toISOString() }).eq("href", `/chat?c=${selectedId}`).is("read_at", null);
+      await cache?.refreshBadges();
     })();
 
     const channel = supabase
@@ -177,7 +212,9 @@ function ChatApp() {
         (payload) => {
           const row = payload.new as ChatMessage;
           setMessages((prev) => (prev.some((m) => m.id === row.id) ? prev : [...prev, row]));
-          void supabase.rpc("mark_conversation_read", { p_conversation_id: selectedId });
+          void supabase.rpc("mark_conversation_read", { p_conversation_id: selectedId }).then(() => {
+            void cache?.refreshBadges();
+          });
         }
       )
       .subscribe();
@@ -273,7 +310,6 @@ function ChatApp() {
   }
 
   const selected = convos.find((c) => c.id === selectedId);
-  const others = people.filter((p) => p.id !== myId);
   const admin = app ? isAdminUser(app.profile) : false;
   const selectedNames = selected ? memberNames(selected, memberships, profiles, myId || "") : [];
   const selectedCount = selected ? memberCount(selected, memberships) : 0;
@@ -362,22 +398,23 @@ function ChatApp() {
             </Button>
           </div>
           {compose === "dm" ? (
-            <div className="mb-4 rounded-md border border-border bg-page p-2">
-              <p className="px-1 pb-2 text-xs text-muted">Pick a person</p>
-              <ul className="max-h-56 overflow-y-auto">
-                {others.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      onClick={() => void openDm(p.id)}
-                      className="flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-surface-2"
-                    >
-                      <Avatar name={displayName(p)} size="sm" />
-                      {displayName(p)}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <div className="mb-4 rounded-md border border-border bg-page p-3">
+              <Field label="Pick a person">
+                <Select
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id) void openDm(id);
+                  }}
+                >
+                  <option value="">{dmOptions.length === 0 ? "No people with a login yet." : "Select a person"}</option>
+                  {dmOptions.map((person) => (
+                    <option key={person.id} value={person.id}>
+                      {person.label}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
             </div>
           ) : null}
           {compose === "group" ? (
@@ -385,7 +422,41 @@ function ChatApp() {
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
               </Field>
-              <PeoplePicker people={others} selected={groupMembers} onChange={setGroupMembers} placeholder="Add people" />
+              <Field label="Add people">
+                <Select
+                  value=""
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (id && !groupMembers.includes(id)) setGroupMembers([...groupMembers, id]);
+                  }}
+                >
+                  <option value="">{dmOptions.length === 0 ? "No people with a login yet." : "Select a person"}</option>
+                  {dmOptions
+                    .filter((person) => !groupMembers.includes(person.id))
+                    .map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {person.label}
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+              {groupMembers.length > 0 ? (
+                <div className="flex flex-wrap gap-1">
+                  {groupMembers.map((id) => {
+                    const label = dmOptions.find((p) => p.id === id)?.label || displayName(profiles[id]);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => setGroupMembers(groupMembers.filter((x) => x !== id))}
+                        className="rounded-sm bg-teal-dim px-2 py-0.5 text-[11px] font-medium text-teal"
+                      >
+                        {label} ×
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
               <Button type="submit" size="sm" disabled={!groupName.trim() || groupMembers.length === 0}>
                 Create group
               </Button>
@@ -446,7 +517,7 @@ function ChatApp() {
                               : "bg-surface-2 text-ink ring-1 ring-border"
                           }`}
                         >
-                          <MentionBody text={message.body} people={people} />
+                          <MentionBody text={message.body} people={chatPeople} />
                         </p>
                         {canDelete ? (
                           <ConfirmDelete
@@ -472,7 +543,7 @@ function ChatApp() {
                       : "border-border bg-page"
                 }`}
               >
-                <MentionField value={body} onChange={setBody} people={people} rows={2} placeholder={composerHint} required />
+                <MentionField value={body} onChange={setBody} people={chatPeople} rows={2} placeholder={composerHint} required />
                 <div className="mt-2 flex justify-end">
                   <Button type="submit" disabled={busy}>
                     Send

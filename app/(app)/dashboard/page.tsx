@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
@@ -33,20 +34,22 @@ function Stat({
   href,
   icon: Icon,
   tone = "neutral",
-  onSelect,
 }: {
   label: string;
   value: number;
   href: string;
   icon: Icon;
   tone?: "neutral" | "info" | "warn" | "danger";
-  onSelect?: () => void;
 }) {
+  const router = useRouter();
   const zero = value === 0;
   return (
     <Link
       href={href}
-      onClick={onSelect}
+      onClick={(e) => {
+        e.preventDefault();
+        router.push(href);
+      }}
       className={cn(
         "group block rounded-md border border-border border-t-[3px] bg-surface p-5 shadow-card",
         "transition duration-150 ease-out hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
@@ -84,6 +87,11 @@ function Stat({
       </p>
     </Link>
   );
+}
+
+function firstTaskHref(tasks: Task[], fallback: string) {
+  if (tasks.length === 1) return `/spaces/${tasks[0].space_id}/tasks/${tasks[0].id}`;
+  return fallback;
 }
 
 export default function DashboardPage() {
@@ -259,9 +267,9 @@ export default function DashboardPage() {
       <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="My tasks" value={mine.length} href="/dashboard?work=mine" icon={ClipboardText} tone="neutral" onSelect={() => setWorkFilter("mine")} />
-        <Stat label="To review" value={needsReview.length} href="/dashboard?work=review" icon={Eye} tone="warn" onSelect={() => setWorkFilter("review")} />
-        <Stat label="Overdue" value={overdue.length} href="/dashboard?work=overdue" icon={Warning} tone="danger" onSelect={() => setWorkFilter("overdue")} />
+        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/spaces?filter=mine")} icon={ClipboardText} tone="neutral" />
+        <Stat label="To review" value={needsReview.length} href={firstTaskHref(needsReview, "/spaces?filter=review")} icon={Eye} tone="warn" />
+        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/spaces?filter=overdue")} icon={Warning} tone="danger" />
         <Stat
           label="Unread chat"
           value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}
