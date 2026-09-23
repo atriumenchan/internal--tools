@@ -53,24 +53,7 @@ export default function AttendancePage() {
   }, []);
 
   async function deleteUpload(upload: UploadRow) {
-    const start = `${upload.period_year}-${String(upload.period_month).padStart(2, "0")}-01`;
-    const last = new Date(upload.period_year, upload.period_month, 0).getDate();
-    const end = `${upload.period_year}-${String(upload.period_month).padStart(2, "0")}-${String(last).padStart(2, "0")}`;
     const supabase = createClient();
-    const daysRes = await supabase.from("attendance_days").delete().gte("work_date", start).lte("work_date", end);
-    if (daysRes.error) {
-      setError(daysRes.error.message);
-      return;
-    }
-    const sumRes = await supabase
-      .from("monthly_summaries")
-      .delete()
-      .eq("period_month", upload.period_month)
-      .eq("period_year", upload.period_year);
-    if (sumRes.error) {
-      setError(sumRes.error.message);
-      return;
-    }
     const { error: err } = await supabase.from("attendance_uploads").delete().eq("id", upload.id);
     if (err) {
       setError(err.message);
@@ -87,7 +70,7 @@ export default function AttendancePage() {
       <PageHeader
         eyebrow="Time"
         title="Attendance from Excel"
-        description="Drop the weekly month-performance .xls here. Saturday, Sunday, and handbook holidays count as offs. It overwrites that month in Supabase."
+        description="Drop the weekly Excel here. After Save, those dates stay locked. A later week only adds new days."
       />
       <AttendanceUploader settings={settings} employees={employees} holidays={holidays} userId={app.userId} />
       {error ? <p className="mt-4 text-sm text-coral">{error}</p> : null}
@@ -111,7 +94,7 @@ export default function AttendancePage() {
                   <ConfirmDelete
                     label="Delete upload"
                     title="Delete this upload?"
-                    description="The file record and that month’s imported attendance will be removed."
+                    description="Removes the file from this list. Saved attendance days stay locked."
                     onConfirm={() => deleteUpload(upload)}
                   />
                 </div>

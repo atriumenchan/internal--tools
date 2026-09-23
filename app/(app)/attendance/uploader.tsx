@@ -12,7 +12,7 @@ import {
 } from "@/lib/excel-rows";
 import { monthPerformanceToAttendance, type MonthPerformanceReport } from "@/lib/month-performance";
 import { periodicToAttendance, rangeLabel, type PeriodicReport } from "@/lib/periodic-attendance";
-import { computeAttendance, summarizeDays, type ComputedSummary } from "@/lib/attendance";
+import { attendanceLockKey, computeAttendance, summarizeDays, type ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
@@ -55,6 +55,7 @@ export function AttendanceUploader({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [createMissing, setCreateMissing] = useState(true);
+  const [lockedKeys, setLockedKeys] = useState<Set<string>>(new Set());
 
   const preview = useMemo(() => {
     try {
@@ -81,6 +82,45 @@ export function AttendanceUploader({
       return null;
     }
   }, [periodic, report, sheet, mapping, month, year, resolvedSettings, employees, holidays]);
+
+  const saveRange = useMemo(() => {
+    if (periodic) return { start: periodic.startDate, end: periodic.endDate };
+    if (report) {
+      const last = new Date(report.year, report.month, 0).getDate();
+      return {
+        start: `${report.year}-${String(report.month).padStart(2, "0")}-01`,
+        end: `${report.year}-${String(report.month).padStart(2, "0")}-${String(last).padStart(2, "0")}`,
+      };
+    }
+    const last = new Date(year, month, 0).getDate();
+    return {
+      start: `${year}-${String(month).padStart(2, "0")}-01`,
+      end: `${year}-${String(month).padStart(2, "0")}-${String(last).padStart(2, "0")}`,
+    };
+  }, [periodic, report, month, year]);
+
+  const lockedCount = useMemo(() => {
+    if (!preview) return 0;
+    return preview.days.filter((d) => lockedKeys.has(attendanceLockKey(d.employee_code, d.employee_name, d.work_date))).length;
+  }, [preview, lockedKeys]);
+
+  const newDayCount = (preview?.days.length ?? 0) - lockedCount;
+
+  useEffect(() => {
+    const supabase = createClient();
+    void supabase
+      .from("attendance_days")
+      .select("work_date, employee_code, employee_name")
+      .gte("work_date", saveRange.start)
+      .lte("work_date", saveRange.end)
+      .then(({ data }) => {
+        setLockedKeys(
+          new Set(
+            (data ?? []).map((row) => attendanceLockKey(row.employee_code, row.employee_name, row.work_date))
+          )
+        );
+      });
+  }, [saveRange.start, saveRange.end, fileName]);
 
   async function onFile(file: File) {
     setError(null);
@@ -210,11 +250,25 @@ export function AttendanceUploader({
               daily: mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet!, mapping) : [],
             });
 
-      const start =
-        rangeStart || `${periodYear}-${String(periodMonth).padStart(2, "0")}-01`;
-      const endDate = new Date(periodYear, periodMonth, 0).getDate();
-      const end =
-        rangeEnd || `${periodYear}-${String(periodMonth).padStart(2, "0")}-${String(endDate).padStart(2, "0")}`;
+      const start = rangeStart || saveRange.start;
+      const end = rangeEnd || saveRange.end;
+
+      const { data: existingRows } = await supabase
+        .from("attendance_days")
+        .select("work_date, employee_code, employee_name")
+        .gte("work_date", start)
+        .lte("work_date", end);
+      const already = new Set(
+        (existingRows ?? []).map((row) => attendanceLockKey(row.employee_code, row.employee_name, row.work_date))
+      );
+      const freshDays = recomputed.days.filter(
+        (d) => !already.has(attendanceLockKey(d.employee_code, d.employee_name, d.work_date))
+      );
+      if (!freshDays.length) {
+        throw new Error(
+          `Those dates are already saved and locked (${rangeLabel(start, end)}). Upload a later week to add new days.`
+        );
+      }
 
       const { data: upload, error: upErr } = await supabase
         .from("attendance_uploads")
@@ -223,21 +277,24 @@ export function AttendanceUploader({
           file_name: fileName,
           period_month: periodMonth,
           period_year: periodYear,
-          row_count: recomputed.days.length,
+          row_count: freshDays.length,
         })
         .select("id")
         .single();
       if (upErr) throw upErr;
 
-      await supabase.from("attendance_days").delete().gte("work_date", start).lte("work_date", end);
-
       const dayChunks = chunk(
-        recomputed.days.map((d) => ({ ...d, upload_id: upload.id })),
+        freshDays.map((d) => ({ ...d, upload_id: upload.id })),
         400
       );
       for (const part of dayChunks) {
         const { error: dayErr } = await supabase.from("attendance_days").insert(part);
-        if (dayErr) throw dayErr;
+        if (dayErr) {
+          if (dayErr.code === "23505" || /already saved|duplicate key/i.test(dayErr.message)) {
+            throw new Error("Some of these dates are already saved and locked. Upload only new days.");
+          }
+          throw dayErr;
+        }
       }
 
       const months = new Set(recomputed.days.map((d) => d.work_date.slice(0, 7)));
@@ -346,7 +403,7 @@ export function AttendanceUploader({
             <h3 className="font-semibold tracking-tight text-xl">
               Preview · {preview.summaries.length} people
               {periodic
-                ? ` · updated ${rangeLabel(periodic.startDate, periodic.endDate)}`
+                ? ` · ${rangeLabel(periodic.startDate, periodic.endDate)}`
                 : ` · through ${formatWorkDate(kolkataTodayKey())}`}
             </h3>
             <label className="flex items-center gap-2 text-sm">
@@ -354,6 +411,16 @@ export function AttendanceUploader({
               Create people who are not in the directory yet
             </label>
           </div>
+          {lockedCount > 0 ? (
+            <p className="mb-3 rounded-xl border border-amber-line bg-amber-dim px-4 py-3 text-sm">
+              {lockedCount} day{lockedCount === 1 ? "" : "s"} in this file are already saved and locked.
+              {newDayCount > 0
+                ? ` Save will add ${newDayCount} new day${newDayCount === 1 ? "" : "s"} only.`
+                : " Nothing new to save."}
+            </p>
+          ) : (
+            <p className="mb-3 text-sm text-muted">After Save, these dates stay locked and cannot be overwritten.</p>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-[11px] font-semibold text-faint">
@@ -392,8 +459,14 @@ export function AttendanceUploader({
             </table>
           </div>
           <div className="mt-5 flex flex-wrap gap-2">
-            <Button onClick={save} disabled={busy}>
-              {busy ? "Saving…" : periodic ? `Save ${rangeLabel(periodic.startDate, periodic.endDate)}` : "Save this month"}
+            <Button onClick={save} disabled={busy || newDayCount <= 0}>
+              {busy
+                ? "Saving…"
+                : newDayCount <= 0
+                  ? "Already saved"
+                  : periodic
+                    ? `Save ${rangeLabel(periodic.startDate, periodic.endDate)}`
+                    : "Save this month"}
             </Button>
             {periodic ? (
               <Button type="button" variant="secondary" disabled={busy || !sourceFile} onClick={() => void downloadReport()}>

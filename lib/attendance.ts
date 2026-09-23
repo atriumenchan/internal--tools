@@ -5,6 +5,14 @@ import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { kolkataTodayKey } from "@/lib/datetime";
 import { fixedHolidayName, resolveHandbookStatus, HANDBOOK_HOLIDAYS_2026 } from "@/lib/handbook-calendar";
 
+export function attendanceLockKey(
+  employee_code: string | null | undefined,
+  employee_name: string | null | undefined,
+  work_date: string | null | undefined
+) {
+  return `${normalizeEmpCode(employee_code)}|${(employee_name || "").trim().toLowerCase()}|${String(work_date || "").slice(0, 10)}`;
+}
+
 export type ComputedDay = {
   employee_code: string | null;
   employee_name: string;
