@@ -24,6 +24,15 @@ export function canManageTask(task: Pick<Task, "created_by">, actor: Actor | nul
   return isManagerUser(actor);
 }
 
+export function canManageSpace(
+  space: { created_by: string | null | undefined },
+  actor: Actor | null | undefined
+) {
+  if (!actor?.id) return false;
+  if (space.created_by && actor.id === space.created_by) return true;
+  return isManagerUser(actor);
+}
+
 export function canCompleteDirectly(task: Pick<TaskPeople, "created_by" | "assignee_id">, userId: string) {
   return userId === task.created_by;
 }

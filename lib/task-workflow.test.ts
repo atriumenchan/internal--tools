@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskStatus, canManageTask } from "./task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask } from "./task-workflow";
 
 const requested = {
   created_by: "a",
@@ -19,6 +19,26 @@ describe("canManageTask", () => {
 
   it("blocks a random employee", () => {
     expect(canManageTask(requested, { id: "b", role: "employee" })).toBe(false);
+  });
+});
+
+describe("canManageSpace", () => {
+  const board = { created_by: "a" };
+
+  it("lets the creator delete their board", () => {
+    expect(canManageSpace(board, { id: "a", role: "employee" })).toBe(true);
+  });
+
+  it("lets a manager delete someone else's board", () => {
+    expect(canManageSpace(board, { id: "m", role: "manager" })).toBe(true);
+  });
+
+  it("lets admin delete someone else's board", () => {
+    expect(canManageSpace(board, { id: "x", role: "admin" })).toBe(true);
+  });
+
+  it("blocks a random employee", () => {
+    expect(canManageSpace(board, { id: "b", role: "employee" })).toBe(false);
   });
 });
 

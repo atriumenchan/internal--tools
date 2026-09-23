@@ -6,7 +6,11 @@ create policy "members delete tasks"
 drop policy if exists "members delete spaces" on public.spaces;
 create policy "members delete spaces"
   on public.spaces for delete to authenticated
-  using (public.has_signed_handbook() and public.is_space_member(id));
+  using (
+    public.has_signed_handbook()
+    and public.is_space_member(id)
+    and (created_by = auth.uid() or public.is_manager())
+  );
 
 drop policy if exists "authors delete task comments" on public.task_comments;
 create policy "authors delete task comments"

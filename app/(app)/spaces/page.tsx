@@ -10,7 +10,7 @@ import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { canCreateSpace, displayName, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
 import { isOverdue } from "@/lib/datetime";
-import { effectiveReviewer } from "@/lib/task-workflow";
+import { effectiveReviewer, canManageSpace } from "@/lib/task-workflow";
 import type { Profile, Space, Task } from "@/lib/types";
 
 function SpacesPageInner() {
@@ -114,12 +114,16 @@ function SpacesPageInner() {
   }
 
   async function deleteSpace(space: Space) {
+    if (!canManageSpace(space, app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null)) {
+      setError("Only the person who created this board, or a manager, can delete it.");
+      return;
+    }
     const supabase = createClient();
     const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this board. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this board. Paste supabase/space-owner.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -271,12 +275,14 @@ function SpacesPageInner() {
                       </span>
                     </span>
                   </button>
-                  <ConfirmDelete
-                    label="Delete board"
-                    title="Delete this board?"
-                    description="All tasks, comments, and files on this board will be removed."
-                    onConfirm={() => deleteSpace(space)}
-                  />
+                  {canManageSpace(space, app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null) ? (
+                    <ConfirmDelete
+                      label="Delete board"
+                      title="Delete this board?"
+                      description="All tasks, comments, and files on this board will be removed."
+                      onConfirm={() => deleteSpace(space)}
+                    />
+                  ) : null}
                 </div>
               </li>
             );

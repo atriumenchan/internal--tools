@@ -18,7 +18,7 @@ import {
   TASK_STATUS_LABELS,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
@@ -209,12 +209,16 @@ export default function SpaceDetailPage() {
 
   async function deleteSpace() {
     if (!space) return;
+    if (!canManageSpace(space, actor)) {
+      setError("Only the person who created this board, or a manager, can delete it.");
+      return;
+    }
     const supabase = createClient();
     const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this board. Paste supabase/deletes.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this board. Paste supabase/space-owner.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -298,12 +302,14 @@ export default function SpaceDetailPage() {
                 <Button variant="secondary">Chat</Button>
               </Link>
             ) : null}
-            <ConfirmDelete
-              label="Delete board"
-              title="Delete this board?"
-              description="All tasks, comments, and files on this board will be removed."
-              onConfirm={() => deleteSpace()}
-            />
+            {canManageSpace(space, actor) ? (
+              <ConfirmDelete
+                label="Delete board"
+                title="Delete this board?"
+                description="All tasks, comments, and files on this board will be removed."
+                onConfirm={() => deleteSpace()}
+              />
+            ) : null}
           </div>
         }
       />
