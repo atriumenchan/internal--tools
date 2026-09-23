@@ -423,22 +423,34 @@ function ChatApp() {
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
               </Field>
               <Field label="Add people">
-                <Select
-                  value=""
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (id && !groupMembers.includes(id)) setGroupMembers([...groupMembers, id]);
-                  }}
-                >
-                  <option value="">{dmOptions.length === 0 ? "No people with a login yet." : "Select a person"}</option>
-                  {dmOptions
-                    .filter((person) => !groupMembers.includes(person.id))
-                    .map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.label}
-                      </option>
-                    ))}
-                </Select>
+                <div className="flex flex-wrap gap-2">
+                  <Select
+                    className="min-w-[12rem] flex-1"
+                    value=""
+                    onChange={(e) => {
+                      const id = e.target.value;
+                      if (id && !groupMembers.includes(id)) setGroupMembers([...groupMembers, id]);
+                    }}
+                  >
+                    <option value="">{dmOptions.length === 0 ? "No people with a login yet." : "Select a person"}</option>
+                    {dmOptions
+                      .filter((person) => !groupMembers.includes(person.id))
+                      .map((person) => (
+                        <option key={person.id} value={person.id}>
+                          {person.label}
+                        </option>
+                      ))}
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={dmOptions.length === 0 || groupMembers.length === dmOptions.length}
+                    onClick={() => setGroupMembers(dmOptions.map((person) => person.id))}
+                  >
+                    Add everyone
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-xs text-muted">You are in the group already. Add everyone, or pick people one by one.</p>
               </Field>
               {groupMembers.length > 0 ? (
                 <div className="flex flex-wrap gap-1">
