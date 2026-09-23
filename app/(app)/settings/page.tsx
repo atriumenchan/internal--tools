@@ -38,7 +38,7 @@ export default function SettingsPage() {
       <PageHeader
         eyebrow="Workspace"
         title="Settings"
-        description="Company details appear on offer letters. Control who can create Spaces and which handbook version everyone must sign."
+        description="Company details, holidays, and a new handbook PDF. Publishing a new version asks everyone to sign again — work stays."
       />
       {settings ? <SettingsForm settings={settings} holidays={holidays} /> : <PageFallback />}
     </div>

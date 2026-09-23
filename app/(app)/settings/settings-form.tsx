@@ -6,8 +6,10 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { DatePicker } from "@/components/date-picker";
+import { FileDrop } from "@/components/file-drop";
 import { WEEKDAYS } from "@/lib/utils";
 import { HANDBOOK_WEEKLY_OFFS } from "@/lib/handbook-calendar";
+import { nextHandbookVersion } from "@/lib/handbook";
 import type { CompanySettings, Holiday } from "@/lib/types";
 
 export function SettingsForm({ settings, holidays }: { settings: CompanySettings; holidays: Holiday[] }) {
@@ -38,7 +40,6 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         weekly_offs: [...new Set([...HANDBOOK_WEEKLY_OFFS, ...offs])],
         offer_validity_days: Number(form.get("offer_validity_days") || 7),
         offer_footer: String(form.get("offer_footer") || ""),
-        handbook_version: String(form.get("handbook_version") || "2.0").trim() || "2.0",
         anyone_can_create_spaces: form.get("anyone_can_create_spaces") === "on",
       })
       .eq("id", 1);
@@ -104,13 +105,8 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         <Field label="Letter footer">
           <Textarea name="offer_footer" rows={3} defaultValue={settings.offer_footer} />
         </Field>
-        <h3 className="pt-2 text-lg font-semibold">Spaces & handbook</h3>
-        <Field label="Current handbook version">
-          <Input name="handbook_version" defaultValue={settings.handbook_version || "2.0"} />
-        </Field>
-        <p className="text-xs text-ink-soft">
-          Bump this (for example 2.1) after you upload a new PDF. Everyone must sign again before they can use the app.
-        </p>
+        <h3 className="pt-2 text-lg font-semibold">Spaces</h3>
+        <p className="text-xs text-ink-soft">Current handbook: v{settings.handbook_version}. Publish a new PDF in the card on the right.</p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -166,6 +162,9 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
         <Button type="submit">Save settings</Button>
       </form>
 
+      <div className="space-y-8">
+      <HandbookPublish current={settings.handbook_version} />
+
       <div className="rounded-md border border-border bg-surface p-5 shadow-card">
         <h2 className="font-display text-xl font-medium">Holidays</h2>
         <p className="mt-1 text-sm text-muted">
@@ -193,6 +192,75 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
           ))}
         </ul>
       </div>
+      </div>
     </div>
+  );
+}
+
+function HandbookPublish({ current }: { current: string }) {
+  const router = useRouter();
+  const [version, setVersion] = useState(nextHandbookVersion(current));
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+
+  async function publish(e: React.FormEvent) {
+    e.preventDefault();
+    if (!file) {
+      setError("Choose the new handbook PDF.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      body.append("version", version);
+      const res = await fetch("/api/handbook/file", { method: "POST", body });
+      const json = (await res.json().catch(() => ({}))) as { error?: string; version?: string; note?: string };
+      if (!res.ok) throw new Error(json.error || "Could not publish");
+      sessionStorage.removeItem("it-shell-v2");
+      sessionStorage.removeItem("it-shell-v3");
+      sessionStorage.removeItem("it-shell-v4");
+      sessionStorage.removeItem("it-workspace-v1");
+      setMessage(
+        json.note ||
+          `Handbook v${json.version || version} is live. Staff must sign again. Tasks, chat, attendance, and logins stay.`
+      );
+      setFile(null);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={publish} className="space-y-4 rounded-md border border-border bg-surface p-5 shadow-card">
+      <h2 className="font-display text-xl font-medium">New handbook</h2>
+      <p className="text-sm text-muted">
+        Now v{current}. Upload a PDF and publish. Everyone except admin signs that version on next login. Boards, tasks,
+        chat, attendance, and Staff logins are not touched.
+      </p>
+      <Field label="Version">
+        <Input value={version} onChange={(e) => setVersion(e.target.value)} required />
+      </Field>
+      <Field label="PDF">
+        <FileDrop
+          accept="application/pdf,.pdf"
+          hint={file ? file.name : "PDF only. Replaces the file people sign."}
+          label={file ? "Replace PDF" : "Drop the new handbook PDF"}
+          onFile={setFile}
+        />
+      </Field>
+      {error ? <p className="text-sm text-coral">{error}</p> : null}
+      {message ? <p className="text-sm text-sage">{message}</p> : null}
+      <Button type="submit" disabled={busy || !file || !version.trim()}>
+        {busy ? "Publishing…" : "Publish and require signatures"}
+      </Button>
+    </form>
   );
 }

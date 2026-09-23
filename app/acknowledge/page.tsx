@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input } from "@/components/ui";
 import { SignaturePad } from "@/components/signature-pad";
 import { isAdminEmail } from "@/lib/admin";
-import { mustSignHandbook, HANDBOOK_PDF } from "@/lib/handbook";
+import { mustSignHandbook, handbookFileUrl } from "@/lib/handbook";
 
 export default function AcknowledgePage() {
   const router = useRouter();
@@ -136,14 +136,14 @@ export default function AcknowledgePage() {
         <div>
           <h1 className="font-display text-[32px] font-medium tracking-tight md:text-[40px]">Read and sign the handbook</h1>
           <p className="mt-2 text-sm text-muted">
-            Everyone signs once for this version before Spaces, Chat, and the rest of the internal tools.
+            Everyone signs this version before Spaces, Chat, and the rest of the internal tools. Your tasks and chats stay.
           </p>
           <iframe
             title="ADMEXO handbook"
-            src={HANDBOOK_PDF}
+            src={handbookFileUrl(version)}
             className="mt-6 min-h-[70vh] w-full rounded-md border border-border bg-surface shadow-card"
           />
-          <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer" className="mt-3 inline-block text-sm font-medium text-teal hover:text-teal-soft">
+          <a href={handbookFileUrl(version, true)} className="mt-3 inline-block text-sm font-medium text-teal hover:text-teal-soft">
             Open PDF in a new tab
           </a>
         </div>

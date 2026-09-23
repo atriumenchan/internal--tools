@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, PageHeader, Segmented } from "@/components/ui";
 import { KnowledgeDocs } from "@/components/knowledge-docs";
-import { HANDBOOK_PDF } from "@/lib/handbook";
+import { handbookFileUrl } from "@/lib/handbook";
 
 export function HandbookHome() {
   const params = useSearchParams();
@@ -38,7 +38,7 @@ export function HandbookHome() {
               ]}
             />
             {tab === "pdf" ? (
-              <a href={HANDBOOK_PDF} target="_blank" rel="noreferrer">
+              <a href={handbookFileUrl(null, true)}>
                 <Button>Download PDF</Button>
               </a>
             ) : null}
@@ -46,7 +46,7 @@ export function HandbookHome() {
         }
       />
       {tab === "pdf" ? (
-        <iframe title="ADMEXO handbook" src={HANDBOOK_PDF} className="min-h-0 w-full flex-1 rounded-md border border-border bg-surface shadow-card" />
+        <iframe title="ADMEXO handbook" src={handbookFileUrl()} className="min-h-0 w-full flex-1 rounded-md border border-border bg-surface shadow-card" />
       ) : (
         <KnowledgeDocs />
       )}
