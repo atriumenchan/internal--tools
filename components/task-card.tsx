@@ -57,9 +57,11 @@ export function priorityTone(value: TaskPriority | string | null | undefined): "
 function StatusMoveControl({
   status,
   onMove,
+  className,
 }: {
   status: TaskStatus;
   onMove: (status: TaskStatus) => void;
+  className?: string;
 }) {
   const trigger = useRef<HTMLButtonElement>(null);
   const pop = useRef<HTMLDivElement>(null);
@@ -104,7 +106,7 @@ function StatusMoveControl({
   }, [open]);
 
   return (
-    <div className="mt-3 min-w-0">
+    <div className={cn("mt-3 min-w-0", className)}>
       <button
         ref={trigger}
         type="button"
@@ -304,5 +306,94 @@ export function TaskCard({
         </div>
       </div>
     </article>
+  );
+}
+
+export function TaskListRow({
+  task,
+  href,
+  assignee,
+  members,
+  onMove,
+  onEdit,
+  onDelete,
+}: {
+  task: Task;
+  href: string;
+  assignee?: Profile | null;
+  members?: Profile[];
+  onMove?: (status: TaskStatus) => void;
+  onEdit?: (values: TaskDraft) => Promise<boolean>;
+  onDelete?: () => Promise<void> | void;
+}) {
+  const due = formatDueDate(task.due_date);
+  const late = isOverdue(task.due_date, task.status);
+  const [editing, setEditing] = useState(false);
+
+  if (editing && onEdit && members) {
+    return (
+      <div className="border-t border-border px-3 py-3">
+        <TaskForm
+          members={members}
+          initial={draftFromTask(task)}
+          submitLabel="Save"
+          busyLabel="Saving…"
+          onCancel={() => setEditing(false)}
+          onSubmit={async (values) => {
+            const ok = await onEdit(values);
+            if (ok) setEditing(false);
+            return ok;
+          }}
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-2.5 transition duration-150 hover:bg-surface-2 md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem]">
+      <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
+      <p title={task.title} className="relative z-[1] min-w-0 truncate text-[14px] font-medium tracking-tight text-ink">
+        {task.title}
+      </p>
+      <span className="relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
+        <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
+        <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
+      </span>
+      <span className={cn("relative z-[1] hidden font-mono text-[12px] md:block", late && "font-medium text-coral")}>
+        {due ? (late ? `Overdue · ${due}` : due) : "—"}
+      </span>
+      <div className="relative z-[1] hidden min-w-0 md:block">
+        {onMove ? (
+          <div className="pointer-events-auto">
+            <StatusMoveControl status={task.status} onMove={onMove} className="mt-0" />
+          </div>
+        ) : (
+          <Badge tone={taskBadgeTone(task)} dot>
+            {TASK_STATUS_LABELS[task.status]}
+          </Badge>
+        )}
+      </div>
+      <div className="pointer-events-auto relative z-[2] flex justify-end">
+        {onDelete || onEdit ? (
+          <ConfirmDelete
+            label="Delete task"
+            title="Delete this task?"
+            description="The task, comments, and files will be removed."
+            onConfirm={onDelete ?? (async () => undefined)}
+            extra={
+              onEdit
+                ? [
+                    {
+                      label: "Edit task",
+                      icon: <PencilSimple size={18} weight="light" />,
+                      onSelect: () => setEditing(true),
+                    },
+                  ]
+                : undefined
+            }
+          />
+        ) : null}
+      </div>
+    </div>
   );
 }

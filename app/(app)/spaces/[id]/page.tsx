@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
-import { TaskCard } from "@/components/task-card";
+import { TaskCard, TaskListRow } from "@/components/task-card";
 import { TaskForm, type TaskDraft } from "@/components/task-form";
 import { Avatar } from "@/components/avatar";
 import {
@@ -18,6 +18,7 @@ import {
   TASK_STATUS_LABELS,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
+import { Segmented } from "@/components/overflow-strip";
 import { applyTaskStatus, canManageSpace, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
@@ -36,6 +37,7 @@ export default function SpaceDetailPage() {
   const [addingStatus, setAddingStatus] = useState<TaskStatus | null>(null);
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [view, setView] = useState<"board" | "list">("board");
 
   useEffect(() => {
     if (!id) return;
@@ -64,6 +66,12 @@ export default function SpaceDetailPage() {
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
       setConversationId((convRes.data as { id?: string } | null)?.id ?? null);
     })();
+  }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    const stored = sessionStorage.getItem(`it-space-view-${id}`);
+    if (stored === "list" || stored === "board") setView(stored);
   }, [id]);
 
   const columns = useMemo(() => {
@@ -281,9 +289,20 @@ export default function SpaceDetailPage() {
       </p>
       <PageHeader
         title={space.name}
-        description="Drag cards between columns, or edit from the three-dot menu."
+        description={view === "list" ? "List of every task on this board. Switch to Board to drag columns." : "Drag cards between columns, or switch to List."}
         actions={
           <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden">
+            <Segmented
+              value={view}
+              onChange={(next) => {
+                setView(next);
+                if (id) sessionStorage.setItem(`it-space-view-${id}`, next);
+              }}
+              options={[
+                { id: "board", label: "Board" },
+                { id: "list", label: "List" },
+              ]}
+            />
             <div className="flex shrink-0 -space-x-2">
               {members.slice(0, 3).map((m) => (
                 <Avatar key={m.id} name={displayName(m)} className="border border-page" />
@@ -334,6 +353,61 @@ export default function SpaceDetailPage() {
         </form>
       ) : null}
 
+      {view === "list" ? (
+        <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+          <div className="hidden grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold tracking-wide text-faint uppercase md:grid">
+            <span>Name</span>
+            <span>Assignee</span>
+            <span>Due</span>
+            <span>Status</span>
+            <span />
+          </div>
+          {TASK_COLUMNS.map((col) => (
+            <section key={col.status}>
+              <div className="flex items-center justify-between gap-2 bg-surface-2 px-3 py-2">
+                <h2 className="flex items-center gap-2 text-[13px] font-semibold tracking-tight">
+                  <span className={cn("h-2.5 w-2.5 rounded-[2px]", col.accent)} />
+                  {TASK_STATUS_LABELS[col.status]}
+                </h2>
+                <span className="tabular rounded-sm bg-page px-1.5 py-0.5 text-[11px] font-medium text-muted">
+                  {columns[col.status].length}
+                </span>
+              </div>
+              {addingStatus === col.status ? (
+                <div className="border-t border-border px-3 py-3">
+                  <TaskForm
+                    members={members}
+                    submitLabel="Add"
+                    busyLabel="Adding…"
+                    onCancel={() => setAddingStatus(null)}
+                    onSubmit={(values) => createTask(col.status, values)}
+                  />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingStatus(col.status)}
+                  className="w-full cursor-pointer border-t border-border bg-transparent px-3 py-2 text-left text-[13px] text-muted transition duration-150 hover:bg-surface-2 hover:text-ink"
+                >
+                  + Add a task
+                </button>
+              )}
+              {columns[col.status].map((task) => (
+                <TaskListRow
+                  key={task.id}
+                  task={task}
+                  href={`/spaces/${space.id}/tasks/${task.id}`}
+                  assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
+                  members={members}
+                  onMove={canManageTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                  onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
+                  onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
+                />
+              ))}
+            </section>
+          ))}
+        </div>
+      ) : (
       <div className="grid min-w-0 gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {TASK_COLUMNS.map((col) => (
           <section
@@ -406,6 +480,7 @@ export default function SpaceDetailPage() {
           </section>
         ))}
       </div>
+      )}
     </div>
   );
 }
