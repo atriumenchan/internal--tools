@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, PageHeader, Select } from "@/components/ui";
+import { Button, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { TaskCard, TaskListRow } from "@/components/task-card";
@@ -40,6 +40,10 @@ export default function SpaceDetailPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
   const [whose, setWhose] = useState("me");
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [excludeId, setExcludeId] = useState("");
+  const [excludeConfirm, setExcludeConfirm] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -62,7 +66,9 @@ export default function SpaceDetailPage() {
       }
       const allPeople = (peopleRes.data ?? []) as Profile[];
       const memberIds = new Set((memberRes.data ?? []).map((row) => row.user_id as string));
-      setSpace(spaceRes.data as Space);
+      const loaded = spaceRes.data as Space;
+      setSpace(loaded);
+      setNameDraft(loaded.name);
       setTasks((tasksRes.data ?? []) as Task[]);
       setPeople(allPeople);
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
@@ -99,6 +105,7 @@ export default function SpaceDetailPage() {
 
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
+  const removable = members.filter((p) => p.id !== space?.created_by);
   const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
   const whosePeople = useMemo(() => {
     const byId = new Map(members.map((m) => [m.id, m]));
@@ -272,6 +279,54 @@ export default function SpaceDetailPage() {
     setInviteId("");
   }
 
+  async function renameSpace(e: React.FormEvent) {
+    e.preventDefault();
+    if (!space || !canManageSpace(space, actor)) return;
+    const next = nameDraft.trim();
+    if (!next) {
+      setError("Name is required.");
+      return;
+    }
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("rename_space", { p_space_id: space.id, p_name: next });
+    if (err) {
+      setError(
+        err.message.includes("Could not find the function") || err.message.includes("schema cache")
+          ? "Board rename needs a SQL patch. Paste supabase/space-manage.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setSpace({ ...space, name: next });
+    setEditingName(false);
+  }
+
+  async function excludeMember() {
+    if (!space || !excludeId || !canManageSpace(space, actor)) return;
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("remove_space_member", {
+      p_space_id: space.id,
+      p_user_id: excludeId,
+    });
+    if (err) {
+      setError(
+        err.message.includes("Could not find the function") || err.message.includes("schema cache")
+          ? "Excluding someone needs a SQL patch. Paste supabase/space-manage.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setMembers((prev) => prev.filter((p) => p.id !== excludeId));
+    if (whose === excludeId) {
+      setWhose("me");
+      if (id) sessionStorage.setItem(`it-space-whose-${id}`, "me");
+    }
+    setExcludeId("");
+    setExcludeConfirm(false);
+  }
+
   async function inviteEveryone() {
     if (!space || outsiders.length === 0) return;
     const supabase = createClient();
@@ -312,7 +367,50 @@ export default function SpaceDetailPage() {
         </Link>
       </p>
       <PageHeader
-        title={space.name}
+        title={
+          editingName && canManageSpace(space, actor) ? (
+            <form onSubmit={(e) => void renameSpace(e)} className="flex max-w-xl flex-wrap items-center gap-2">
+              <Input
+                value={nameDraft}
+                onChange={(e) => setNameDraft(e.target.value)}
+                aria-label="Board name"
+                autoFocus
+                className="min-w-[12rem] flex-1 font-display text-[22px]"
+              />
+              <Button type="submit" size="sm">
+                Save
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setNameDraft(space.name);
+                  setEditingName(false);
+                }}
+              >
+                Cancel
+              </Button>
+            </form>
+          ) : (
+            <h1 className="flex flex-wrap items-center gap-3 font-display text-[32px] font-medium leading-[1.15] tracking-tight text-ink">
+              <span className="min-w-0">{space.name}</span>
+              {canManageSpace(space, actor) ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    setNameDraft(space.name);
+                    setEditingName(true);
+                  }}
+                >
+                  Rename
+                </Button>
+              ) : null}
+            </h1>
+          )
+        }
         description={whoseLabel}
         actions={
           <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden">
@@ -376,23 +474,60 @@ export default function SpaceDetailPage() {
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
-      {outsiders.length > 0 ? (
-        <form onSubmit={invite} className="mb-5 flex max-w-xl flex-wrap items-center gap-2">
-          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
-            <option value="">Add a person to this board</option>
-            {outsiders.map((p) => (
-              <option key={p.id} value={p.id}>
-                {displayName(p)}
-              </option>
-            ))}
-          </Select>
-          <Button type="submit" size="sm" variant="secondary">
-            Add
-          </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
-            Add everyone
-          </Button>
-        </form>
+      {outsiders.length > 0 || (canManageSpace(space, actor) && removable.length > 0) ? (
+        <div className="mb-5 flex max-w-3xl flex-wrap items-end gap-x-4 gap-y-3">
+          {outsiders.length > 0 ? (
+            <form onSubmit={invite} className="flex min-w-[16rem] flex-1 flex-wrap items-center gap-2">
+              <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
+                <option value="">Add a person to this board</option>
+                {outsiders.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {displayName(p)}
+                  </option>
+                ))}
+              </Select>
+              <Button type="submit" size="sm" variant="secondary">
+                Add
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
+                Add everyone
+              </Button>
+            </form>
+          ) : null}
+          {canManageSpace(space, actor) && removable.length > 0 ? (
+            <div className="flex min-w-[16rem] flex-1 flex-wrap items-center gap-2">
+              <Select
+                value={excludeId}
+                onChange={(e) => {
+                  setExcludeId(e.target.value);
+                  setExcludeConfirm(false);
+                }}
+                className="min-w-[12rem] flex-1"
+              >
+                <option value="">Exclude a person</option>
+                {removable.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {displayName(p)}
+                  </option>
+                ))}
+              </Select>
+              {excludeId && excludeConfirm ? (
+                <>
+                  <Button type="button" size="sm" variant="danger" onClick={() => void excludeMember()}>
+                    Exclude
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setExcludeConfirm(false)}>
+                    Cancel
+                  </Button>
+                </>
+              ) : excludeId ? (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setExcludeConfirm(true)}>
+                  Exclude
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
 
       {view === "list" ? (
