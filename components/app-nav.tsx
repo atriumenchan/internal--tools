@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
 import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
+import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
@@ -46,6 +47,7 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "You",
     items: [
       { href: "/my-attendance", label: "My attendance", icon: CalendarBlank },
+      { href: "/notes", label: "Daily notes", icon: Notebook },
       { href: "/vault", label: "Logins", icon: Key },
       { href: "/handbook", label: "Handbook", icon: BookOpen },
     ],
