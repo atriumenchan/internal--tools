@@ -196,10 +196,10 @@ export function AttendanceUploader({
     setBusy(true);
     setError(null);
     const supabase = createClient();
-    const rangeStart = periodic?.startDate ?? ("startDate" in preview ? preview.startDate : null);
-    const rangeEnd = periodic?.endDate ?? ("endDate" in preview ? preview.endDate : null);
-    const periodMonth = rangeEnd ? new Date(`${rangeEnd}T00:00:00`).getMonth() + 1 : report?.month ?? month;
-    const periodYear = rangeEnd ? new Date(`${rangeEnd}T00:00:00`).getFullYear() : report?.year ?? year;
+    const start = saveRange.start;
+    const end = saveRange.end;
+    const periodMonth = new Date(`${end}T00:00:00`).getMonth() + 1;
+    const periodYear = new Date(`${end}T00:00:00`).getFullYear();
 
     try {
       const employeeList = [...employees];
@@ -249,9 +249,6 @@ export function AttendanceUploader({
               punches: mapping.punch_in || mapping.punch_out ? [] : extractPunches(sheet!, mapping),
               daily: mapping.punch_in || mapping.punch_out ? extractDailyRows(sheet!, mapping) : [],
             });
-
-      const start = rangeStart || saveRange.start;
-      const end = rangeEnd || saveRange.end;
 
       const { data: existingRows } = await supabase
         .from("attendance_days")
