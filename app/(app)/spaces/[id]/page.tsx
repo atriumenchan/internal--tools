@@ -16,6 +16,7 @@ import {
   missingSpacesSchema,
   TASK_COLUMNS,
   TASK_STATUS_LABELS,
+  visibleSpaceTasks,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
@@ -38,6 +39,7 @@ export default function SpaceDetailPage() {
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
+  const [whose, setWhose] = useState("me");
 
   useEffect(() => {
     if (!id) return;
@@ -72,7 +74,14 @@ export default function SpaceDetailPage() {
     if (!id) return;
     const stored = sessionStorage.getItem(`it-space-view-${id}`);
     if (stored === "list" || stored === "board") setView(stored);
+    const peopleStored = sessionStorage.getItem(`it-space-whose-${id}`);
+    if (peopleStored) setWhose(peopleStored);
   }, [id]);
+
+  const shownTasks = useMemo(
+    () => visibleSpaceTasks(tasks, whose, app?.userId),
+    [tasks, whose, app?.userId]
+  );
 
   const columns = useMemo(() => {
     const by: Record<TaskStatus, Task[]> = {
@@ -82,15 +91,30 @@ export default function SpaceDetailPage() {
       done: [],
       cancelled: [],
     };
-    for (const task of tasks) {
+    for (const task of shownTasks) {
       (by[task.status] ?? by.open).push(task);
     }
     return by;
-  }, [tasks]);
+  }, [shownTasks]);
 
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
   const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
+  const whosePeople = useMemo(() => {
+    const byId = new Map(members.map((m) => [m.id, m]));
+    for (const task of tasks) {
+      if (!task.assignee_id || byId.has(task.assignee_id)) continue;
+      const person = people.find((p) => p.id === task.assignee_id);
+      if (person) byId.set(person.id, person);
+    }
+    return [...byId.values()].filter((p) => p.id !== app?.userId);
+  }, [members, tasks, people, app?.userId]);
+  const whoseLabel =
+    whose === "all"
+      ? "Everyone's tasks on this board."
+      : whose === "me"
+        ? "Your tasks on this board. Pick someone else to see theirs."
+        : `${displayName(whosePeople.find((p) => p.id === whose) || memberMap[whose])}'s tasks.`;
 
   async function setStatus(taskId: string, status: TaskStatus) {
     const current = tasks.find((t) => t.id === taskId);
@@ -289,9 +313,27 @@ export default function SpaceDetailPage() {
       </p>
       <PageHeader
         title={space.name}
-        description={view === "list" ? "List of every task on this board. Switch to Board to drag columns." : "Drag cards between columns, or switch to List."}
+        description={whoseLabel}
         actions={
           <div className="flex min-w-0 max-w-full items-center gap-2 overflow-hidden">
+            <Select
+              value={whose}
+              onChange={(e) => {
+                const next = e.target.value;
+                setWhose(next);
+                if (id) sessionStorage.setItem(`it-space-whose-${id}`, next);
+              }}
+              className="w-[11.5rem] shrink-0"
+              aria-label="Whose tasks"
+            >
+              <option value="me">My tasks</option>
+              {whosePeople.map((person) => (
+                <option key={person.id} value={person.id}>
+                  {displayName(person)}
+                </option>
+              ))}
+              <option value="all">Everyone</option>
+            </Select>
             <Segmented
               value={view}
               onChange={(next) => {

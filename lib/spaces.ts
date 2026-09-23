@@ -50,6 +50,18 @@ export function displayName(profile: Pick<Profile, "full_name" | "email"> | unde
   return profile.full_name?.trim() || profile.email || "Someone";
 }
 
+/** Board default is your cards; `all` or another user id shows theirs. */
+export function visibleSpaceTasks<T extends { assignee_id: string | null; created_by: string }>(
+  tasks: T[],
+  whose: string,
+  myId: string | undefined
+) {
+  if (!myId) return [];
+  if (whose === "all") return tasks;
+  const personId = whose === "me" ? myId : whose;
+  return tasks.filter((task) => task.assignee_id === personId || (!task.assignee_id && task.created_by === personId));
+}
+
 export function initials(profile: Pick<Profile, "full_name" | "email"> | undefined | null) {
   const name = displayName(profile);
   const parts = name.split(/\s+/).filter(Boolean);
