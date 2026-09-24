@@ -43,8 +43,6 @@ export default function SpaceDetailPage() {
   const [whose, setWhose] = useState("me");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
-  const [excludeId, setExcludeId] = useState("");
-  const [excludeConfirm, setExcludeConfirm] = useState(false);
 
   const loadTasks = useCallback(async () => {
     if (!id) return;
@@ -115,7 +113,6 @@ export default function SpaceDetailPage() {
 
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
-  const removable = members.filter((p) => p.id !== space?.created_by);
   const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
   const whosePeople = useMemo(() => {
     const byId = new Map(members.map((m) => [m.id, m]));
@@ -314,29 +311,27 @@ export default function SpaceDetailPage() {
     setEditingName(false);
   }
 
-  async function excludeMember() {
-    if (!space || !excludeId || !canManageSpace(space, actor)) return;
+  async function removeMember(personId: string) {
+    if (!space || !canManageSpace(space, actor)) return;
     setError(null);
     const supabase = createClient();
     const { error: err } = await supabase.rpc("remove_space_member", {
       p_space_id: space.id,
-      p_user_id: excludeId,
+      p_user_id: personId,
     });
     if (err) {
       setError(
         err.message.includes("Could not find the function") || err.message.includes("schema cache")
-          ? "Excluding someone needs a SQL patch. Paste supabase/space-manage.sql in the Supabase SQL editor, then try again."
+          ? "Removing someone needs a SQL patch. Paste supabase/space-manage.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
     }
-    setMembers((prev) => prev.filter((p) => p.id !== excludeId));
-    if (whose === excludeId) {
+    setMembers((prev) => prev.filter((p) => p.id !== personId));
+    if (whose === personId) {
       setWhose("me");
       if (id) sessionStorage.setItem(`it-space-whose-${id}`, "me");
     }
-    setExcludeId("");
-    setExcludeConfirm(false);
   }
 
   async function inviteEveryone() {
@@ -486,59 +481,56 @@ export default function SpaceDetailPage() {
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
-      {outsiders.length > 0 || (canManageSpace(space, actor) && removable.length > 0) ? (
-        <div className="mb-5 flex max-w-3xl flex-wrap items-end gap-x-4 gap-y-3">
-          {outsiders.length > 0 ? (
-            <form onSubmit={invite} className="flex min-w-[16rem] flex-1 flex-wrap items-center gap-2">
-              <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
-                <option value="">Add a person to this board</option>
-                {outsiders.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {displayName(p)}
-                  </option>
-                ))}
-              </Select>
-              <Button type="submit" size="sm" variant="secondary">
-                Add
-              </Button>
-              <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
-                Add everyone
-              </Button>
-            </form>
-          ) : null}
-          {canManageSpace(space, actor) && removable.length > 0 ? (
-            <div className="flex min-w-[16rem] flex-1 flex-wrap items-center gap-2">
-              <Select
-                value={excludeId}
-                onChange={(e) => {
-                  setExcludeId(e.target.value);
-                  setExcludeConfirm(false);
-                }}
-                className="min-w-[12rem] flex-1"
-              >
-                <option value="">Exclude a person</option>
-                {removable.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {displayName(p)}
-                  </option>
-                ))}
-              </Select>
-              {excludeId && excludeConfirm ? (
-                <>
-                  <Button type="button" size="sm" variant="danger" onClick={() => void excludeMember()}>
-                    Exclude
-                  </Button>
-                  <Button type="button" size="sm" variant="ghost" onClick={() => setExcludeConfirm(false)}>
-                    Cancel
-                  </Button>
-                </>
-              ) : excludeId ? (
-                <Button type="button" size="sm" variant="secondary" onClick={() => setExcludeConfirm(true)}>
-                  Exclude
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
+      {outsiders.length > 0 ? (
+        <form onSubmit={invite} className="mb-4 flex max-w-xl flex-wrap items-center gap-2">
+          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
+            <option value="">Add a person to this board</option>
+            {outsiders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {displayName(p)}
+              </option>
+            ))}
+          </Select>
+          <Button type="submit" size="sm" variant="secondary">
+            Add
+          </Button>
+          <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
+            Add everyone
+          </Button>
+        </form>
+      ) : null}
+
+      {canManageSpace(space, actor) && members.length > 0 ? (
+        <div className="mb-5 max-w-xl overflow-hidden rounded-md border border-border bg-surface shadow-card">
+          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+            <h2 className="text-[13px] font-semibold tracking-tight">People on this board</h2>
+            <span className="tabular text-[12px] text-muted">{members.length}</span>
+          </div>
+          <ul className="max-h-56 overflow-y-auto">
+            {members.map((person) => {
+              const owner = person.id === space.created_by;
+              return (
+                <li
+                  key={person.id}
+                  className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0"
+                >
+                  <Avatar name={displayName(person)} size="sm" />
+                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{displayName(person)}</span>
+                  {owner ? (
+                    <span className="text-[11px] text-faint">Owner</span>
+                  ) : (
+                    <ConfirmDelete
+                      label="Remove"
+                      title={`Remove ${displayName(person)}?`}
+                      description="They lose this board and its chat. Their tasks stay."
+                      confirmLabel="Remove"
+                      onConfirm={() => removeMember(person.id)}
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       ) : null}
 
