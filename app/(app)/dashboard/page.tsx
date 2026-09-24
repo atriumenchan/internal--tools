@@ -18,6 +18,7 @@ import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { cn } from "@/lib/utils";
@@ -272,6 +273,16 @@ export default function DashboardPage() {
       return false;
     }
     setTasks((prev) => (prev ?? []).map((t) => (t.id === taskId ? (data as Task) : t)));
+    if (assigneeId && assigneeId !== current.assignee_id) {
+      pingTaskAssigned({
+        title: (data as Task).title,
+        assigneeName: displayName(peopleMap[assigneeId] || people.find((p) => p.id === assigneeId)),
+        byName: displayName(app.profile),
+        spaceName: spaceMap[(data as Task).space_id]?.name,
+        due: (data as Task).due_date,
+        path: `/spaces/${(data as Task).space_id}/tasks/${taskId}`,
+      });
+    }
     return true;
   }
 

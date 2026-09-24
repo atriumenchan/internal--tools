@@ -22,6 +22,7 @@ import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
 import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
+import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
@@ -204,6 +205,16 @@ export default function SpaceDetailPage() {
     }
     setTasks((prev) => [task, ...prev]);
     setAddingStatus(null);
+    if (assigneeId) {
+      pingTaskAssigned({
+        title: task.title,
+        assigneeName: displayName(members.find((m) => m.id === assigneeId) || people.find((p) => p.id === assigneeId)),
+        byName: displayName(app?.profile),
+        spaceName: space.name,
+        due: task.due_date,
+        path: `/spaces/${space.id}/tasks/${task.id}`,
+      });
+    }
     return true;
   }
 
@@ -238,6 +249,16 @@ export default function SpaceDetailPage() {
       return false;
     }
     setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
+    if (assigneeId && assigneeId !== current.assignee_id) {
+      pingTaskAssigned({
+        title: (data as Task).title,
+        assigneeName: displayName(members.find((m) => m.id === assigneeId) || people.find((p) => p.id === assigneeId)),
+        byName: displayName(app?.profile),
+        spaceName: space?.name,
+        due: (data as Task).due_date,
+        path: space ? `/spaces/${space.id}/tasks/${taskId}` : undefined,
+      });
+    }
     return true;
   }
 

@@ -24,6 +24,7 @@ import {
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
+import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
 import { applyTaskStatus, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
@@ -133,8 +134,19 @@ export default function TaskPage() {
       );
       return;
     }
+    const previous = task;
     setTask(data as Task);
     if (typeof patch.title === "string") setTitleDraft(patch.title);
+    if (patch.assignee_id && patch.assignee_id !== previous.assignee_id) {
+      pingTaskAssigned({
+        title: (data as Task).title,
+        assigneeName: displayName(members.find((m) => m.id === patch.assignee_id) || profiles[patch.assignee_id]),
+        byName: displayName(app.profile),
+        spaceName: space?.name,
+        due: (data as Task).due_date,
+        path: `/spaces/${id}/tasks/${task.id}`,
+      });
+    }
   }
 
   async function uploadFile(file: File) {
