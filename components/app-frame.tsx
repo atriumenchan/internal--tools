@@ -33,7 +33,7 @@ export type WorkspaceCache = {
 
 const AppStateContext = createContext<AppState | null>(null);
 const WorkspaceContext = createContext<WorkspaceCache | null>(null);
-const CACHE_KEY = "it-shell-v4";
+const CACHE_KEY = "it-shell-v5";
 const WORK_KEY = "it-workspace-v1";
 
 function readCache(): AppState | null {
@@ -81,7 +81,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const cached = readCache();
-    if (cached) setState(cached);
+    if (cached) {
+      if (isAdminUser(cached.profile)) setState({ ...cached, handbookAcknowledged: true });
+      else setState(cached);
+    }
     const work = readWork();
     if (work?.employees) setEmployees(work.employees);
     if (work?.staffUsers) setStaffUsers(work.staffUsers);
@@ -137,6 +140,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
         role: isAdminEmail(user.email) ? "admin" : "employee",
       };
       const acknowledged =
+        isAdminUser({ email: resolved.email || user.email, role: resolved.role }) ||
         !schemaReady ||
         !mustSignHandbook({
           role: resolved.role,
@@ -159,7 +163,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (state && !state.handbookAcknowledged) {
+    if (state && !state.handbookAcknowledged && !isAdminUser(state.profile)) {
       router.replace("/acknowledge");
     }
   }, [state, router, pathname]);
@@ -285,7 +289,8 @@ export function AppFrame({ children }: { children: ReactNode }) {
     };
   }, [state?.handbookAcknowledged]);
 
-  if (!state || !state.handbookAcknowledged) {
+  const inApp = Boolean(state && (state.handbookAcknowledged || isAdminUser(state.profile)));
+  if (!inApp) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-page text-sm text-muted">
         {state && !state.handbookAcknowledged ? "Opening the handbook…" : "Loading…"}

@@ -51,6 +51,7 @@ export function SettingsForm({ settings, holidays }: { settings: CompanySettings
     sessionStorage.removeItem("it-shell-v2");
     sessionStorage.removeItem("it-shell-v3");
     sessionStorage.removeItem("it-shell-v4");
+    sessionStorage.removeItem("it-shell-v5");
     sessionStorage.removeItem("it-workspace-v1");
     router.refresh();
   }
@@ -224,10 +225,11 @@ function HandbookPublish({ current }: { current: string }) {
       sessionStorage.removeItem("it-shell-v2");
       sessionStorage.removeItem("it-shell-v3");
       sessionStorage.removeItem("it-shell-v4");
+    sessionStorage.removeItem("it-shell-v5");
       sessionStorage.removeItem("it-workspace-v1");
       setMessage(
         json.note ||
-          `Handbook v${json.version || version} is live. Staff must sign again. Tasks, chat, attendance, and logins stay.`
+          `Handbook v${json.version || version} is live. Staff must sign again. Ryan does not. Tasks, chat, attendance, and logins stay.`
       );
       setFile(null);
       router.refresh();

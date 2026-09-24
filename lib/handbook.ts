@@ -1,3 +1,5 @@
+import { isAdminUser } from "@/lib/admin";
+
 export const HANDBOOK_PDF = "/handbook/ADMEXO-Employee-Intern-Handbook-v2.0.pdf";
 export const HANDBOOK_FILE = "/api/handbook/file";
 export const DEFAULT_HANDBOOK_VERSION = "2.0";
@@ -26,15 +28,13 @@ export function handbookIsCurrent(
   return Boolean(signed) && signed === required;
 }
 
-/** Staff must sign. Admin (role or ryan@admexo.com) skips the handbook gate. */
+/** Staff must sign. Ryan skips the handbook gate. */
 export function mustSignHandbook(input: {
   role?: string | null;
   email?: string | null;
   handbookVersion?: string | null;
   requiredVersion?: string | null;
 }) {
-  if (input.role === "admin") return false;
-  const email = (input.email || "").trim().toLowerCase();
-  if (email === "ryan@admexo.com") return false;
+  if (isAdminUser({ role: input.role, email: input.email })) return false;
   return !handbookIsCurrent(input.handbookVersion, input.requiredVersion);
 }
