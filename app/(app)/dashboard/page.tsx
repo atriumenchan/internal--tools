@@ -330,6 +330,7 @@ export default function DashboardPage() {
           <ul>
             {dueSoon.slice(0, 6).map((task) => {
               const when = dueWhenLabel(task.due_date, task.status);
+              const due = formatWorkDate(task.due_date);
               const late = isOverdue(task.due_date, task.status);
               return (
                 <li key={task.id} className="border-t border-border first:border-t-0">
@@ -339,7 +340,7 @@ export default function DashboardPage() {
                   >
                     <span className="truncate font-medium">{task.title}</span>
                     <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
-                      {when}
+                      {when && due && due !== "—" ? `${when} · ${due}` : when || due}
                     </span>
                   </Link>
                 </li>

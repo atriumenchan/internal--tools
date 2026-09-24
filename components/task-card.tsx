@@ -286,12 +286,10 @@ export function TaskCard({
               <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
               {assignee ? displayName(assignee) : "Unassigned"}
             </span>
-            {when ? (
+            {when || due ? (
               <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
-                {when}
+                {when && due ? `${when} · ${due}` : when || due}
               </span>
-            ) : due ? (
-              <span className="shrink-0 font-mono text-[12px]">{due}</span>
             ) : null}
           </OverflowStrip>
           {note ? <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-ink-soft">{note}</p> : null}
@@ -364,7 +362,7 @@ export function TaskListRow({
         <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
       </span>
       <span className={cn("relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
-        {when || due || "—"}
+        {when && due ? `${when} · ${due}` : when || due || "—"}
       </span>
       <div className="relative z-[1] hidden min-w-0 md:block">
         {onMove ? (
