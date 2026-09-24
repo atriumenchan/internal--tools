@@ -1,4 +1,4 @@
-import { isAdminEmail, isAdminUser } from "@/lib/admin";
+import { ADMIN_DISPLAY_NAME, isAdminEmail, isAdminUser } from "@/lib/admin";
 import type { AppRole, Profile } from "@/lib/types";
 
 export type WorkspaceRole = "admin" | "manager" | "employee";
@@ -8,7 +8,7 @@ export const WORKSPACE_ROLES: WorkspaceRole[] = ["employee", "manager", "admin"]
 export const WORKSPACE_ROLE_LABELS: Record<WorkspaceRole, string> = {
   employee: "Employee",
   manager: "Manager",
-  admin: "Admin",
+  admin: ADMIN_DISPLAY_NAME,
 };
 
 export function parseAppRole(value: string | null | undefined): AppRole {

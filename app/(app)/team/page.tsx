@@ -26,7 +26,7 @@ export default function TeamPage() {
       <PageHeader
         eyebrow="Access"
         title="Staff accounts"
-        description="Name, employee code, access level, email ID, and password. Admin login stays in Vercel."
+        description="Name, employee code, access level, email ID, and password. Ryan's login stays in Vercel."
       />
       <TeamPanel />
     </div>

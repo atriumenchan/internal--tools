@@ -76,7 +76,7 @@ export async function POST(request: Request) {
   const fullName = String(body.full_name || body.name || "").trim();
   const role = parseAppRole(body.role);
   if (role === "admin") {
-    return NextResponse.json({ error: "Create a normal login. Admin stays the existing admin account." }, { status: 400 });
+    return NextResponse.json({ error: "Create a normal login. Ryan's account stays as-is." }, { status: 400 });
   }
 
   if (!email || password.length < 6 || !employeeCode || !fullName) {
@@ -180,14 +180,14 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Reset other people’s passwords here — not your own." }, { status: 400 });
   }
   if (role === "admin") {
-    return NextResponse.json({ error: "Do not promote another login to admin here." }, { status: 400 });
+    return NextResponse.json({ error: "Do not give another login Ryan's access here." }, { status: 400 });
   }
 
   try {
     const admin = createAdminClient();
     const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
     if (target && isAdminUser({ email: target.email, role: target.role })) {
-      return NextResponse.json({ error: "The admin login cannot be changed from here." }, { status: 400 });
+      return NextResponse.json({ error: "Ryan's login cannot be changed from here." }, { status: 400 });
     }
     if (password) {
       const { error } = await admin.auth.admin.updateUserById(id, { password });
@@ -221,7 +221,7 @@ export async function DELETE(request: Request) {
     const admin = createAdminClient();
     const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
     if (target && isAdminUser({ email: target.email, role: target.role })) {
-      return NextResponse.json({ error: "The admin login cannot be deleted." }, { status: 400 });
+      return NextResponse.json({ error: "Ryan's login cannot be deleted." }, { status: 400 });
     }
     await admin.rpc("prepare_staff_delete", {
       p_user_id: id,

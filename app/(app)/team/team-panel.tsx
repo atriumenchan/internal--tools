@@ -6,6 +6,7 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { parseAppRole, WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
+import { displayName } from "@/lib/spaces";
 import type { Employee, StaffUser } from "@/lib/types";
 
 export function TeamPanel() {
@@ -198,11 +199,11 @@ export function TeamPanel() {
               {users.map((user) => (
                 <tr key={user.id} className="border-t border-border hover:bg-surface-2">
                   <td className="px-4 py-3 font-mono text-xs">{user.employee_code || "—"}</td>
-                  <td className="px-4 py-3 font-medium">{user.full_name || "—"}</td>
+                  <td className="px-4 py-3 font-medium">{displayName(user)}</td>
                   <td className="px-4 py-3 text-muted">{user.email}</td>
                   <td className="px-4 py-3">
                     {isAdminUser({ email: user.email, role: user.role }) ? (
-                      <span className="text-xs text-muted">Admin</span>
+                      <span className="text-xs text-muted">{WORKSPACE_ROLE_LABELS.admin}</span>
                     ) : (
                       <Select
                         value={workspaceRole(user) === "manager" ? "manager" : "employee"}

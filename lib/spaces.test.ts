@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { visibleSpaceTasks } from "./spaces";
+import { displayName, visibleSpaceTasks } from "./spaces";
 
 const mine = { assignee_id: "me", created_by: "boss" };
 const theirs = { assignee_id: "them", created_by: "me" };
@@ -20,5 +20,12 @@ describe("visibleSpaceTasks", () => {
 
   it("can show everyone", () => {
     expect(visibleSpaceTasks([mine, theirs], "all", "me")).toEqual([mine, theirs]);
+  });
+});
+
+describe("displayName", () => {
+  it("calls the workspace owner Ryan, not Admin", () => {
+    expect(displayName({ full_name: "Admin", email: "ryan@admexo.com", role: "admin" })).toBe("Ryan");
+    expect(displayName({ full_name: "Admin", email: "x@y.com", role: "employee" })).toBe("Ryan");
   });
 });

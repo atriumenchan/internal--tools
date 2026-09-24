@@ -21,3 +21,5 @@ export function isAdminEmail(email: string | null | undefined) {
 export function isAdminUser(input: { email?: string | null; role?: string | null }) {
   return input.role === "admin" || isAdminEmail(input.email);
 }
+
+export const ADMIN_DISPLAY_NAME = "Ryan";

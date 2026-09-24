@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { adminEmail } from "@/lib/admin";
+import { ADMIN_DISPLAY_NAME, adminEmail } from "@/lib/admin";
 
 let attempted = false;
 
@@ -20,7 +20,10 @@ export async function ensureAdminFromEnv() {
 
     const existing = data.users.find((u) => (u.email || "").toLowerCase() === email);
     if (existing) {
-      await admin.from("profiles").update({ role: "admin", email }).eq("id", existing.id);
+      await admin
+        .from("profiles")
+        .update({ role: "admin", email, full_name: ADMIN_DISPLAY_NAME })
+        .eq("id", existing.id);
       return;
     }
 
@@ -28,12 +31,12 @@ export async function ensureAdminFromEnv() {
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: "Admin", role: "admin" },
+      user_metadata: { full_name: ADMIN_DISPLAY_NAME, role: "admin" },
     });
     if (created.data.user) {
       await admin
         .from("profiles")
-        .update({ role: "admin", full_name: "Admin", email })
+        .update({ role: "admin", full_name: ADMIN_DISPLAY_NAME, email })
         .eq("id", created.data.user.id);
     }
   } catch {

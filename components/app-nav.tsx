@@ -23,6 +23,7 @@ import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
 import { isAdminEmail } from "@/lib/admin";
+import { displayName } from "@/lib/spaces";
 import { WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
 
 type NavItem = {
@@ -190,7 +191,7 @@ export function AppNav({
       <div className="mt-auto hidden space-y-4 border-t border-border px-4 py-5 lg:block">
         <NoidaClock />
         <div>
-          <p className="truncate text-[13px] font-medium text-ink">{profile.full_name || profile.email}</p>
+          <p className="truncate text-[13px] font-medium text-ink">{displayName(profile)}</p>
           <p className="mt-0.5 text-[12px] text-muted">{roleLabel}</p>
           <button
             onClick={signOut}

@@ -1,3 +1,4 @@
+import { ADMIN_DISPLAY_NAME, isAdminUser } from "@/lib/admin";
 import type { Profile, TaskPriority, TaskStatus } from "@/lib/types";
 
 export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
@@ -45,8 +46,9 @@ export function canCreateSpace(
   return Boolean(anyoneCanCreateSpaces || profile?.role === "admin");
 }
 
-export function displayName(profile: Pick<Profile, "full_name" | "email"> | undefined | null) {
+export function displayName(profile: Pick<Profile, "full_name" | "email" | "role"> | undefined | null) {
   if (!profile) return "Someone";
+  if (isAdminUser(profile) || (profile.full_name || "").trim().toLowerCase() === "admin") return ADMIN_DISPLAY_NAME;
   return profile.full_name?.trim() || profile.email || "Someone";
 }
 
