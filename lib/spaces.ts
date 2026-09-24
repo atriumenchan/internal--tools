@@ -46,7 +46,16 @@ export function canCreateSpace(
   return Boolean(anyoneCanCreateSpaces || profile?.role === "admin");
 }
 
-export function displayName(profile: Pick<Profile, "full_name" | "email" | "role"> | undefined | null) {
+export function displayName(
+  profile:
+    | {
+        full_name?: string | null;
+        email?: string | null;
+        role?: string | null;
+      }
+    | undefined
+    | null
+) {
   if (!profile) return "Someone";
   if (isAdminUser(profile) || (profile.full_name || "").trim().toLowerCase() === "admin") return ADMIN_DISPLAY_NAME;
   return profile.full_name?.trim() || profile.email || "Someone";
