@@ -101,6 +101,33 @@ export function TeamPanel() {
     }
   }
 
+  async function sendTestPing() {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/telegram/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ kind: "test" }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not send test");
+      const dms = (json.dms ?? []) as { name: string; ok: boolean; skipped?: boolean }[];
+      const sent = dms.filter((d) => d.ok).length;
+      const skipped = dms.filter((d) => d.skipped).length;
+      const groupOk = Boolean(json.group?.ok);
+      if (json.hint) throw new Error(json.hint);
+      setMsg(
+        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} personal message${sent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id or have not Started the bot.`
+      );
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not send test");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveTelegram(user: StaffUser, value: string) {
     setBusy(true);
     setErr(null);
@@ -216,6 +243,12 @@ export function TeamPanel() {
       </form>
 
       <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
+          <p className="text-[13px] font-medium">Logins</p>
+          <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void sendTestPing()}>
+            Send test ping
+          </Button>
+        </div>
         {loading ? (
           <p className="px-4 py-10 text-center text-sm text-faint">Loading…</p>
         ) : (
