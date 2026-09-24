@@ -1,4 +1,6 @@
-import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
+"use client";
+
+import { chatIconComponent, chatIconTint } from "@/lib/chat-icons";
 import { Avatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
 import type { ConversationType } from "@/lib/types";
@@ -6,19 +8,37 @@ import type { ConversationType } from "@/lib/types";
 export function ConversationMark({
   type,
   names,
+  icon,
   className,
 }: {
   type: ConversationType;
   names: string[];
+  icon?: string | null;
   className?: string;
 }) {
-  if (type === "space") {
+  const Glyph = chatIconComponent(icon);
+  if (Glyph && (type === "group" || type === "space")) {
     return (
       <span
-        className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-sm bg-teal-dim text-teal", className)}
+        className={cn(
+          "grid h-8 w-8 shrink-0 place-items-center rounded-[9px]",
+          chatIconTint(icon || type),
+          className
+        )}
         aria-hidden
       >
-        <Kanban size={18} weight="light" />
+        <Glyph size={16} strokeWidth={1.6} />
+      </span>
+    );
+  }
+  if (type === "space") {
+    const Kanban = chatIconComponent("Kanban") || chatIconComponent("LayoutGrid");
+    return (
+      <span
+        className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-teal-dim text-teal", className)}
+        aria-hidden
+      >
+        {Kanban ? <Kanban size={16} strokeWidth={1.6} /> : <span className="text-[11px] font-bold">B</span>}
       </span>
     );
   }

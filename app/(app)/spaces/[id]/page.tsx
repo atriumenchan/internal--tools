@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
+import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
 import { TaskCard, TaskListRow } from "@/components/task-card";
 import { TaskForm, type TaskDraft } from "@/components/task-form";
 import { Avatar } from "@/components/avatar";
@@ -44,6 +45,7 @@ export default function SpaceDetailPage() {
   const [whose, setWhose] = useState("me");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
+  const [peopleOpen, setPeopleOpen] = useState(false);
 
   const loadTasks = useCallback(async () => {
     if (!id) return;
@@ -491,69 +493,82 @@ export default function SpaceDetailPage() {
                 <Button variant="secondary">Chat</Button>
               </Link>
             ) : null}
-            {canManageSpace(space, actor) ? (
-              <ConfirmDelete
-                label="Delete board"
-                title="Delete this board?"
-                description="All tasks, comments, and files on this board will be removed."
-                onConfirm={() => deleteSpace()}
-              />
-            ) : null}
+            <ConfirmDelete
+              label="Delete board"
+              title="Delete this board?"
+              description="All tasks, comments, and files on this board will be removed."
+              onConfirm={() => deleteSpace()}
+              extra={[
+                {
+                  label: "People",
+                  icon: <UserPlus size={15} weight="light" className="shrink-0" />,
+                  onSelect: () => setPeopleOpen(true),
+                },
+              ]}
+              showDelete={canManageSpace(space, actor)}
+            />
           </div>
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
-      {outsiders.length > 0 ? (
-        <form onSubmit={invite} className="mb-4 flex max-w-xl flex-wrap items-center gap-2">
-          <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
-            <option value="">Add a person to this board</option>
-            {outsiders.map((p) => (
-              <option key={p.id} value={p.id}>
-                {displayName(p)}
-              </option>
-            ))}
-          </Select>
-          <Button type="submit" size="sm" variant="secondary">
-            Add
-          </Button>
-          <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
-            Add everyone
-          </Button>
-        </form>
-      ) : null}
+      {peopleOpen ? (
+        <div className="mb-5 max-w-xl space-y-3">
+          {outsiders.length > 0 ? (
+            <form onSubmit={invite} className="flex max-w-xl flex-wrap items-center gap-2">
+              <Select value={inviteId} onChange={(e) => setInviteId(e.target.value)} required className="min-w-[12rem] flex-1">
+                <option value="">Add a person to this board</option>
+                {outsiders.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {displayName(p)}
+                  </option>
+                ))}
+              </Select>
+              <Button type="submit" size="sm" variant="secondary">
+                Add
+              </Button>
+              <Button type="button" size="sm" variant="secondary" onClick={() => void inviteEveryone()}>
+                Add everyone
+              </Button>
+            </form>
+          ) : null}
 
-      {canManageSpace(space, actor) && members.length > 0 ? (
-        <div className="mb-5 max-w-xl overflow-hidden rounded-md border border-border bg-surface shadow-card">
-          <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
-            <h2 className="text-[13px] font-semibold tracking-tight">People on this board</h2>
-            <span className="tabular text-[12px] text-muted">{members.length}</span>
+          <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2">
+              <h2 className="text-[13px] font-semibold tracking-tight">People on this board</h2>
+              <div className="flex items-center gap-2">
+                <span className="tabular text-[12px] text-muted">{members.length}</span>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setPeopleOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+            <ul className="max-h-56 overflow-y-auto">
+              {members.map((person) => {
+                const owner = person.id === space.created_by;
+                return (
+                  <li
+                    key={person.id}
+                    className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0"
+                  >
+                    <Avatar name={displayName(person)} size="sm" />
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{displayName(person)}</span>
+                    {owner ? (
+                      <span className="text-[11px] text-faint">Owner</span>
+                    ) : canManageSpace(space, actor) ? (
+                      <ConfirmDelete
+                        label="Remove"
+                        title={`Remove ${displayName(person)}?`}
+                        description="They lose this board and its chat. Their tasks stay."
+                        confirmLabel="Remove"
+                        onConfirm={() => removeMember(person.id)}
+                      />
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <ul className="max-h-56 overflow-y-auto">
-            {members.map((person) => {
-              const owner = person.id === space.created_by;
-              return (
-                <li
-                  key={person.id}
-                  className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0"
-                >
-                  <Avatar name={displayName(person)} size="sm" />
-                  <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{displayName(person)}</span>
-                  {owner ? (
-                    <span className="text-[11px] text-faint">Owner</span>
-                  ) : (
-                    <ConfirmDelete
-                      label="Remove"
-                      title={`Remove ${displayName(person)}?`}
-                      description="They lose this board and its chat. Their tasks stay."
-                      confirmLabel="Remove"
-                      onConfirm={() => removeMember(person.id)}
-                    />
-                  )}
-                </li>
-              );
-            })}
-          </ul>
         </div>
       ) : null}
 

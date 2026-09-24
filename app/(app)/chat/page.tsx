@@ -2,10 +2,13 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { VideoCamera } from "@phosphor-icons/react/dist/ssr/VideoCamera";
+import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
+import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { ChatIconPicker } from "@/components/chat-icon-picker";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { ConversationMark } from "@/components/conversation-mark";
 import { PageFallback } from "@/components/app-nav";
@@ -13,7 +16,7 @@ import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
-import { COMPANY_MEET_URL } from "@/lib/office-links";
+import { missingChatLook } from "@/lib/chat-icons";
 import type { ChatInboxRow, ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
 type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
@@ -85,10 +88,15 @@ function ChatApp() {
   const [error, setError] = useState<string | null>(cache?.chatError ?? null);
   const [body, setBody] = useState("");
   const [groupName, setGroupName] = useState("");
+  const [groupIcon, setGroupIcon] = useState("UsersRound");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
   const [compose, setCompose] = useState<"idle" | "dm" | "group">("idle");
   const [inbox, setInbox] = useState<ChatInboxRow[]>(cache?.chat?.inbox ?? []);
   const [busy, setBusy] = useState(false);
+  const [manage, setManage] = useState<"members" | "edit" | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editIcon, setEditIcon] = useState("");
+  const [spaceOwnerId, setSpaceOwnerId] = useState<string | null>(null);
   const bottom = useRef<HTMLDivElement>(null);
   const myId = app?.userId;
 
@@ -271,11 +279,109 @@ function ChatApp() {
       setError(err.message);
       return;
     }
+    const createdId = typeof data === "string" ? data : "";
+    const createdName = groupName.trim();
+    const createdIcon = groupIcon;
     setGroupName("");
+    setGroupIcon("UsersRound");
     setGroupMembers([]);
     setCompose("idle");
+    if (createdId && createdIcon) {
+      const look = await supabase.rpc("update_chat_look", {
+        p_conversation_id: createdId,
+        p_name: createdName,
+        p_icon: createdIcon,
+      });
+      if (look.error && missingChatLook(look.error.message)) {
+        setError("Chat icons need a SQL patch. Paste supabase/chat-look.sql in the Supabase SQL editor, then try again.");
+      }
+    }
     await loadConversations();
-    if (typeof data === "string") router.push(`/chat?c=${data}`);
+    if (createdId) router.push(`/chat?c=${createdId}`);
+  }
+
+  function chatRpcError(message: string) {
+    return missingChatLook(message)
+      ? "Paste supabase/chat-look.sql in the Supabase SQL editor, then try again."
+      : message;
+  }
+
+  async function openManage(convo: Conversation, mode: "members" | "edit") {
+    if (selectedId !== convo.id) router.push(`/chat?c=${convo.id}`);
+    setEditName(convo.name || "");
+    setEditIcon(convo.icon || (convo.type === "space" ? "LayoutGrid" : "UsersRound"));
+    setManage(mode);
+    if (mode === "members" && convo.type === "space" && convo.space_id) {
+      const { data } = await createClient().from("spaces").select("created_by").eq("id", convo.space_id).maybeSingle();
+      setSpaceOwnerId((data as { created_by?: string } | null)?.created_by ?? null);
+    } else {
+      setSpaceOwnerId(null);
+    }
+  }
+
+  function extraFor(convo: Conversation) {
+    if (convo.type === "dm") return undefined;
+    return [
+      {
+        label: "Members",
+        icon: <UserPlus size={15} weight="light" className="shrink-0" />,
+        onSelect: () => void openManage(convo, "members"),
+      },
+      {
+        label: convo.type === "space" ? "Edit board" : "Edit group",
+        icon: <PencilSimple size={15} weight="light" className="shrink-0" />,
+        onSelect: () => void openManage(convo, "edit"),
+      },
+    ];
+  }
+
+  async function saveLook(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selected || selected.type === "dm") return;
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("update_chat_look", {
+      p_conversation_id: selected.id,
+      p_name: editName.trim(),
+      p_icon: editIcon,
+    });
+    if (err) {
+      setError(chatRpcError(err.message));
+      return;
+    }
+    setConvos((prev) =>
+      prev.map((c) => (c.id === selected.id ? { ...c, name: editName.trim(), icon: editIcon } : c))
+    );
+    setManage(null);
+    await cache?.refreshChat();
+  }
+
+  async function addChatMembers(ids: string[]) {
+    if (!selected || selected.type === "dm" || ids.length === 0) return;
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("add_chat_members", {
+      p_conversation_id: selected.id,
+      p_member_ids: ids,
+    });
+    if (err) {
+      setError(chatRpcError(err.message));
+      return;
+    }
+    await loadConversations();
+  }
+
+  async function removeChatMember(userId: string) {
+    if (!selected || selected.type === "dm") return;
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("remove_chat_member", {
+      p_conversation_id: selected.id,
+      p_user_id: userId,
+    });
+    if (err) {
+      setError(chatRpcError(err.message));
+      return;
+    }
+    setMemberships((prev) => prev.filter((m) => !(m.conversation_id === selected.id && m.user_id === userId)));
+    await loadConversations();
   }
 
   async function deleteConversation(conversationId: string, type: ConversationType) {
@@ -339,7 +445,7 @@ function ChatApp() {
                         : "text-muted hover:bg-surface-2 hover:text-ink"
                   }`}
                 >
-                  <ConversationMark type={convo.type} names={names.length ? names : [label]} />
+                  <ConversationMark type={convo.type} names={names.length ? names : [label]} icon={convo.icon} />
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center gap-2">
                       <span className="truncate text-sm font-medium">{label}</span>
@@ -357,16 +463,27 @@ function ChatApp() {
                     ) : null}
                   </span>
                 </button>
-                {convo.type !== "space" ? (
+                {convo.type !== "dm" ? (
                   <ConfirmDelete
                     align="left"
                     label={convo.type === "group" ? "Delete group" : "Delete chat"}
                     title={convo.type === "group" ? "Delete this group?" : "Delete this chat?"}
                     description="All messages in this conversation will be removed."
                     onConfirm={() => deleteConversation(convo.id, convo.type)}
+                    extra={extraFor(convo)}
+                    showDelete={convo.type !== "space"}
                     className="opacity-70 transition duration-200 group-hover:opacity-100"
                   />
-                ) : null}
+                ) : (
+                  <ConfirmDelete
+                    align="left"
+                    label="Delete chat"
+                    title="Delete this chat?"
+                    description="All messages in this conversation will be removed."
+                    onConfirm={() => deleteConversation(convo.id, convo.type)}
+                    className="opacity-70 transition duration-200 group-hover:opacity-100"
+                  />
+                )}
               </li>
             );
           })}
@@ -387,19 +504,6 @@ function ChatApp() {
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
       <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
-      <a
-        href={COMPANY_MEET_URL}
-        target="_blank"
-        rel="noreferrer"
-        className="mb-3 flex items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] shadow-card transition duration-150 hover:border-amber-line hover:bg-surface-2"
-      >
-        <VideoCamera size={18} weight="light" className="shrink-0 text-teal" />
-        <span className="min-w-0 flex-1">
-          <span className="font-medium text-ink">Company Meet</span>
-          <span className="mt-0.5 block truncate text-[12px] text-muted">Same room every time — tap to join</span>
-        </span>
-        <span className="shrink-0 text-[12px] font-medium text-teal">Join</span>
-      </a>
       <ErrorText className="mb-3">{error}</ErrorText>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-surface shadow-card lg:grid-cols-[280px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-b border-border p-3 lg:border-b-0 lg:border-r">
@@ -435,6 +539,9 @@ function ChatApp() {
             <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-md border border-border bg-page p-3">
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
+              </Field>
+              <Field label="Icon">
+                <ChatIconPicker value={groupIcon} onChange={setGroupIcon} />
               </Field>
               <Field label="Add people">
                 <div className="flex flex-wrap gap-2">
@@ -505,7 +612,11 @@ function ChatApp() {
                 }`}
               >
                 <div className="flex min-w-0 items-start gap-3">
-                  <ConversationMark type={selected.type} names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]} />
+                  <ConversationMark
+                    type={selected.type}
+                    names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]}
+                    icon={selected.icon}
+                  />
                   <div className="min-w-0">
                     <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
                     {selected.type === "group" ? (
@@ -517,15 +628,118 @@ function ChatApp() {
                     )}
                   </div>
                 </div>
-                {selected.type !== "space" ? (
+                {selected.type === "dm" ? (
+                  <ConfirmDelete
+                    label="Delete chat"
+                    title="Delete this chat?"
+                    description="All messages in this conversation will be removed."
+                    onConfirm={() => deleteConversation(selected.id, selected.type)}
+                  />
+                ) : (
                   <ConfirmDelete
                     label={selected.type === "group" ? "Delete group" : "Delete chat"}
                     title={selected.type === "group" ? "Delete this group?" : "Delete this chat?"}
                     description="All messages in this conversation will be removed."
                     onConfirm={() => deleteConversation(selected.id, selected.type)}
+                    extra={extraFor(selected)}
+                    showDelete={selected.type !== "space"}
                   />
-                ) : null}
+                )}
               </div>
+              {manage && selected.type !== "dm" ? (
+                <div className="border-b border-border bg-page px-4 py-3">
+                  {manage === "edit" ? (
+                    <form onSubmit={(e) => void saveLook(e)} className="space-y-3">
+                      <Field label="Name">
+                        <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
+                      </Field>
+                      <Field label="Icon">
+                        <ChatIconPicker value={editIcon} onChange={setEditIcon} />
+                      </Field>
+                      <div className="flex gap-2">
+                        <Button type="submit" size="sm">
+                          Save
+                        </Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setManage(null)}>
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-[13px] font-semibold">Members</p>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setManage(null)}>
+                          Close
+                        </Button>
+                      </div>
+                      {dmOptions.filter((p) => !memberships.some((m) => m.conversation_id === selected.id && m.user_id === p.id)).length >
+                      0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          <Select
+                            className="min-w-[12rem] flex-1"
+                            value=""
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              if (id) void addChatMembers([id]);
+                            }}
+                          >
+                            <option value="">Add a person</option>
+                            {dmOptions
+                              .filter((p) => !memberships.some((m) => m.conversation_id === selected.id && m.user_id === p.id))
+                              .map((person) => (
+                                <option key={person.id} value={person.id}>
+                                  {person.label}
+                                </option>
+                              ))}
+                          </Select>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() =>
+                              void addChatMembers(
+                                dmOptions
+                                  .filter((p) => !memberships.some((m) => m.conversation_id === selected.id && m.user_id === p.id))
+                                  .map((p) => p.id)
+                              )
+                            }
+                          >
+                            Add everyone
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted">Everyone with a login is already here.</p>
+                      )}
+                      <ul className="max-h-40 overflow-y-auto rounded-md border border-border bg-surface">
+                        {memberships
+                          .filter((m) => m.conversation_id === selected.id)
+                          .map((m) => {
+                            const owner = spaceOwnerId === m.user_id;
+                            return (
+                              <li key={m.user_id} className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0">
+                                <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
+                                  {displayName(profiles[m.user_id])}
+                                </span>
+                                {owner ? (
+                                  <span className="text-[11px] text-faint">Owner</span>
+                                ) : (
+                                  <ConfirmDelete
+                                    label="Remove"
+                                    title={`Remove ${displayName(profiles[m.user_id])}?`}
+                                    description="They lose this chat."
+                                    confirmLabel="Remove"
+                                    onConfirm={() => removeChatMember(m.user_id)}
+                                  />
+                                )}
+                              </li>
+                            );
+                          })}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : null}
               <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
                 {messages.map((message) => {
                   const mine = message.author_id === myId;

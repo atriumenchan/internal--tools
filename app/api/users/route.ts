@@ -32,11 +32,10 @@ export async function GET() {
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    let { data: profiles, error: profileErr } = await admin.from("profiles").select("id, full_name, role, email, telegram_id");
-    if (profileErr) {
-      const retry = await admin.from("profiles").select("id, full_name, role, email");
-      profiles = retry.data;
-    }
+    const withTelegram = await admin.from("profiles").select("id, full_name, role, email, telegram_id");
+    const profiles = withTelegram.error
+      ? (await admin.from("profiles").select("id, full_name, role, email")).data
+      : withTelegram.data;
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
     const { data: employees } = await admin

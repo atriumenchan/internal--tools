@@ -27,6 +27,7 @@ export type Space = {
   id: string;
   name: string;
   color: string | null;
+  icon?: string | null;
   created_by: string;
   created_at: string;
 };
@@ -66,6 +67,7 @@ export type Conversation = {
   type: ConversationType;
   space_id: string | null;
   name: string | null;
+  icon?: string | null;
   created_at: string;
 };
 

@@ -15,6 +15,7 @@ export function ConfirmDelete({
   confirmLabel = "Delete",
   onConfirm,
   extra,
+  showDelete = true,
   align = "right",
   className,
 }: {
@@ -22,8 +23,9 @@ export function ConfirmDelete({
   title: string;
   description?: string;
   confirmLabel?: string;
-  onConfirm: () => Promise<void> | void;
+  onConfirm?: () => Promise<void> | void;
   extra?: { label: string; icon?: ReactNode; onSelect: () => void }[];
+  showDelete?: boolean;
   align?: "left" | "right";
   className?: string;
 }) {
@@ -75,6 +77,10 @@ export function ConfirmDelete({
   }, [open, mode, align]);
 
   async function confirm() {
+    if (!onConfirm) {
+      setMode("closed");
+      return;
+    }
     setBusy(true);
     try {
       await onConfirm();
@@ -114,14 +120,16 @@ export function ConfirmDelete({
                     <span className="truncate">{item.label}</span>
                   </button>
                 ))}
-                <button
-                  type="button"
-                  onClick={() => setMode("confirm")}
-                  className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-coral transition duration-150 hover:bg-coral-dim"
-                >
-                  <Trash size={15} weight="light" className="shrink-0" />
-                  <span className="truncate">{label}</span>
-                </button>
+                {showDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setMode("confirm")}
+                    className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-coral transition duration-150 hover:bg-coral-dim"
+                  >
+                    <Trash size={15} weight="light" className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                ) : null}
               </div>
             ) : (
               <>
@@ -154,7 +162,8 @@ export function ConfirmDelete({
           e.stopPropagation();
           setMode((m) => {
             if (m !== "closed") return "closed";
-            return hasMenu ? "menu" : "confirm";
+            if (hasMenu) return "menu";
+            return showDelete ? "confirm" : "closed";
           });
         }}
         className={cn(
