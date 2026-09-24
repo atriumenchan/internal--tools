@@ -213,6 +213,7 @@ export default function SpaceDetailPage() {
         spaceName: space.name,
         due: task.due_date,
         path: `/spaces/${space.id}/tasks/${task.id}`,
+        assigneeId,
       });
     }
     return true;
@@ -257,6 +258,7 @@ export default function SpaceDetailPage() {
         spaceName: space?.name,
         due: (data as Task).due_date,
         path: space ? `/spaces/${space.id}/tasks/${taskId}` : undefined,
+        assigneeId,
       });
     }
     return true;

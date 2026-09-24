@@ -166,6 +166,7 @@ export type StaffUser = {
   full_name: string;
   role: AppRole;
   employee_code: string | null;
+  telegram_id?: string | null;
   created_at: string;
   last_sign_in_at: string | null;
 };

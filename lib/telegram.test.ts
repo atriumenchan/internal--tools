@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { taskAssignedText } from "./telegram";
+import { normalizeTelegramId, taskAssignedText } from "./telegram";
+
+describe("normalizeTelegramId", () => {
+  it("keeps numeric user ids", () => {
+    expect(normalizeTelegramId("5684211555")).toBe("5684211555");
+    expect(normalizeTelegramId(" -1004298300371 ")).toBe("-1004298300371");
+    expect(normalizeTelegramId("@Admexo_bot")).toBe(null);
+  });
+});
 
 describe("taskAssignedText", () => {
   it("names the person and the task", () => {

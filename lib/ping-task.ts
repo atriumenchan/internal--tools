@@ -5,6 +5,7 @@ export function pingTaskAssigned(payload: {
   spaceName?: string;
   due?: string | null;
   path?: string;
+  assigneeId?: string | null;
 }) {
   void fetch("/api/telegram/notify", {
     method: "POST",

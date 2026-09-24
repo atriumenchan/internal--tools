@@ -145,6 +145,7 @@ export default function TaskPage() {
         spaceName: space?.name,
         due: (data as Task).due_date,
         path: `/spaces/${id}/tasks/${task.id}`,
+        assigneeId: patch.assignee_id,
       });
     }
   }

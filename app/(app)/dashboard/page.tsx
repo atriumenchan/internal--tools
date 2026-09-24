@@ -281,6 +281,7 @@ export default function DashboardPage() {
         spaceName: spaceMap[(data as Task).space_id]?.name,
         due: (data as Task).due_date,
         path: `/spaces/${(data as Task).space_id}/tasks/${taskId}`,
+        assigneeId,
       });
     }
     return true;

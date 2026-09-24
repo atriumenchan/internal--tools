@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser, isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { rehomeStaffWork } from "@/lib/delete-staff";
 import { parseAppRole } from "@/lib/roles";
+import { normalizeTelegramId } from "@/lib/telegram";
 import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
 
@@ -31,7 +32,11 @@ export async function GET() {
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const { data: profiles } = await admin.from("profiles").select("id, full_name, role, email");
+    let { data: profiles, error: profileErr } = await admin.from("profiles").select("id, full_name, role, email, telegram_id");
+    if (profileErr) {
+      const retry = await admin.from("profiles").select("id, full_name, role, email");
+      profiles = retry.data;
+    }
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
 
     const { data: employees } = await admin
@@ -49,6 +54,7 @@ export async function GET() {
           full_name: profile?.full_name || u.user_metadata?.full_name || "",
           role: (profile?.role as AppRole) || "employee",
           employee_code: employee?.employee_code ?? null,
+          telegram_id: (profile as { telegram_id?: string | null } | undefined)?.telegram_id ?? null,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
         };
@@ -75,6 +81,7 @@ export async function POST(request: Request) {
   const employeeCode = String(body.employee_code || "").trim();
   const fullName = String(body.full_name || body.name || "").trim();
   const role = parseAppRole(body.role);
+  const telegramId = body.telegram_id != null ? String(body.telegram_id).trim() : "";
   if (role === "admin") {
     return NextResponse.json({ error: "Create a normal login. Ryan Ritabrata's account stays as-is." }, { status: 400 });
   }
@@ -141,6 +148,7 @@ export async function POST(request: Request) {
           full_name: employee.full_name,
           role,
           email,
+          ...(normalizeTelegramId(telegramId) ? { telegram_id: normalizeTelegramId(telegramId) } : {}),
         })
         .eq("id", data.user.id);
       await admin.from("employees").update({ user_id: data.user.id, email }).eq("id", employee.id);
@@ -167,11 +175,12 @@ export async function PATCH(request: Request) {
   const id = String(body.id || "").trim();
   const password = String(body.password || "");
   const role = body.role != null ? parseAppRole(body.role) : null;
+  const telegramRaw = body.telegram_id !== undefined ? String(body.telegram_id) : undefined;
   if (!id) {
     return NextResponse.json({ error: "User is required" }, { status: 400 });
   }
-  if (!password && !role) {
-    return NextResponse.json({ error: "Password or role is required" }, { status: 400 });
+  if (!password && !role && telegramRaw === undefined) {
+    return NextResponse.json({ error: "Password, role, or Telegram id is required" }, { status: 400 });
   }
   if (password && password.length < 6) {
     return NextResponse.json({ error: "Use a 6+ character password" }, { status: 400 });
@@ -186,7 +195,8 @@ export async function PATCH(request: Request) {
   try {
     const admin = createAdminClient();
     const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
-    if (target && isAdminUser({ email: target.email, role: target.role })) {
+    const protect = target && isAdminUser({ email: target.email, role: target.role });
+    if (protect && (password || role)) {
       return NextResponse.json({ error: "Ryan Ritabrata's login cannot be changed from here." }, { status: 400 });
     }
     if (password) {
@@ -196,6 +206,23 @@ export async function PATCH(request: Request) {
     if (role) {
       const { error } = await admin.from("profiles").update({ role }).eq("id", id);
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (telegramRaw !== undefined) {
+      const telegram_id = normalizeTelegramId(telegramRaw);
+      if (telegramRaw.trim() && !telegram_id) {
+        return NextResponse.json({ error: "Telegram id should be the number from getUpdates, like 5684211555." }, { status: 400 });
+      }
+      const { error } = await admin.from("profiles").update({ telegram_id }).eq("id", id);
+      if (error) {
+        return NextResponse.json(
+          {
+            error: error.message.includes("telegram_id")
+              ? "Telegram ids need a SQL patch. Paste supabase/telegram-ids.sql in the Supabase SQL editor, then try again."
+              : error.message,
+          },
+          { status: 400 }
+        );
+      }
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

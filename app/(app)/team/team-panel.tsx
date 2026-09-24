@@ -19,6 +19,7 @@ export function TeamPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"employee" | "manager">("employee");
+  const [telegramId, setTelegramId] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(cache?.staffError ?? null);
@@ -57,6 +58,7 @@ export function TeamPanel() {
           email,
           password,
           role,
+          telegram_id: telegramId,
         }),
       });
       const json = await res.json();
@@ -67,6 +69,7 @@ export function TeamPanel() {
       setEmail("");
       setPassword("");
       setRole("employee");
+      setTelegramId("");
       await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Create failed");
@@ -93,6 +96,25 @@ export function TeamPanel() {
       setResetPassword("");
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveTelegram(user: StaffUser, value: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user.id, telegram_id: value }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not save Telegram id");
+      await cache?.refreshStaff();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save Telegram id");
     } finally {
       setBusy(false);
     }
@@ -171,6 +193,18 @@ export function TeamPanel() {
         <Field label="Email ID">
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
         </Field>
+        <Field label="Telegram id">
+          <Input
+            value={telegramId}
+            onChange={(e) => setTelegramId(e.target.value)}
+            placeholder="5684211555"
+            inputMode="numeric"
+          />
+        </Field>
+        <p className="text-[12px] text-muted">
+          The number from getUpdates <span className="font-mono">from.id</span>. They must open @Admexo_bot and tap Start
+          once.
+        </p>
         <Field label="Password">
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
         </Field>
@@ -191,6 +225,7 @@ export function TeamPanel() {
                 <th className="px-4 py-3">Code</th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email ID</th>
+                <th className="px-4 py-3">Telegram id</th>
                 <th className="px-4 py-3">Access level</th>
                 <th className="px-4 py-3">Password</th>
               </tr>
@@ -201,6 +236,14 @@ export function TeamPanel() {
                   <td className="px-4 py-3 font-mono text-xs">{user.employee_code || "—"}</td>
                   <td className="px-4 py-3 font-medium">{displayName(user)}</td>
                   <td className="px-4 py-3 text-muted">{user.email}</td>
+                  <td className="px-4 py-3">
+                    <TelegramIdField
+                      key={`${user.id}-${user.telegram_id || ""}`}
+                      user={user}
+                      disabled={busy}
+                      onSave={saveTelegram}
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     {isAdminUser({ email: user.email, role: user.role }) ? (
                       <span className="text-xs text-muted">{WORKSPACE_ROLE_LABELS.admin}</span>
@@ -263,6 +306,38 @@ export function TeamPanel() {
           </table>
         )}
       </div>
+    </div>
+  );
+}
+
+function TelegramIdField({
+  user,
+  disabled,
+  onSave,
+}: {
+  user: StaffUser;
+  disabled: boolean;
+  onSave: (user: StaffUser, value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(user.telegram_id || "");
+  return (
+    <div className="flex min-w-[11rem] items-center gap-1">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="5684211555"
+        inputMode="numeric"
+        className="font-mono text-[12px]"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={disabled || value.trim() === (user.telegram_id || "").trim()}
+        onClick={() => void onSave(user, value)}
+      >
+        Save
+      </Button>
     </div>
   );
 }
