@@ -256,12 +256,13 @@ export function TaskCard({
               {task.title}
             </p>
             <div className="pointer-events-auto relative z-[2] flex shrink-0 items-center gap-1">
-              {onDelete ? (
+              {onDelete || onEdit ? (
                 <ConfirmDelete
                   label="Delete task"
                   title="Delete this task?"
                   description="The task, comments, and files will be removed."
                   onConfirm={onDelete}
+                  showDelete={Boolean(onDelete)}
                   extra={
                     onEdit
                       ? [
@@ -381,7 +382,8 @@ export function TaskListRow({
             label="Delete task"
             title="Delete this task?"
             description="The task, comments, and files will be removed."
-            onConfirm={onDelete ?? (async () => undefined)}
+            onConfirm={onDelete}
+            showDelete={Boolean(onDelete)}
             extra={
               onEdit
                 ? [

@@ -34,6 +34,13 @@ export function canMoveTask(
   return isManagerUser(actor);
 }
 
+export function canDeleteTask(
+  task: Pick<Task, "created_by" | "assignee_id">,
+  actor: Actor | null | undefined
+) {
+  return canMoveTask(task, actor);
+}
+
 export function canManageSpace(
   space: { created_by: string | null | undefined },
   actor: Actor | null | undefined

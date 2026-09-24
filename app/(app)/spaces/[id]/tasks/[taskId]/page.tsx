@@ -27,7 +27,7 @@ import { dueDateKey } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageTask, canDeleteTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
 
 export default function TaskPage() {
@@ -226,12 +226,18 @@ export default function TaskPage() {
 
   function deleteBlocked(message: string, kind: string) {
     return message.includes("row-level security") || message.includes("policy")
-      ? `Could not delete this ${kind}. Paste supabase/deletes.sql in the Supabase SQL editor, then try again.`
+      ? kind === "task"
+        ? "Could not delete this task. Paste supabase/task-delete.sql in the Supabase SQL editor, then try again."
+        : `Could not delete this ${kind}. Paste supabase/deletes.sql in the Supabase SQL editor, then try again.`
       : message;
   }
 
   async function deleteTask() {
-    if (!task) return;
+    if (!task || !app) return;
+    if (!canDeleteTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
+      setError("Only the requester, the assignee, or a manager can delete this task.");
+      return;
+    }
     const supabase = createClient();
     const { error: err } = await supabase.from("tasks").delete().eq("id", task.id);
     if (err) {
@@ -275,6 +281,7 @@ export default function TaskPage() {
   const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
   const locked = !task || !canManageTask(task, actor);
   const canMove = Boolean(task && canMoveTask(task, actor));
+  const canDelete = Boolean(task && canDeleteTask(task, actor));
 
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
@@ -300,14 +307,14 @@ export default function TaskPage() {
               : undefined
         }
         actions={
-          locked ? undefined : (
+          canDelete ? (
             <ConfirmDelete
               label="Delete task"
               title="Delete this task?"
               description="The task, comments, and files will be removed."
               onConfirm={() => deleteTask()}
             />
-          )
+          ) : undefined
         }
       />
       <ErrorText className="mb-4">{error}</ErrorText>

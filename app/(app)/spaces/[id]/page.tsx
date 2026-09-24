@@ -24,7 +24,7 @@ import {
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
-import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask, canDeleteTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey, compareDueSoon } from "@/lib/datetime";
 import { missingChatLook } from "@/lib/chat-icons";
 import { pingTaskAssigned } from "@/lib/ping-task";
@@ -286,7 +286,7 @@ export default function SpaceDetailPage() {
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this task. Paste supabase/task-owner.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this task. Paste supabase/task-delete.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -660,7 +660,7 @@ export default function SpaceDetailPage() {
                   members={members}
                   onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                   onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
-                  onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
+                  onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
                 />
               ))}
             </section>
@@ -731,7 +731,7 @@ export default function SpaceDetailPage() {
                     members={members}
                     onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                     onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
-                    onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
+                    onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
                   />
                 </li>
               ))}

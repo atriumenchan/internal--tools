@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask } from "./task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask, canDeleteTask, canMoveTask } from "./task-workflow";
 
 const requested = {
   created_by: "a",
@@ -17,8 +17,22 @@ describe("canManageTask", () => {
     expect(canManageTask(requested, { id: "m", role: "manager" })).toBe(true);
   });
 
-  it("does not let the assignee edit or delete", () => {
+  it("does not let the assignee edit", () => {
     expect(canManageTask(requested, { id: "b", role: "employee" })).toBe(false);
+  });
+});
+
+describe("canDeleteTask", () => {
+  it("lets the assignee delete", () => {
+    expect(canDeleteTask(requested, { id: "b", role: "employee" })).toBe(true);
+  });
+
+  it("lets the creator delete", () => {
+    expect(canDeleteTask(requested, { id: "a", role: "employee" })).toBe(true);
+  });
+
+  it("blocks a stranger", () => {
+    expect(canDeleteTask(requested, { id: "z", role: "employee" })).toBe(false);
   });
 });
 

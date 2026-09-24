@@ -21,7 +21,7 @@ import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
-import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { cn } from "@/lib/utils";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
 
@@ -248,7 +248,7 @@ export default function DashboardPage() {
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this task. Paste supabase/task-owner.sql in the Supabase SQL editor, then try again."
+          ? "Could not delete this task. Paste supabase/task-delete.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -405,7 +405,7 @@ export default function DashboardPage() {
                         : undefined
                     }
                     onDelete={
-                      canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })
+                      canDeleteTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })
                         ? () => deleteTask(task.id)
                         : undefined
                     }
