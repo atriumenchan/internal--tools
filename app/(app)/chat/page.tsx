@@ -323,12 +323,17 @@ function ChatApp() {
     if (convo.type === "dm") return undefined;
     return [
       {
+        label: "Change icon",
+        icon: <PencilSimple size={15} weight="light" className="shrink-0" />,
+        onSelect: () => void openManage(convo, "edit"),
+      },
+      {
         label: "Members",
         icon: <UserPlus size={15} weight="light" className="shrink-0" />,
         onSelect: () => void openManage(convo, "members"),
       },
       {
-        label: convo.type === "space" ? "Edit board" : "Edit group",
+        label: convo.type === "space" ? "Rename board" : "Rename group",
         icon: <PencilSimple size={15} weight="light" className="shrink-0" />,
         onSelect: () => void openManage(convo, "edit"),
       },
@@ -540,7 +545,7 @@ function ChatApp() {
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
               </Field>
-              <Field label="Icon">
+              <Field label="Favicon">
                 <ChatIconPicker value={groupIcon} onChange={setGroupIcon} />
               </Field>
               <Field label="Add people">
@@ -616,6 +621,7 @@ function ChatApp() {
                     type={selected.type}
                     names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]}
                     icon={selected.icon}
+                    onClick={selected.type === "dm" ? undefined : () => void openManage(selected, "edit")}
                   />
                   <div className="min-w-0">
                     <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
@@ -626,6 +632,9 @@ function ChatApp() {
                         {selected.type === "dm" ? "Direct message" : "Board channel"}
                       </p>
                     )}
+                    {selected.type !== "dm" ? (
+                      <p className="mt-0.5 text-[11px] text-faint">Tap the icon to pick a favicon</p>
+                    ) : null}
                   </div>
                 </div>
                 {selected.type === "dm" ? (
@@ -653,7 +662,7 @@ function ChatApp() {
                       <Field label="Name">
                         <Input value={editName} onChange={(e) => setEditName(e.target.value)} required />
                       </Field>
-                      <Field label="Icon">
+                      <Field label="Favicon">
                         <ChatIconPicker value={editIcon} onChange={setEditIcon} />
                       </Field>
                       <div className="flex gap-2">

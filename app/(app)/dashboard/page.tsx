@@ -18,7 +18,7 @@ import { TaskCard } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
-import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
@@ -113,6 +113,7 @@ export default function DashboardPage() {
   const [teamToday, setTeamToday] = useState<AttendanceDay[]>([]);
   const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done" | "overdue">("mine");
   const [error, setError] = useState<string | null>(null);
+  const [wfhPending, setWfhPending] = useState(0);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -144,6 +145,10 @@ export default function DashboardPage() {
       setMembers((memberRes.data ?? []) as { conversation_id: string; user_id: string }[]);
       const me = (empRes.data as Employee | null) ?? null;
       setEmployee(me);
+      if (admin) {
+        const { count } = await supabase.from("wfh_requests").select("id", { count: "exact", head: true }).eq("status", "pending");
+        setWfhPending(count ?? 0);
+      }
       if (operator) {
         const { data } = await supabase.from("attendance_days").select("*").eq("work_date", todayKey);
         setTeamToday((data ?? []) as AttendanceDay[]);
@@ -158,7 +163,7 @@ export default function DashboardPage() {
         setSummary(ownSums.find((s) => s.period_year === year && s.period_month === month) ?? ownSums[0] ?? null);
       }
     })();
-  }, [app, operator]);
+  }, [app, operator, admin]);
 
   useSilentLive(() => void loadTasks(), "dashboard");
 
@@ -197,15 +202,16 @@ export default function DashboardPage() {
     [tasks, app?.userId]
   );
   const overdue = useMemo(() => (tasks ?? []).filter((t) => isOverdue(t.due_date, t.status)), [tasks]);
-  const dueToday = useMemo(() => {
-    const todayKey = kolkataTodayKey();
-    return (tasks ?? []).filter(
-      (t) =>
-        t.assignee_id === app?.userId &&
-        t.status !== "done" &&
-        t.status !== "cancelled" &&
-        dueDateKey(t.due_date) === todayKey
-    );
+  const dueSoon = useMemo(() => {
+    return [...(tasks ?? [])]
+      .filter(
+        (t) =>
+          t.assignee_id === app?.userId &&
+          t.status !== "done" &&
+          t.status !== "cancelled" &&
+          Boolean(dueDateKey(t.due_date))
+      )
+      .sort(compareDueSoon);
   }, [tasks, app?.userId]);
   const waiting = requested.filter((t) => t.status === "in_review" || (t.assignee_id && t.assignee_id !== app?.userId));
   const needsAction = useMemo(() => {
@@ -222,16 +228,19 @@ export default function DashboardPage() {
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
-  const shown =
-    workFilter === "requested"
-      ? requested
-      : workFilter === "review"
-        ? needsReview
-        : workFilter === "done"
-          ? completed
-          : workFilter === "overdue"
-            ? overdue
-            : mine;
+  const shown = useMemo(() => {
+    const rows =
+      workFilter === "requested"
+        ? requested
+        : workFilter === "review"
+          ? needsReview
+          : workFilter === "done"
+            ? completed
+            : workFilter === "overdue"
+              ? overdue
+              : mine;
+    return [...rows].sort(compareDueSoon);
+  }, [workFilter, requested, needsReview, completed, overdue, mine]);
 
   async function deleteTask(taskId: string) {
     const supabase = createClient();
@@ -312,30 +321,31 @@ export default function DashboardPage() {
         />
       </div>
 
-      {dueToday.length > 0 ? (
+      {dueSoon.length > 0 ? (
         <section className="mb-6 rounded-md border border-border bg-surface px-4 py-3 shadow-card">
           <div className="mb-1 flex items-baseline justify-between gap-3">
-            <h2 className="text-[13px] font-semibold tracking-tight">Due today</h2>
-            <span className="tabular text-[12px] text-muted">{dueToday.length}</span>
+            <h2 className="text-[13px] font-semibold tracking-tight">Coming due</h2>
+            <span className="tabular text-[12px] text-muted">{dueSoon.length}</span>
           </div>
           <ul>
-            {dueToday.slice(0, 4).map((task) => (
-              <li key={task.id} className="border-t border-border first:border-t-0">
-                <Link
-                  href={`/spaces/${task.space_id}/tasks/${task.id}`}
-                  className="flex min-w-0 items-center justify-between gap-3 py-1.5 text-[13px] hover:text-teal"
-                >
-                  <span className="truncate font-medium">{task.title}</span>
-                  <span className="max-w-[40%] shrink-0 truncate text-[12px] text-muted">
-                    {spaceMap[task.space_id]?.name || "Board"}
-                  </span>
-                </Link>
-              </li>
-            ))}
+            {dueSoon.slice(0, 6).map((task) => {
+              const when = dueWhenLabel(task.due_date, task.status);
+              const late = isOverdue(task.due_date, task.status);
+              return (
+                <li key={task.id} className="border-t border-border first:border-t-0">
+                  <Link
+                    href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                    className="flex min-w-0 items-center justify-between gap-3 py-1.5 text-[13px] hover:text-teal"
+                  >
+                    <span className="truncate font-medium">{task.title}</span>
+                    <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
+                      {when}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
-          {dueToday.length > 4 ? (
-            <p className="pt-1 text-[12px] text-muted">+{dueToday.length - 4} more in Work below</p>
-          ) : null}
         </section>
       ) : null}
 
@@ -462,6 +472,15 @@ export default function DashboardPage() {
               </div>
             ) : (
               <p className="mt-3 text-sm text-muted">Ask Ryan Ritabrata to link your login on Staff.</p>
+            )}
+            {admin && wfhPending > 0 ? (
+              <Link href="/wfh" className="mt-3 block text-[13px] font-medium text-amber">
+                {wfhPending} work from home {wfhPending === 1 ? "request" : "requests"} waiting
+              </Link>
+            ) : (
+              <Link href="/wfh" className="mt-3 block text-[13px] font-medium text-teal">
+                Work from home
+              </Link>
             )}
           </section>
 

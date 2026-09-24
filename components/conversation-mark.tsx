@@ -10,15 +10,17 @@ export function ConversationMark({
   names,
   icon,
   className,
+  onClick,
 }: {
   type: ConversationType;
   names: string[];
   icon?: string | null;
   className?: string;
+  onClick?: () => void;
 }) {
   const Glyph = chatIconComponent(icon);
-  if (Glyph && (type === "group" || type === "space")) {
-    return (
+  const mark =
+    Glyph && (type === "group" || type === "space") ? (
       <span
         className={cn(
           "grid h-8 w-8 shrink-0 place-items-center rounded-[9px]",
@@ -29,32 +31,39 @@ export function ConversationMark({
       >
         <Glyph size={16} strokeWidth={1.6} />
       </span>
-    );
-  }
-  if (type === "space") {
-    const Kanban = chatIconComponent("Kanban") || chatIconComponent("LayoutGrid");
-    return (
+    ) : type === "space" ? (
       <span
         className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-teal-dim text-teal", className)}
         aria-hidden
       >
-        {Kanban ? <Kanban size={16} strokeWidth={1.6} /> : <span className="text-[11px] font-bold">B</span>}
+        {(() => {
+          const Kanban = chatIconComponent("Kanban") || chatIconComponent("LayoutGrid");
+          return Kanban ? <Kanban size={16} strokeWidth={1.6} /> : <span className="text-[11px] font-bold">B</span>;
+        })()}
       </span>
-    );
-  }
-  if (type === "group") {
-    const first = names[0] || "Group";
-    const second = names[1] || names[0] || "Group";
-    return (
+    ) : type === "group" ? (
       <span className={cn("relative h-8 w-8 shrink-0", className)} aria-hidden>
-        <Avatar name={first} size="sm" className="absolute top-0 left-0 h-5 w-5 text-[8px]" />
+        <Avatar name={names[0] || "Group"} size="sm" className="absolute top-0 left-0 h-5 w-5 text-[8px]" />
         <Avatar
-          name={second}
+          name={names[1] || names[0] || "Group"}
           size="sm"
           className="absolute right-0 bottom-0 h-5 w-5 text-[8px] ring-2 ring-surface"
         />
       </span>
+    ) : (
+      <Avatar name={names[0] || "DM"} size="sm" className={className} />
     );
-  }
-  return <Avatar name={names[0] || "DM"} size="sm" className={className} />;
+
+  if (!onClick) return mark;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title="Change icon"
+      aria-label="Change icon"
+      className="shrink-0 rounded-[9px] transition duration-150 hover:ring-2 hover:ring-amber"
+    >
+      {mark}
+    </button>
+  );
 }

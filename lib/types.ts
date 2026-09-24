@@ -54,6 +54,19 @@ export type Task = {
   updated_at?: string;
 };
 
+export type WfhStatus = "pending" | "approved" | "rejected";
+
+export type WfhRequest = {
+  id: string;
+  user_id: string;
+  work_date: string;
+  note: string | null;
+  status: WfhStatus;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+};
+
 export type TaskComment = {
   id: string;
   task_id: string;

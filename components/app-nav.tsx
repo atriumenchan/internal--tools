@@ -49,6 +49,7 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "You",
     items: [
       { href: "/my-attendance", label: "My attendance", icon: CalendarBlank },
+      { href: "/wfh", label: "Work from home", icon: CalendarBlank },
       { href: "/notes", label: "Daily notes", icon: Notebook },
       { href: "/vault", label: "Logins", icon: Key },
       { href: "/handbook", label: "Handbook", icon: BookOpen },

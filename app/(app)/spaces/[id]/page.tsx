@@ -4,9 +4,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Input, PageHeader, Select } from "@/components/ui";
+import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
+import { ChatIconPicker } from "@/components/chat-icon-picker";
+import { ConversationMark } from "@/components/conversation-mark";
 import { PageFallback } from "@/components/app-nav";
+import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
 import { TaskCard, TaskListRow } from "@/components/task-card";
 import { TaskForm, type TaskDraft } from "@/components/task-form";
@@ -22,7 +25,8 @@ import {
 import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
 import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
-import { dueDateKey } from "@/lib/datetime";
+import { dueDateKey, compareDueSoon } from "@/lib/datetime";
+import { missingChatLook } from "@/lib/chat-icons";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
@@ -46,6 +50,8 @@ export default function SpaceDetailPage() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
+  const [iconOpen, setIconOpen] = useState(false);
+  const [iconDraft, setIconDraft] = useState("LayoutGrid");
 
   const loadTasks = useCallback(async () => {
     if (!id) return;
@@ -59,25 +65,30 @@ export default function SpaceDetailPage() {
     const supabase = createClient();
     void (async () => {
       const [spaceRes, tasksRes, memberRes, peopleRes, convRes] = await Promise.all([
-        supabase.from("spaces").select("id, name, color, created_by, created_at").eq("id", id).maybeSingle(),
+        supabase.from("spaces").select("id, name, color, icon, created_by, created_at").eq("id", id).maybeSingle(),
         supabase.from("tasks").select("*").eq("space_id", id).order("created_at", { ascending: false }),
         supabase.from("space_members").select("user_id").eq("space_id", id),
         supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
         supabase.from("conversations").select("id").eq("space_id", id).eq("type", "space").maybeSingle(),
       ]);
-      if (spaceRes.error || !spaceRes.data) {
+      const loadedSpace =
+        spaceRes.error && /icon/i.test(spaceRes.error.message)
+          ? await supabase.from("spaces").select("id, name, color, created_by, created_at").eq("id", id).maybeSingle()
+          : spaceRes;
+      if (loadedSpace.error || !loadedSpace.data) {
         setError(
-          missingSpacesSchema(spaceRes.error?.message)
+          missingSpacesSchema(loadedSpace.error?.message)
             ? "Task boards are not set up yet. Paste supabase/spaces.sql in the Supabase SQL editor."
-            : spaceRes.error?.message || "Board not found."
+            : loadedSpace.error?.message || "Board not found."
         );
         return;
       }
       const allPeople = (peopleRes.data ?? []) as Profile[];
       const memberIds = new Set((memberRes.data ?? []).map((row) => row.user_id as string));
-      const loaded = spaceRes.data as Space;
+      const loaded = loadedSpace.data as Space;
       setSpace(loaded);
       setNameDraft(loaded.name);
+      setIconDraft(loaded.icon || "LayoutGrid");
       setTasks((tasksRes.data ?? []) as Task[]);
       setPeople(allPeople);
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
@@ -110,6 +121,9 @@ export default function SpaceDetailPage() {
     };
     for (const task of shownTasks) {
       (by[task.status] ?? by.open).push(task);
+    }
+    for (const status of Object.keys(by) as TaskStatus[]) {
+      by[status].sort(compareDueSoon);
     }
     return by;
   }, [shownTasks]);
@@ -334,6 +348,32 @@ export default function SpaceDetailPage() {
     }
     setSpace({ ...space, name: next });
     setEditingName(false);
+  }
+
+  async function saveIcon(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!space) return;
+    if (!conversationId) {
+      setError("This board has no chat channel yet, so the icon cannot be saved.");
+      return;
+    }
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.rpc("update_chat_look", {
+      p_conversation_id: conversationId,
+      p_name: space.name,
+      p_icon: iconDraft,
+    });
+    if (err) {
+      setError(
+        missingChatLook(err.message)
+          ? "Board icons need a SQL patch. Paste supabase/chat-look.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setSpace({ ...space, icon: iconDraft });
+    setIconOpen(false);
   }
 
   async function removeMember(personId: string) {

@@ -30,6 +30,7 @@ export async function POST(request: Request) {
     spaceName?: string;
     due?: string | null;
     path?: string;
+    workDate?: string | null;
     assigneeId?: string | null;
   } | null;
 
@@ -75,6 +76,26 @@ export async function POST(request: Request) {
       group,
       dms,
     });
+  }
+
+  if (body?.kind === "wfh_request") {
+    const workDate = String(body.workDate || "").slice(0, 10);
+    const byName = (body.byName || profile?.full_name || "Someone").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
+      return NextResponse.json({ error: "Date is required" }, { status: 400 });
+    }
+    const text = [`${byName} asked to work from home`, workDate, "Approve it on Work from home"].join("\n");
+    const group = await sendTelegram(text);
+    const admin = createAdminClient();
+    const { data: rows } = await admin.from("profiles").select("email, role, telegram_id");
+    const dms = [];
+    for (const row of rows ?? []) {
+      if (!isAdminUser({ email: row.email, role: row.role })) continue;
+      const id = normalizeTelegramId((row as { telegram_id?: string | null }).telegram_id);
+      if (!id) continue;
+      dms.push(await sendTelegram(text, id));
+    }
+    return NextResponse.json({ ok: group.ok || dms.some((d) => d.ok), group, dms });
   }
 
   if (!body || body.kind !== "task_assigned" || !body.title?.trim() || !body.assigneeName?.trim()) {

@@ -73,6 +73,44 @@ export function isOverdue(value: string | null | undefined, status?: string | nu
   return key < kolkataTodayKey();
 }
 
+/** Calendar-day gap from today in IST. Negative = overdue. Null = no due date. */
+export function dueOffsetDays(value: string | null | undefined, today = kolkataTodayKey()) {
+  const key = dueDateKey(value);
+  if (!key) return null;
+  const a = dateOnly(key);
+  const b = dateOnly(today);
+  if (!a || !b) return null;
+  const ms = Date.UTC(a.year, a.month - 1, a.day) - Date.UTC(b.year, b.month - 1, b.day);
+  return Math.round(ms / 86_400_000);
+}
+
+export function dueWhenLabel(value: string | null | undefined, status?: string | null, today = kolkataTodayKey()) {
+  if (status === "done" || status === "cancelled") {
+    const dated = formatDueDate(value);
+    return dated ? `Was due ${dated}` : null;
+  }
+  const offset = dueOffsetDays(value, today);
+  if (offset === null) return null;
+  if (offset < 0) return offset === -1 ? "Overdue · yesterday" : `Overdue · ${Math.abs(offset)} days`;
+  if (offset === 0) return "Due today";
+  if (offset === 1) return "Due tomorrow";
+  if (offset <= 6) return `Due in ${offset} days`;
+  const dated = formatDueDate(value);
+  return dated ? `Due ${dated}` : `Due in ${offset} days`;
+}
+
+export function compareDueSoon<T extends { due_date?: string | null; status?: string | null }>(a: T, b: T) {
+  const aDone = a.status === "done" || a.status === "cancelled";
+  const bDone = b.status === "done" || b.status === "cancelled";
+  if (aDone !== bDone) return aDone ? 1 : -1;
+  const ao = dueOffsetDays(a.due_date);
+  const bo = dueOffsetDays(b.due_date);
+  if (ao === null && bo === null) return 0;
+  if (ao === null) return 1;
+  if (bo === null) return -1;
+  return ao - bo;
+}
+
 export function formatRelative(value: string | Date | null | undefined) {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;

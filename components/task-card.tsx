@@ -17,7 +17,7 @@ import {
   TASK_STATUS_LABELS,
   taskPriority,
 } from "@/lib/spaces";
-import { formatDueDate, isOverdue } from "@/lib/datetime";
+import { formatDueDate, isOverdue, dueWhenLabel } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 import type { Profile, Task, TaskPriority, TaskStatus } from "@/lib/types";
 
@@ -184,6 +184,7 @@ export function TaskCard({
   onDelete?: () => Promise<void> | void;
 }) {
   const due = formatDueDate(task.due_date);
+  const when = dueWhenLabel(task.due_date, task.status);
   const late = isOverdue(task.due_date, task.status);
   const priority = taskPriority(task.priority);
   const dragged = useRef(false);
@@ -285,10 +286,12 @@ export function TaskCard({
               <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
               {assignee ? displayName(assignee) : "Unassigned"}
             </span>
-            {due ? (
-              <span className={cn("shrink-0 font-mono text-[12px]", late && "font-medium text-coral")}>
-                {late ? `Overdue · ${due}` : due}
+            {when ? (
+              <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
+                {when}
               </span>
+            ) : due ? (
+              <span className="shrink-0 font-mono text-[12px]">{due}</span>
             ) : null}
           </OverflowStrip>
           {note ? <p className="mt-2 line-clamp-2 text-[13px] leading-relaxed text-ink-soft">{note}</p> : null}
@@ -327,6 +330,7 @@ export function TaskListRow({
   onDelete?: () => Promise<void> | void;
 }) {
   const due = formatDueDate(task.due_date);
+  const when = dueWhenLabel(task.due_date, task.status);
   const late = isOverdue(task.due_date, task.status);
   const [editing, setEditing] = useState(false);
 
@@ -359,8 +363,8 @@ export function TaskListRow({
         <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
         <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
       </span>
-      <span className={cn("relative z-[1] hidden font-mono text-[12px] md:block", late && "font-medium text-coral")}>
-        {due ? (late ? `Overdue · ${due}` : due) : "—"}
+      <span className={cn("relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
+        {when || due || "—"}
       </span>
       <div className="relative z-[1] hidden min-w-0 md:block">
         {onMove ? (
