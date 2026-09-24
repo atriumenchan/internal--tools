@@ -24,6 +24,16 @@ export function canManageTask(task: Pick<Task, "created_by">, actor: Actor | nul
   return isManagerUser(actor);
 }
 
+export function canMoveTask(
+  task: Pick<Task, "created_by" | "assignee_id">,
+  actor: Actor | null | undefined
+) {
+  if (!actor?.id) return false;
+  if (actor.id === task.created_by) return true;
+  if (task.assignee_id && actor.id === task.assignee_id) return true;
+  return isManagerUser(actor);
+}
+
 export function canManageSpace(
   space: { created_by: string | null | undefined },
   actor: Actor | null | undefined
@@ -48,11 +58,12 @@ export function applyTaskStatus(
   actor?: Omit<Actor, "id"> | null
 ): { status: TaskStatus; error?: string } {
   if (task.status === next) return { status: next };
-  const allowed = userId === task.created_by || isManagerUser({ email: actor?.email, role: actor?.role });
+  const allowed =
+    userId === task.created_by || userId === task.assignee_id || isManagerUser({ email: actor?.email, role: actor?.role });
   if (!allowed) {
     return {
       status: task.status,
-      error: "Only the person who created this task, or a manager, can change it. You can still comment.",
+      error: "Only the requester, the assignee, or a manager can move this task.",
     };
   }
   return { status: next };

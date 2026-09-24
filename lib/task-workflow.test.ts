@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskStatus, canManageSpace, canManageTask } from "./task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask } from "./task-workflow";
 
 const requested = {
   created_by: "a",
@@ -17,8 +17,18 @@ describe("canManageTask", () => {
     expect(canManageTask(requested, { id: "m", role: "manager" })).toBe(true);
   });
 
-  it("blocks a random employee", () => {
+  it("does not let the assignee edit or delete", () => {
     expect(canManageTask(requested, { id: "b", role: "employee" })).toBe(false);
+  });
+});
+
+describe("canMoveTask", () => {
+  it("lets the assignee move status", () => {
+    expect(canMoveTask(requested, { id: "b", role: "employee" })).toBe(true);
+  });
+
+  it("blocks a stranger", () => {
+    expect(canMoveTask(requested, { id: "z", role: "employee" })).toBe(false);
   });
 });
 
@@ -51,11 +61,11 @@ describe("applyTaskStatus", () => {
     expect(applyTaskStatus(requested, "done", "m", { role: "manager" })).toEqual({ status: "done" });
   });
 
-  it("blocks the assignee from changing status", () => {
-    expect(applyTaskStatus(requested, "done", "b", { role: "employee" }).error).toMatch(/created this task/i);
+  it("lets the assignee move status", () => {
+    expect(applyTaskStatus(requested, "done", "b", { role: "employee" })).toEqual({ status: "done" });
   });
 
   it("blocks a stranger", () => {
-    expect(applyTaskStatus(requested, "cancelled", "z").error).toMatch(/created this task/i);
+    expect(applyTaskStatus(requested, "cancelled", "z").error).toMatch(/assignee/i);
   });
 });

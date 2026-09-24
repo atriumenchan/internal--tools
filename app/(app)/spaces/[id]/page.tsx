@@ -20,7 +20,7 @@ import {
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
-import { applyTaskStatus, canManageSpace, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageSpace, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
 import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
@@ -148,9 +148,11 @@ export default function SpaceDetailPage() {
     const { data, error: err } = await supabase.from("tasks").update({ status: next.status }).eq("id", taskId).select("*").single();
     if (err) {
       setError(
-        missingWorkflowColumn(err.message)
-          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
-          : err.message
+        err.message.includes("row-level security") || err.message.includes("policy") || err.message.includes("created this task")
+          ? "Could not move this task. Paste supabase/assignee-move.sql in the Supabase SQL editor, then try again."
+          : missingWorkflowColumn(err.message)
+            ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+            : err.message
       );
       setTasks((prev) => prev.map((t) => (t.id === taskId ? current : t)));
       return;
@@ -357,8 +359,8 @@ export default function SpaceDetailPage() {
     setDragOver(null);
     const taskId = event.dataTransfer.getData("text/plain");
     const current = tasks.find((t) => t.id === taskId);
-    if (!current || !canManageTask(current, actor)) {
-      setError("Only the person who created this task, or a manager, can change status.");
+    if (!current || !canMoveTask(current, actor)) {
+      setError("Only the requester, the assignee, or a manager can move this task.");
       return;
     }
     if (taskId) void setStatus(taskId, status);
@@ -586,7 +588,7 @@ export default function SpaceDetailPage() {
                   href={`/spaces/${space.id}/tasks/${task.id}`}
                   assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
                   members={members}
-                  onMove={canManageTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                  onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                   onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
                   onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
                 />
@@ -657,7 +659,7 @@ export default function SpaceDetailPage() {
                     href={`/spaces/${space.id}/tasks/${task.id}`}
                     assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
                     members={members}
-                    onMove={canManageTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                    onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                     onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
                     onDelete={canManageTask(task, actor) ? () => deleteTask(task.id) : undefined}
                   />

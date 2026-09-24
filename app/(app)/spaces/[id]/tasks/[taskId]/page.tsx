@@ -26,7 +26,7 @@ import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { applyTaskStatus, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
 
 export default function TaskPage() {
@@ -111,8 +111,14 @@ export default function TaskPage() {
 
   async function saveTask(patch: Partial<Task>) {
     if (!task || !app) return;
-    if (!canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
-      setError("Only the person who created this task, or a manager, can change it. You can still comment.");
+    const actor = { id: app.userId, email: app.profile.email, role: app.profile.role };
+    const statusOnly = Object.keys(patch).length === 1 && patch.status !== undefined;
+    if (statusOnly ? !canMoveTask(task, actor) : !canManageTask(task, actor)) {
+      setError(
+        statusOnly
+          ? "Only the requester, the assignee, or a manager can move this task."
+          : "Only the person who created this task, or a manager, can change it. You can still comment."
+      );
       return;
     }
     const supabase = createClient();
@@ -120,7 +126,7 @@ export default function TaskPage() {
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Only the person who created this task, or a manager, can change it. Paste supabase/task-owner.sql in the Supabase SQL editor if this keeps failing."
+          ? "Could not save. Paste supabase/assignee-move.sql in the Supabase SQL editor if moving an assigned task keeps failing."
           : missingPriorityColumn(err.message) || missingWorkflowColumn(err.message)
             ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
             : err.message
@@ -253,7 +259,9 @@ export default function TaskPage() {
     await saveTask({ status: next.status });
   }
 
-  const locked = !app || !task || !canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role });
+  const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
+  const locked = !task || !canManageTask(task, actor);
+  const canMove = Boolean(task && canMoveTask(task, actor));
 
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
@@ -271,7 +279,9 @@ export default function TaskPage() {
         title={task.title}
         description={
           locked
-            ? `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
+            ? canMove
+              ? `${space?.name || "Board"} · You can move status. Title and files stay with the requester.`
+              : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
               ? `On ${space.name} · edit the fields below, they save when you leave a box.`
               : undefined
@@ -400,17 +410,17 @@ export default function TaskPage() {
                   <button
                     key={col.status}
                     type="button"
-                    disabled={locked}
+                    disabled={!canMove}
                     className={`rounded-sm px-3 py-2 text-left text-[13px] font-medium ${taskStatusClass(col.status, task.status === col.status)}`}
                     onClick={() => {
-                      if (!locked) void setStatus(col.status);
+                      if (canMove) void setStatus(col.status);
                     }}
                   >
                     {TASK_STATUS_LABELS[col.status]}
                   </button>
                 ))}
               </div>
-              {!locked ? (
+              {canMove ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Button size="sm" variant="ghost" onClick={() => void setStatus("cancelled")}>
                     Cancel task
