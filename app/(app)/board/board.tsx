@@ -123,7 +123,7 @@ export function AttendanceBoard({
       {lastUploadLabel ? (
         <p className="text-sm text-ink-soft">Latest Excel in Supabase: {lastUploadLabel}. Upload a new week anytime — this board reads live from the database.</p>
       ) : (
-        <p className="text-sm text-ink-soft">No attendance file in Supabase yet. Ryan can upload the weekly month-performance Excel.</p>
+        <p className="text-sm text-ink-soft">No attendance file in Supabase yet. Ryan Ritabrata can upload the weekly month-performance Excel.</p>
       )}
 
       <div className="grid gap-3 md:grid-cols-5">

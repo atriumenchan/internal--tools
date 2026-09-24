@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { mustSignHandbook } from "./handbook";
 
 describe("mustSignHandbook", () => {
-  it("never asks Ryan to sign", () => {
+  it("never asks Ryan Ritabrata to sign", () => {
     expect(
       mustSignHandbook({
         role: "admin",

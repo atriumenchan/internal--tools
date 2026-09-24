@@ -401,7 +401,7 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted">Ask Ryan to link your login on Staff.</p>
+              <p className="mt-3 text-sm text-muted">Ask Ryan Ritabrata to link your login on Staff.</p>
             )}
           </section>
 

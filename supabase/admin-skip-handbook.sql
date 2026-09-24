@@ -1,4 +1,4 @@
--- Ryan skips the handbook gate. Staff still must sign.
+-- Ryan Ritabrata skips the handbook gate. Staff still must sign.
 -- Paste this whole file into SQL Editor and run it. Do NOT run reset.sql.
 
 create or replace function public.is_admin()

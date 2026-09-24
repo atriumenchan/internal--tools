@@ -76,7 +76,7 @@ export function LoginForm() {
       </Field>
       {linkExpired ? (
         <ErrorText>
-          That email link has expired. Ask Ryan to create your account, then sign in here with the password they gave you.
+          That email link has expired. Ask Ryan Ritabrata to create your account, then sign in here with the password they gave you.
         </ErrorText>
       ) : authError ? (
         <ErrorText>{authError.replace(/\+/g, " ")}</ErrorText>
@@ -85,7 +85,7 @@ export function LoginForm() {
       <Button type="submit" className="w-full" disabled={busy}>
         {busy ? "Please wait…" : "Sign in"}
       </Button>
-      <p className="text-center text-xs text-muted">Ask Ryan if you need an account.</p>
+      <p className="text-center text-xs text-muted">Ask Ryan Ritabrata if you need an account.</p>
     </form>
   );
 }

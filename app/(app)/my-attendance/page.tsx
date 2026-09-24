@@ -95,7 +95,7 @@ export default function MyAttendancePage() {
         }
       />
       {!linked ? (
-        <p className="text-sm text-muted">Ask Ryan to link your login on Staff so this page can match your employee code.</p>
+        <p className="text-sm text-muted">Ask Ryan Ritabrata to link your login on Staff so this page can match your employee code.</p>
       ) : days.length === 0 ? (
         <p className="text-sm text-muted">
           {team ? "No attendance uploaded yet. Drop the weekly Excel on Upload." : "No attendance in Supabase for you yet. It appears after the next weekly upload."}

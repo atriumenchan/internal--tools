@@ -229,7 +229,7 @@ function HandbookPublish({ current }: { current: string }) {
       sessionStorage.removeItem("it-workspace-v1");
       setMessage(
         json.note ||
-          `Handbook v${json.version || version} is live. Staff must sign again. Ryan does not. Tasks, chat, attendance, and logins stay.`
+          `Handbook v${json.version || version} is live. Staff must sign again. Ryan Ritabrata does not. Tasks, chat, attendance, and logins stay.`
       );
       setFile(null);
       router.refresh();
@@ -244,7 +244,7 @@ function HandbookPublish({ current }: { current: string }) {
     <form onSubmit={publish} className="space-y-4 rounded-md border border-border bg-surface p-5 shadow-card">
       <h2 className="font-display text-xl font-medium">New handbook</h2>
       <p className="text-sm text-muted">
-        Now v{current}. Upload a PDF and publish. Everyone except Ryan signs that version on next login. Boards, tasks,
+        Now v{current}. Upload a PDF and publish. Everyone except Ryan Ritabrata signs that version on next login. Boards, tasks,
         chat, attendance, and Staff logins are not touched.
       </p>
       <Field label="Version">

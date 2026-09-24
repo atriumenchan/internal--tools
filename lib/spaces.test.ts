@@ -24,8 +24,8 @@ describe("visibleSpaceTasks", () => {
 });
 
 describe("displayName", () => {
-  it("calls the workspace owner Ryan, not Admin", () => {
-    expect(displayName({ full_name: "Admin", email: "ryan@admexo.com", role: "admin" })).toBe("Ryan");
-    expect(displayName({ full_name: "Admin", email: "x@y.com", role: "employee" })).toBe("Ryan");
+  it("calls the workspace owner Ryan Ritabrata, not Admin", () => {
+    expect(displayName({ full_name: "Admin", email: "ryan@admexo.com", role: "admin" })).toBe("Ryan Ritabrata");
+    expect(displayName({ full_name: "Admin", email: "x@y.com", role: "employee" })).toBe("Ryan Ritabrata");
   });
 });

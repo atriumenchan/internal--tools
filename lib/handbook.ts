@@ -28,7 +28,7 @@ export function handbookIsCurrent(
   return Boolean(signed) && signed === required;
 }
 
-/** Staff must sign. Ryan skips the handbook gate. */
+/** Staff must sign. Ryan Ritabrata skips the handbook gate. */
 export function mustSignHandbook(input: {
   role?: string | null;
   email?: string | null;

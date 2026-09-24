@@ -110,7 +110,7 @@ export default function VaultPage() {
       <PageHeader
         eyebrow="Private"
         title="Your credentials"
-        description="Only you can see what you save here. Other staff cannot, and Ryan cannot see your rows in the app."
+        description="Only you can see what you save here. Other staff cannot, and Ryan Ritabrata cannot see your rows in the app."
       />
       <p className="mb-6 rounded-md border border-border bg-surface-2 px-5 py-3 text-[13px] text-muted">
         Use this for logins you personally need (TeamOffice, ads accounts, domain panels). Do not put personal banking
