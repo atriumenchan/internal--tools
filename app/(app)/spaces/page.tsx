@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -10,6 +10,7 @@ import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { canCreateSpace, displayName, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
 import { isOverdue } from "@/lib/datetime";
+import { useSilentLive } from "@/lib/silent-live";
 import { effectiveReviewer, canManageSpace } from "@/lib/task-workflow";
 import type { Profile, Space, Task } from "@/lib/types";
 
@@ -29,6 +30,12 @@ function SpacesPageInner() {
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const allowCreate = canCreateSpace(app?.profile, app?.anyoneCanCreateSpaces ?? true);
+
+  const loadTasks = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+    if (data) setTasks(data as Task[]);
+  }, []);
 
   useEffect(() => {
     const supabase = createClient();
@@ -51,6 +58,8 @@ function SpacesPageInner() {
       setPeople((peopleRes.data ?? []) as Profile[]);
     });
   }, []);
+
+  useSilentLive(() => void loadTasks(), "spaces");
 
   const counts = useMemo(() => {
     const map = new Map<string, { open: number; overdue: number }>();

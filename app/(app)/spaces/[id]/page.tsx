@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -22,6 +22,7 @@ import { useAppState } from "@/components/app-frame";
 import { Segmented } from "@/components/overflow-strip";
 import { applyTaskStatus, canManageSpace, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey } from "@/lib/datetime";
+import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
@@ -44,6 +45,13 @@ export default function SpaceDetailPage() {
   const [nameDraft, setNameDraft] = useState("");
   const [excludeId, setExcludeId] = useState("");
   const [excludeConfirm, setExcludeConfirm] = useState(false);
+
+  const loadTasks = useCallback(async () => {
+    if (!id) return;
+    const supabase = createClient();
+    const { data } = await supabase.from("tasks").select("*").eq("space_id", id).order("created_at", { ascending: false });
+    if (data) setTasks(data as Task[]);
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -75,6 +83,8 @@ export default function SpaceDetailPage() {
       setConversationId((convRes.data as { id?: string } | null)?.id ?? null);
     })();
   }, [id]);
+
+  useSilentLive(() => void loadTasks(), id ? `space-${id}` : "space");
 
   useEffect(() => {
     if (!id) return;

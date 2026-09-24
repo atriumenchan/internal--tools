@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
@@ -24,6 +24,7 @@ import {
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey } from "@/lib/datetime";
+import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
 import { applyTaskStatus, canManageTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
@@ -72,6 +73,18 @@ export default function TaskPage() {
       setProfiles(byId);
     })();
   }, [id, taskId]);
+
+  const loadTask = useCallback(async () => {
+    if (!taskId) return;
+    const supabase = createClient();
+    const { data } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
+    if (data) {
+      setTask(data as Task);
+      setTitleDraft((data as Task).title);
+    }
+  }, [taskId]);
+
+  useSilentLive(() => void loadTask(), taskId ? `task-${taskId}` : "task");
 
   useEffect(() => {
     if (!taskId) return;

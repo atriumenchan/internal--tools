@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
@@ -18,6 +18,7 @@ import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { cn } from "@/lib/utils";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
@@ -111,6 +112,12 @@ export default function DashboardPage() {
   const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done" | "overdue">("mine");
   const [error, setError] = useState<string | null>(null);
 
+  const loadTasks = useCallback(async () => {
+    const supabase = createClient();
+    const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
+    if (data) setTasks(data as Task[]);
+  }, []);
+
   useEffect(() => {
     if (!app) return;
     const supabase = createClient();
@@ -151,6 +158,8 @@ export default function DashboardPage() {
     })();
   }, [app, operator]);
 
+  useSilentLive(() => void loadTasks(), "dashboard");
+
   useEffect(() => {
     const work = new URLSearchParams(window.location.search).get("work");
     if (work === "mine" || work === "requested" || work === "review" || work === "done" || work === "overdue") {
@@ -186,6 +195,16 @@ export default function DashboardPage() {
     [tasks, app?.userId]
   );
   const overdue = useMemo(() => (tasks ?? []).filter((t) => isOverdue(t.due_date, t.status)), [tasks]);
+  const dueToday = useMemo(() => {
+    const todayKey = kolkataTodayKey();
+    return (tasks ?? []).filter(
+      (t) =>
+        t.assignee_id === app?.userId &&
+        t.status !== "done" &&
+        t.status !== "cancelled" &&
+        dueDateKey(t.due_date) === todayKey
+    );
+  }, [tasks, app?.userId]);
   const waiting = requested.filter((t) => t.status === "in_review" || (t.assignee_id && t.assignee_id !== app?.userId));
   const needsAction = useMemo(() => {
     const seen = new Set<string>();
@@ -278,6 +297,33 @@ export default function DashboardPage() {
           tone="info"
         />
       </div>
+
+      {dueToday.length > 0 ? (
+        <section className="mb-6 rounded-md border border-border bg-surface px-4 py-3 shadow-card">
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <h2 className="text-[13px] font-semibold tracking-tight">Due today</h2>
+            <span className="tabular text-[12px] text-muted">{dueToday.length}</span>
+          </div>
+          <ul>
+            {dueToday.slice(0, 4).map((task) => (
+              <li key={task.id} className="border-t border-border first:border-t-0">
+                <Link
+                  href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                  className="flex min-w-0 items-center justify-between gap-3 py-1.5 text-[13px] hover:text-teal"
+                >
+                  <span className="truncate font-medium">{task.title}</span>
+                  <span className="max-w-[40%] shrink-0 truncate text-[12px] text-muted">
+                    {spaceMap[task.space_id]?.name || "Board"}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {dueToday.length > 4 ? (
+            <p className="pt-1 text-[12px] text-muted">+{dueToday.length - 4} more in Work below</p>
+          ) : null}
+        </section>
+      ) : null}
 
       <div className="mb-6">
         <Announcements operator={operator} userId={app.userId} />
