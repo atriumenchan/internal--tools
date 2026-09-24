@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
+import { VideoCamera } from "@phosphor-icons/react/dist/ssr/VideoCamera";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -13,6 +13,7 @@ import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
+import { COMPANY_MEET_URL } from "@/lib/office-links";
 import type { ChatInboxRow, ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
 type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
@@ -386,6 +387,19 @@ function ChatApp() {
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
       <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
+      <a
+        href={COMPANY_MEET_URL}
+        target="_blank"
+        rel="noreferrer"
+        className="mb-3 flex items-center gap-2.5 rounded-md border border-border bg-surface px-3 py-2 text-[13px] shadow-card transition duration-150 hover:border-amber-line hover:bg-surface-2"
+      >
+        <VideoCamera size={18} weight="light" className="shrink-0 text-teal" />
+        <span className="min-w-0 flex-1">
+          <span className="font-medium text-ink">Company Meet</span>
+          <span className="mt-0.5 block truncate text-[12px] text-muted">Same room every time — tap to join</span>
+        </span>
+        <span className="shrink-0 text-[12px] font-medium text-teal">Join</span>
+      </a>
       <ErrorText className="mb-3">{error}</ErrorText>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-surface shadow-card lg:grid-cols-[280px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-b border-border p-3 lg:border-b-0 lg:border-r">
