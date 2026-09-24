@@ -7,7 +7,7 @@ import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
 import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
-import { VideoCamera } from "@phosphor-icons/react/dist/ssr/VideoCamera";
+import { JoinMeetButton } from "@/components/join-meet";
 import type { Icon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
@@ -20,7 +20,6 @@ import { isAdminUser } from "@/lib/admin";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
-import { COMPANY_MEET_URL } from "@/lib/office-links";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { cn } from "@/lib/utils";
@@ -296,17 +295,7 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         description={formatWorkDate(kolkataTodayKey(), "long")}
-        actions={
-          <a
-            href={COMPANY_MEET_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-sm border border-border-strong bg-surface-2 px-3 py-1.5 text-[13px] font-medium text-ink transition duration-150 hover:border-amber-line hover:bg-surface"
-          >
-            <VideoCamera size={16} weight="light" className="text-teal" />
-            Join meeting
-          </a>
-        }
+        actions={<JoinMeetButton />}
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 

@@ -1,6 +1,6 @@
 /* ADMEXO Workspace — installable PWA.
    Network-only fetch so auth, boards, and chat never serve a stale page. */
-const VERSION = "admexo-sw-v1";
+const VERSION = "admexo-sw-v2";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());

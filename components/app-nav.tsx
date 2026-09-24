@@ -19,6 +19,7 @@ import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut";
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour";
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
 import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
+import { JoinMeetButton } from "@/components/join-meet";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
@@ -149,6 +150,9 @@ export function AppNav({
           <SignOut size={18} weight="light" />
         </button>
       </div>
+      <div className="px-4 pb-3 lg:hidden">
+        <JoinMeetButton className="w-full" />
+      </div>
       <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
         {GROUPS.filter((group) => !group.operatorOnly || operator).map((group) => {
           const items = group.items.filter(visible);
@@ -190,6 +194,7 @@ export function AppNav({
         })}
       </nav>
       <div className="mt-auto hidden space-y-4 border-t border-border px-4 py-5 lg:block">
+        <JoinMeetButton className="w-full" />
         <NoidaClock />
         <div>
           <p className="truncate text-[13px] font-medium text-ink">{displayName(profile)}</p>
