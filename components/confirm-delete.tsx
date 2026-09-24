@@ -1,15 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree";
 import { Trash } from "@phosphor-icons/react/dist/ssr/Trash";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
-
-const MENU_WIDTH = 152;
-const CONFIRM_WIDTH = 264;
 
 export function ConfirmDelete({
   label = "Delete",
@@ -30,30 +27,32 @@ export function ConfirmDelete({
   align?: "left" | "right";
   className?: string;
 }) {
+  const hasMenu = Boolean(extra?.length);
   const [mode, setMode] = useState<"closed" | "menu" | "confirm">("closed");
   const [busy, setBusy] = useState(false);
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-
   const open = mode !== "closed";
-  const width = mode === "confirm" ? CONFIRM_WIDTH : MENU_WIDTH;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     function place() {
       const el = trigger.current;
+      const panel = pop.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const height = mode === "confirm" ? 172 : 44 + (extra?.length || 0) * 40;
-      const left = align === "right" ? r.right - width : r.left;
-      setBox({
-        top: Math.min(r.bottom + 6, window.innerHeight - height - 8),
-        left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
-      });
+      const w = panel?.offsetWidth || (mode === "confirm" ? 220 : 168);
+      const h = panel?.offsetHeight || 48;
+      let left = align === "right" ? r.right - w : r.left;
+      left = Math.max(8, Math.min(left, window.innerWidth - w - 8));
+      let top = r.bottom + 4;
+      if (top + h > window.innerHeight - 8) top = Math.max(8, r.top - h - 4);
+      setBox({ top, left });
     }
     place();
+    const id = requestAnimationFrame(place);
     function onPointer(e: PointerEvent) {
       const node = e.target as Node;
       if (wrap.current?.contains(node) || pop.current?.contains(node)) return;
@@ -67,12 +66,13 @@ export function ConfirmDelete({
     window.addEventListener("resize", place);
     window.addEventListener("scroll", place, true);
     return () => {
+      cancelAnimationFrame(id);
       window.removeEventListener("pointerdown", onPointer);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", place);
       window.removeEventListener("scroll", place, true);
     };
-  }, [open, mode, align, width, extra]);
+  }, [open, mode, align]);
 
   async function confirm() {
     setBusy(true);
@@ -90,10 +90,11 @@ export function ConfirmDelete({
           <div
             ref={pop}
             className={cn(
-              "fixed z-[80] rounded-md border border-border bg-surface shadow-float",
-              mode === "confirm" ? "border-coral/20 p-3.5" : "p-1"
+              "fixed z-[80] border border-border bg-surface shadow-card",
+              "rounded-[9px]",
+              mode === "confirm" ? "w-[13.5rem] p-2.5" : "min-w-[9.5rem] p-0.5"
             )}
-            style={{ top: box.top, left: box.left, width }}
+            style={{ top: box.top, left: box.left }}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
           >
@@ -107,26 +108,26 @@ export function ConfirmDelete({
                       setMode("closed");
                       item.onSelect();
                     }}
-                    className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm font-medium text-ink transition duration-200 hover:bg-surface-2"
+                    className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-ink transition duration-150 hover:bg-surface-2"
                   >
                     {item.icon}
-                    {item.label}
+                    <span className="truncate">{item.label}</span>
                   </button>
                 ))}
                 <button
                   type="button"
                   onClick={() => setMode("confirm")}
-                  className="flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm font-medium text-coral transition duration-200 hover:bg-coral-dim"
+                  className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-coral transition duration-150 hover:bg-coral-dim"
                 >
-                  <Trash size={18} weight="light" />
-                  {label}
+                  <Trash size={15} weight="light" className="shrink-0" />
+                  <span className="truncate">{label}</span>
                 </button>
               </div>
             ) : (
               <>
-                <p className="text-sm font-semibold text-ink">{title}</p>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-soft">{description}</p>
-                <div className="mt-3 flex justify-end gap-2">
+                <p className="text-[13px] font-semibold leading-snug text-ink">{title}</p>
+                <p className="mt-0.5 text-[12px] leading-snug text-muted">{description}</p>
+                <div className="mt-2.5 flex justify-end gap-1.5">
                   <Button type="button" size="sm" variant="ghost" onClick={() => setMode("closed")} disabled={busy}>
                     Cancel
                   </Button>
@@ -151,10 +152,13 @@ export function ConfirmDelete({
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          setMode((m) => (m === "closed" ? "menu" : "closed"));
+          setMode((m) => {
+            if (m !== "closed") return "closed";
+            return hasMenu ? "menu" : "confirm";
+          });
         }}
         className={cn(
-          "inline-flex h-7 w-7 items-center justify-center rounded-sm text-muted transition duration-150 hover:bg-surface-2 hover:text-ink",
+          "inline-flex h-7 w-7 items-center justify-center rounded-[7px] text-muted transition duration-150 hover:bg-surface-2 hover:text-ink",
           open && "bg-surface-2 text-ink"
         )}
       >

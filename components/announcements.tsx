@@ -131,7 +131,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
                 </div>
                 {operator ? (
                   <ConfirmDelete
-                    label="Delete announcement"
+                    label="Delete"
                     title="Delete this announcement?"
                     onConfirm={() => remove(row.id)}
                   />
