@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, EmptyState, ErrorText, PageHeader } from "@/components/ui";
+import { EmptyState, ErrorText, PageHeader } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
@@ -91,20 +91,21 @@ export default function NotificationsPage() {
         title="Notifications"
         description="Messages, task assignments, comments, @mentions, and company announcements."
         actions={
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" onClick={() => void markAll()}>
-              Mark all read
-            </Button>
-            {rows.length > 0 ? (
-              <ConfirmDelete
-                label="Delete all alerts"
-                title="Delete all notifications?"
-                description="They will be removed from your inbox. This cannot be undone."
-                confirmLabel="Delete all"
-                onConfirm={() => deleteAll()}
-              />
-            ) : null}
-          </div>
+          rows.length > 0 ? (
+            <ConfirmDelete
+              label="Delete all"
+              title="Delete all notifications?"
+              description="They will be removed from your inbox. This cannot be undone."
+              confirmLabel="Delete all"
+              onConfirm={() => deleteAll()}
+              extra={[
+                {
+                  label: "Mark all as read",
+                  onSelect: () => void markAll(),
+                },
+              ]}
+            />
+          ) : null
         }
       />
       <ErrorText className="mb-4">{error}</ErrorText>
