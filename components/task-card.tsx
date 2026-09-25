@@ -364,22 +364,22 @@ export function TaskListRow({
       )}
     >
       <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
-      <p title={task.title} className="relative z-[1] min-w-0 truncate text-[14px] font-medium tracking-tight text-ink">
+      <p title={task.title} className="pointer-events-none relative z-[1] min-w-0 truncate text-[14px] font-medium tracking-tight text-ink">
         {task.title}
       </p>
-      <span className="relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
+      <span className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
         <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
         <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
       </span>
       {spaceName ? (
-        <span title={spaceName} className="relative z-[1] hidden truncate text-[12px] text-muted md:block">
+        <span title={spaceName} className="pointer-events-none relative z-[1] hidden truncate text-[12px] text-muted md:block">
           {spaceName}
         </span>
       ) : null}
-      <span className={cn("relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
+      <span className={cn("pointer-events-none relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
         {when && due ? `${when} · ${due}` : when || due || "—"}
       </span>
-      <div className="relative z-[1] hidden min-w-0 md:block">
+      <div className={cn("relative z-[2] hidden min-w-0 md:block", !onMove && "pointer-events-none")}>
         {onMove ? (
           <div className="pointer-events-auto">
             <StatusMoveControl status={task.status} onMove={onMove} className="mt-0" />
