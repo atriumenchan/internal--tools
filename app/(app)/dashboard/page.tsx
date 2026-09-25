@@ -309,9 +309,9 @@ export default function DashboardPage() {
       <ErrorText className="mb-4">{error}</ErrorText>
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/spaces?filter=mine")} icon={ClipboardText} tone="neutral" />
-        <Stat label="To review" value={needsReview.length} href={firstTaskHref(needsReview, "/spaces?filter=review")} icon={Eye} tone="warn" />
-        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/spaces?filter=overdue")} icon={Warning} tone="danger" />
+        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/spaces?slice=left&person=me")} icon={ClipboardText} tone="neutral" />
+        <Stat label="To review" value={needsReview.length} href={firstTaskHref(needsReview, "/spaces?slice=left")} icon={Eye} tone="warn" />
+        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/spaces?slice=overdue")} icon={Warning} tone="danger" />
         <Stat
           label="Unread chat"
           value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}

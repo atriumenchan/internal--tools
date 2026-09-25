@@ -1,12 +1,19 @@
 const TZ = "Asia/Kolkata";
 
 export function kolkataTodayKey() {
+  return kolkataDateKeyFromInstant(new Date()) || "";
+}
+
+export function kolkataDateKeyFromInstant(value: string | Date | null | undefined) {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date());
+  }).format(date);
 }
 
 function dateOnly(value: string | null | undefined) {
@@ -66,11 +73,24 @@ export function formatDueDate(value: string | null | undefined) {
   return formatWorkDate(key, "short");
 }
 
-export function isOverdue(value: string | null | undefined, status?: string | null) {
+export function isOverdue(value: string | null | undefined, status?: string | null, today = kolkataTodayKey()) {
   if (status === "done" || status === "cancelled") return false;
   const key = dueDateKey(value);
   if (!key) return false;
-  return key < kolkataTodayKey();
+  return key < today;
+}
+
+export function isOpenWork(status?: string | null) {
+  return status !== "done" && status !== "cancelled";
+}
+
+export function isClosedToday(
+  task: { status?: string | null; updated_at?: string | null; created_at?: string | null },
+  today = kolkataTodayKey()
+) {
+  if (task.status !== "done") return false;
+  const key = kolkataDateKeyFromInstant(task.updated_at || task.created_at);
+  return key === today;
 }
 
 /** Calendar-day gap from today in IST. Negative = overdue. Null = no due date. */

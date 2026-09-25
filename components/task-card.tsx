@@ -316,6 +316,7 @@ export function TaskListRow({
   href,
   assignee,
   members,
+  spaceName,
   onMove,
   onEdit,
   onDelete,
@@ -324,6 +325,7 @@ export function TaskListRow({
   href: string;
   assignee?: Profile | null;
   members?: Profile[];
+  spaceName?: string;
   onMove?: (status: TaskStatus) => void;
   onEdit?: (values: TaskDraft) => Promise<boolean>;
   onDelete?: () => Promise<void> | void;
@@ -353,7 +355,14 @@ export function TaskListRow({
   }
 
   return (
-    <div className="relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-2.5 transition duration-150 hover:bg-surface-2 md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem]">
+    <div
+      className={cn(
+        "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-2.5 transition duration-150 hover:bg-surface-2",
+        spaceName
+          ? "md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_7rem_8.5rem_2.25rem]"
+          : "md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem]"
+      )}
+    >
       <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
       <p title={task.title} className="relative z-[1] min-w-0 truncate text-[14px] font-medium tracking-tight text-ink">
         {task.title}
@@ -362,6 +371,11 @@ export function TaskListRow({
         <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
         <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
       </span>
+      {spaceName ? (
+        <span title={spaceName} className="relative z-[1] hidden truncate text-[12px] text-muted md:block">
+          {spaceName}
+        </span>
+      ) : null}
       <span className={cn("relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
         {when && due ? `${when} · ${due}` : when || due || "—"}
       </span>

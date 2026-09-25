@@ -1,25 +1,33 @@
 "use client";
 
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
-import { canCreateSpace, displayName, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
-import { isOverdue } from "@/lib/datetime";
+import { TaskListRow } from "@/components/task-card";
+import { type TaskDraft } from "@/components/task-form";
+import { Segmented } from "@/components/overflow-strip";
+import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
+import { canCreateSpace, displayName, missingPriorityColumn, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
+import { compareDueSoon, dueDateKey, isOverdue, kolkataTodayKey } from "@/lib/datetime";
 import { useSilentLive } from "@/lib/silent-live";
-import { effectiveReviewer, canManageSpace } from "@/lib/task-workflow";
-import type { Profile, Space, Task } from "@/lib/types";
+import { pingTaskAssigned } from "@/lib/ping-task";
+import { applyTaskStatus, canDeleteTask, canManageSpace, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
+import { parseTaskSlice, sliceTasks, taskSliceCounts, tasksForPerson, type TaskSlice } from "@/lib/task-overview";
+import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
 function SpacesPageInner() {
   const app = useAppState();
   const cache = useWorkspaceCache();
   const router = useRouter();
   const search = useSearchParams();
-  const filter = search.get("filter");
+  const admin = app ? isAdminUser(app.profile) : false;
+  const slice = parseTaskSlice(search.get("slice") || search.get("filter"));
+  const personParam = search.get("person");
+  const person = admin ? personParam || "all" : "me";
   const [spaces, setSpaces] = useState<Space[] | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [people, setPeople] = useState<Profile[]>([]);
@@ -30,6 +38,8 @@ function SpacesPageInner() {
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
   const allowCreate = canCreateSpace(app?.profile, app?.anyoneCanCreateSpaces ?? true);
+  const todayKey = kolkataTodayKey();
+  const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -61,6 +71,16 @@ function SpacesPageInner() {
 
   useSilentLive(() => void loadTasks(), "spaces");
 
+  const peopleMap = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
+  const spaceMap = useMemo(() => Object.fromEntries((spaces ?? []).map((s) => [s.id, s])), [spaces]);
+  const ignoredIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const employee of cache?.employees ?? []) {
+      if (employee.user_id && isIgnoredEmployee(employee.employee_code, employee.full_name)) ids.add(employee.user_id);
+    }
+    return ids;
+  }, [cache?.employees]);
+
   const counts = useMemo(() => {
     const map = new Map<string, { open: number; overdue: number }>();
     for (const task of tasks) {
@@ -72,17 +92,15 @@ function SpacesPageInner() {
     return map;
   }, [tasks]);
 
-  const myId = app?.userId;
+  const scoped = useMemo(() => tasksForPerson(tasks, person, app?.userId), [tasks, person, app?.userId]);
+  const sliceCounts = useMemo(() => taskSliceCounts(scoped, todayKey), [scoped, todayKey]);
   const listed = useMemo(() => {
-    if (!myId) return [];
-    if (filter === "review") return tasks.filter((t) => t.status === "in_review" && effectiveReviewer(t) === myId);
-    if (filter === "overdue") return tasks.filter((t) => isOverdue(t.due_date, t.status));
-    if (filter === "mine") {
-      return tasks.filter((t) => t.assignee_id === myId && t.status !== "done" && t.status !== "cancelled");
+    const rows = sliceTasks(scoped, slice, todayKey);
+    if (slice === "closed") {
+      return [...rows].sort((a, b) => String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)));
     }
-    return [];
-  }, [filter, tasks, myId]);
-  const listTitle = filter === "review" ? "To review" : filter === "overdue" ? "Overdue" : "Your tasks";
+    return [...rows].sort(compareDueSoon);
+  }, [scoped, slice, todayKey]);
 
   const peopleOptions = useMemo(() => {
     const rows: { id: string; label: string }[] = [];
@@ -90,16 +108,24 @@ function SpacesPageInner() {
     const myId = app?.userId;
     for (const employee of cache?.employees ?? []) {
       if (!employee.user_id || employee.user_id === myId || seen.has(employee.user_id)) continue;
+      if (isIgnoredEmployee(employee.employee_code, employee.full_name)) continue;
       seen.add(employee.user_id);
       rows.push({ id: employee.user_id, label: `${employee.employee_code} · ${employee.full_name}` });
     }
-    for (const person of people) {
-      if (!person.id || person.id === myId || seen.has(person.id)) continue;
-      seen.add(person.id);
-      rows.push({ id: person.id, label: displayName(person) });
+    for (const profile of people) {
+      if (!profile.id || profile.id === myId || seen.has(profile.id) || ignoredIds.has(profile.id)) continue;
+      seen.add(profile.id);
+      rows.push({ id: profile.id, label: displayName(profile) });
     }
     return rows;
-  }, [cache?.employees, people, app?.userId]);
+  }, [cache?.employees, people, app?.userId, ignoredIds]);
+
+  function setOverview(next: { slice?: TaskSlice; person?: string }) {
+    const params = new URLSearchParams();
+    params.set("slice", next.slice ?? slice);
+    if (admin) params.set("person", next.person ?? person);
+    router.replace(`/spaces?${params.toString()}`);
+  }
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +149,7 @@ function SpacesPageInner() {
   }
 
   async function deleteSpace(space: Space) {
-    if (!canManageSpace(space, app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null)) {
+    if (!canManageSpace(space, actor)) {
       setError("Only the person who created this board, or a manager, can delete it.");
       return;
     }
@@ -140,11 +166,105 @@ function SpacesPageInner() {
     setSpaces((prev) => (prev ?? []).filter((row) => row.id !== space.id));
   }
 
+  async function setStatus(taskId: string, status: TaskStatus) {
+    const current = tasks.find((t) => t.id === taskId);
+    if (!current || current.status === status || !app) return;
+    const next = applyTaskStatus(current, status, app.userId, app.profile);
+    if (next.error && next.status === current.status) {
+      setError(next.error);
+      return;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status: next.status } : t)));
+    const supabase = createClient();
+    const { data, error: err } = await supabase.from("tasks").update({ status: next.status }).eq("id", taskId).select("*").single();
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy") || err.message.includes("created this task")
+          ? "Could not move this task. Paste supabase/assignee-move.sql in the Supabase SQL editor, then try again."
+          : missingWorkflowColumn(err.message)
+            ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+            : err.message
+      );
+      setTasks((prev) => prev.map((t) => (t.id === taskId ? current : t)));
+      return;
+    }
+    if (data) setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
+  }
+
+  async function editTask(taskId: string, values: TaskDraft) {
+    if (!app) return false;
+    const current = tasks.find((t) => t.id === taskId);
+    if (!current || !canManageTask(current, actor)) {
+      setError("Only the person who created this task, or a manager, can change it. You can still comment.");
+      return false;
+    }
+    const supabase = createClient();
+    const assigneeId = values.assigneeId || null;
+    const payload = {
+      title: values.title.trim(),
+      description: values.comment.trim() || null,
+      completion_criteria: values.criteria.trim() || null,
+      assignee_id: assigneeId,
+      due_date: dueDateKey(values.dueDate),
+      priority: values.priority,
+    };
+    const { data, error: err } = await supabase.from("tasks").update(payload).eq("id", taskId).select("*").single();
+    if (err || !data) {
+      setError(
+        missingPriorityColumn(err?.message) || missingWorkflowColumn(err?.message)
+          ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
+          : err?.message || "Could not save the task."
+      );
+      return false;
+    }
+    setTasks((prev) => prev.map((t) => (t.id === taskId ? (data as Task) : t)));
+    if (assigneeId && assigneeId !== current.assignee_id) {
+      pingTaskAssigned({
+        title: (data as Task).title,
+        assigneeName: displayName(peopleMap[assigneeId] || people.find((p) => p.id === assigneeId)),
+        byName: displayName(app.profile),
+        spaceName: spaceMap[(data as Task).space_id]?.name,
+        due: (data as Task).due_date,
+        path: `/spaces/${(data as Task).space_id}/tasks/${taskId}`,
+        assigneeId,
+      });
+    }
+    return true;
+  }
+
+  async function deleteTask(taskId: string) {
+    const supabase = createClient();
+    const { error: err } = await supabase.from("tasks").delete().eq("id", taskId);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Could not delete this task. Paste supabase/task-delete.sql in the Supabase SQL editor, then try again."
+          : err.message
+      );
+      return;
+    }
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }
+
+  const sliceLabel = slice === "closed" ? "Closed today" : slice === "overdue" ? "Overdue today" : "Left";
+  const personLabel =
+    !admin || person === "all"
+      ? admin
+        ? "everyone"
+        : "you"
+      : person === "me"
+        ? "you"
+        : displayName(peopleMap[person]);
+
   return (
     <div>
       <PageHeader
         title="Tasks"
-        description="Each board is To do, Doing, Review, and Done."
+        description={
+          admin
+            ? "Every person, every board, in one list. Pick someone and a filter."
+            : "Your tasks across every board you are on."
+        }
         actions={
           allowCreate ? (
             <Button type="button" variant={creating ? "secondary" : "primary"} onClick={() => setCreating((v) => !v)}>
@@ -154,35 +274,72 @@ function SpacesPageInner() {
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
-      {filter && listed.length === 0 ? (
-        <p className="mb-6 rounded-md border border-dashed border-border bg-surface px-4 py-8 text-center text-sm text-faint">
-          No {listTitle.toLowerCase()} right now.
-        </p>
-      ) : null}
-      {filter && listed.length > 0 ? (
-        <section className="mb-8">
-          <h2 className="mb-3 font-display text-xl font-medium tracking-tight">{listTitle}</h2>
-          <ul className="space-y-2">
-            {listed.map((task) => {
-              const board = spaces?.find((s) => s.id === task.space_id);
-              return (
-                <li key={task.id}>
-                  <Link
-                    href={`/spaces/${task.space_id}/tasks/${task.id}`}
-                    className="block rounded-md border border-border bg-surface px-4 py-3 shadow-card transition duration-150 hover:bg-surface-2"
-                  >
-                    <span className="block font-medium text-ink">{task.title}</span>
-                    <span className="mt-0.5 block text-xs text-muted">
-                      {board?.name || "Board"}
-                      {task.status === "in_review" ? " · Review" : null}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+
+      <div className="mb-5 flex flex-wrap items-center gap-3">
+        <Segmented
+          value={slice}
+          onChange={(next) => setOverview({ slice: next })}
+          options={[
+            { id: "left", label: `Left (${sliceCounts.left})` },
+            { id: "closed", label: `Closed today (${sliceCounts.closed})` },
+            { id: "overdue", label: `Overdue today (${sliceCounts.overdue})` },
+          ]}
+        />
+        {admin ? (
+          <Select
+            value={person}
+            onChange={(e) => setOverview({ person: e.target.value })}
+            className="w-[14rem]"
+            aria-label="Whose tasks"
+          >
+            <option value="all">Everyone</option>
+            <option value="me">My tasks</option>
+            {peopleOptions.map((row) => (
+              <option key={row.id} value={row.id}>
+                {row.label}
+              </option>
+            ))}
+          </Select>
+        ) : null}
+      </div>
+
+      <section className="mb-8 overflow-hidden rounded-md border border-border bg-surface shadow-card">
+        <div
+          className={`hidden border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted md:grid md:gap-3 ${
+            "md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_7rem_8.5rem_2.25rem]"
+          }`}
+        >
+          <span>Task</span>
+          <span>Person</span>
+          <span>Board</span>
+          <span>Due</span>
+          <span>Status</span>
+          <span />
+        </div>
+        {listed.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-faint">
+            No {sliceLabel.toLowerCase()} for {personLabel}.
+          </p>
+        ) : (
+          <ul>
+            {listed.map((task) => (
+              <li key={task.id}>
+                <TaskListRow
+                  task={task}
+                  href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                  assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
+                  members={people}
+                  spaceName={spaceMap[task.space_id]?.name || "Board"}
+                  onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                  onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
+                  onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
+                />
+              </li>
+            ))}
           </ul>
-        </section>
-      ) : null}
+        )}
+      </section>
+
       {allowCreate && creating ? (
         <form onSubmit={create} className="mb-8 space-y-4 rounded-md border border-border bg-surface p-4 shadow-card">
           <div className="flex flex-wrap items-end gap-3">
@@ -217,10 +374,10 @@ function SpacesPageInner() {
               >
                 <option value="">{peopleOptions.length === 0 ? "No people with a login yet." : "Select a person"}</option>
                 {peopleOptions
-                  .filter((person) => !memberIds.includes(person.id))
-                  .map((person) => (
-                    <option key={person.id} value={person.id}>
-                      {person.label}
+                  .filter((row) => !memberIds.includes(row.id))
+                  .map((row) => (
+                    <option key={row.id} value={row.id}>
+                      {row.label}
                     </option>
                   ))}
               </Select>
@@ -228,7 +385,7 @@ function SpacesPageInner() {
                 type="button"
                 variant="secondary"
                 disabled={peopleOptions.length === 0 || memberIds.length === peopleOptions.length}
-                onClick={() => setMemberIds(peopleOptions.map((person) => person.id))}
+                onClick={() => setMemberIds(peopleOptions.map((row) => row.id))}
               >
                 Add everyone
               </Button>
@@ -257,6 +414,8 @@ function SpacesPageInner() {
           </Button>
         </form>
       ) : null}
+
+      <h2 className="mb-3 font-display text-xl font-medium tracking-tight">Boards</h2>
       {spaces === null ? (
         <PageFallback />
       ) : spaces.length === 0 ? (
@@ -284,7 +443,7 @@ function SpacesPageInner() {
                       </span>
                     </span>
                   </button>
-                  {canManageSpace(space, app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null) ? (
+                  {canManageSpace(space, actor) ? (
                     <ConfirmDelete
                       label="Delete board"
                       title="Delete this board?"

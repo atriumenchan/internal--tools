@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareDueSoon, dueOffsetDays, dueWhenLabel } from "./datetime";
+import { compareDueSoon, dueOffsetDays, dueWhenLabel, isClosedToday } from "./datetime";
 
 describe("dueWhenLabel", () => {
   it("names today, tomorrow, and overdue", () => {
@@ -28,5 +28,19 @@ describe("dueOffsetDays", () => {
   it("counts days from today", () => {
     expect(dueOffsetDays("2026-09-24", "2026-09-24")).toBe(0);
     expect(dueOffsetDays("2026-09-26", "2026-09-24")).toBe(2);
+  });
+});
+
+describe("isClosedToday", () => {
+  it("counts a done task updated today in IST", () => {
+    expect(
+      isClosedToday({ status: "done", updated_at: "2026-09-25T06:30:00.000Z" }, "2026-09-25")
+    ).toBe(true);
+    expect(
+      isClosedToday({ status: "done", updated_at: "2026-09-24T06:30:00.000Z" }, "2026-09-25")
+    ).toBe(false);
+    expect(
+      isClosedToday({ status: "open", updated_at: "2026-09-25T06:30:00.000Z" }, "2026-09-25")
+    ).toBe(false);
   });
 });
