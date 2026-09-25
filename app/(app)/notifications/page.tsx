@@ -3,14 +3,23 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button, EmptyState, PageHeader } from "@/components/ui";
+import { Button, EmptyState, ErrorText, PageHeader } from "@/components/ui";
+import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
-import { useWorkspaceCache } from "@/components/app-frame";
+import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import type { NotificationItem } from "@/lib/types";
 
+function deleteBlocked(message: string) {
+  return message.includes("row-level security") || message.includes("policy")
+    ? "Could not delete this alert. Paste supabase/notification-delete.sql in the Supabase SQL editor, then try again."
+    : message;
+}
+
 export default function NotificationsPage() {
+  const app = useAppState();
   const cache = useWorkspaceCache();
   const [rows, setRows] = useState<NotificationItem[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   async function load() {
     const supabase = createClient();
@@ -23,7 +32,7 @@ export default function NotificationsPage() {
     const supabase = createClient();
     const channel = supabase
       .channel("notifications-page")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "notifications" }, () => {
         void load();
       })
       .subscribe();
@@ -36,6 +45,31 @@ export default function NotificationsPage() {
     const supabase = createClient();
     await supabase.rpc("mark_notifications_read");
     await load();
+    await cache?.refreshBadges();
+  }
+
+  async function deleteRow(id: string) {
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("notifications").delete().eq("id", id);
+    if (err) {
+      setError(deleteBlocked(err.message));
+      return;
+    }
+    setRows((prev) => (prev ?? []).filter((row) => row.id !== id));
+    await cache?.refreshBadges();
+  }
+
+  async function deleteAll() {
+    if (!app) return;
+    setError(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("notifications").delete().eq("user_id", app.userId);
+    if (err) {
+      setError(deleteBlocked(err.message));
+      return;
+    }
+    setRows([]);
     await cache?.refreshBadges();
   }
 
@@ -57,21 +91,40 @@ export default function NotificationsPage() {
         title="Notifications"
         description="Messages, task assignments, comments, @mentions, and company announcements."
         actions={
-          <Button variant="secondary" onClick={() => void markAll()}>
-            Mark all read
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" onClick={() => void markAll()}>
+              Mark all read
+            </Button>
+            {rows.length > 0 ? (
+              <ConfirmDelete
+                label="Delete all alerts"
+                title="Delete all notifications?"
+                description="They will be removed from your inbox. This cannot be undone."
+                confirmLabel="Delete all"
+                onConfirm={() => deleteAll()}
+              />
+            ) : null}
+          </div>
         }
       />
+      <ErrorText className="mb-4">{error}</ErrorText>
       {rows.length === 0 ? (
         <EmptyState>Nothing yet</EmptyState>
       ) : (
         <ul className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
           {rows.map((row) => (
-            <li key={row.id} className={row.read_at ? "border-b border-border last:border-0" : "border-b border-border last:border-0 bg-teal-dim"}>
+            <li
+              key={row.id}
+              className={
+                row.read_at
+                  ? "flex items-stretch border-b border-border last:border-0"
+                  : "flex items-stretch border-b border-border last:border-0 bg-teal-dim"
+              }
+            >
               <Link
                 href={row.href || "/dashboard"}
                 onClick={() => void openRow(row)}
-                className="block px-4 py-3.5 transition duration-200 hover:bg-surface-2"
+                className="min-w-0 flex-1 px-4 py-3.5 transition duration-200 hover:bg-surface-2"
               >
                 <div className="flex items-start gap-3">
                   {!row.read_at ? <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-coral" /> : <span className="mt-1.5 h-[7px] w-[7px] shrink-0" />}
@@ -82,6 +135,14 @@ export default function NotificationsPage() {
                   </div>
                 </div>
               </Link>
+              <div className="flex items-center pr-2">
+                <ConfirmDelete
+                  label="Delete notification"
+                  title="Delete this notification?"
+                  description="It will be removed from your inbox."
+                  onConfirm={() => deleteRow(row.id)}
+                />
+              </div>
             </li>
           ))}
         </ul>
