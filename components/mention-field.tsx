@@ -27,7 +27,7 @@ export function MentionField({
   onChange,
   people,
   placeholder,
-  rows = 2,
+  rows = 1,
   required,
 }: {
   value: string;

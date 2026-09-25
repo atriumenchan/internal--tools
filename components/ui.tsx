@@ -1,6 +1,16 @@
+"use client";
+
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type InputHTMLAttributes, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
+import {
+  forwardRef,
+  useLayoutEffect,
+  useRef,
+  type ButtonHTMLAttributes,
+  type InputHTMLAttributes,
+  type SelectHTMLAttributes,
+  type TextareaHTMLAttributes,
+} from "react";
 
 const interactive =
   "transition-[background-color,border-color,box-shadow,color,transform,opacity] duration-150 ease-out motion-reduce:transition-none";
@@ -44,9 +54,41 @@ export function Input({ className, ...props }: InputHTMLAttributes<HTMLInputElem
   return <input className={cn(control, className)} {...props} />;
 }
 
+function mergeRefs<T>(...refs: (React.Ref<T> | undefined)[]) {
+  return (node: T | null) => {
+    for (const ref of refs) {
+      if (!ref) continue;
+      if (typeof ref === "function") ref(node);
+      else (ref as React.MutableRefObject<T | null>).current = node;
+    }
+  };
+}
+
+function fitTextarea(el: HTMLTextAreaElement | null) {
+  if (!el) return;
+  el.style.height = "auto";
+  el.style.height = `${el.scrollHeight}px`;
+}
+
 export const Textarea = forwardRef<HTMLTextAreaElement, TextareaHTMLAttributes<HTMLTextAreaElement>>(
-  function Textarea({ className, ...props }, ref) {
-    return <textarea ref={ref} className={cn(control, "min-h-[6.5rem] resize-y leading-relaxed", className)} {...props} />;
+  function Textarea({ className, onInput, value, rows = 1, ...props }, ref) {
+    const inner = useRef<HTMLTextAreaElement>(null);
+    useLayoutEffect(() => {
+      fitTextarea(inner.current);
+    }, [value]);
+    return (
+      <textarea
+        ref={mergeRefs(inner, ref)}
+        rows={rows}
+        value={value}
+        onInput={(e) => {
+          fitTextarea(e.currentTarget);
+          onInput?.(e);
+        }}
+        className={cn(control, "min-h-0 resize-none overflow-hidden leading-relaxed", className)}
+        {...props}
+      />
+    );
   }
 );
 

@@ -103,7 +103,7 @@ export default function WfhPage() {
           <Input type="date" value={workDate} onChange={(e) => setWorkDate(e.target.value)} required />
         </Field>
         <Field label="Note (optional)">
-          <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} />
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
         <Button type="submit" disabled={busy}>
           {busy ? "Sending…" : "Send WFH for approval"}

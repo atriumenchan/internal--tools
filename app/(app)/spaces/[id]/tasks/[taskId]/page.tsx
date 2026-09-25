@@ -412,9 +412,7 @@ export default function TaskPage() {
                   markDirty();
                   setDescriptionDraft(e.target.value);
                 }}
-                rows={6}
                 placeholder="What this is, and any links."
-                className="min-h-[8rem]"
               />
             </Field>
             </div>
@@ -427,9 +425,7 @@ export default function TaskPage() {
                     markDirty();
                     setCriteriaDraft(e.target.value);
                   }}
-                  rows={4}
                   placeholder="What should be true when this is finished?"
-                  className="min-h-[6rem]"
                 />
               </Field>
             </div>
@@ -476,7 +472,7 @@ export default function TaskPage() {
                   value={body}
                   onChange={setBody}
                   people={Object.values(profiles)}
-                  rows={3}
+                  rows={1}
                   placeholder="Write a comment — type @ to mention someone"
                   required
                 />

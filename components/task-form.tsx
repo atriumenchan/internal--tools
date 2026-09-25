@@ -98,8 +98,6 @@ export function TaskForm({
         <Textarea
           value={comment}
           onChange={(e) => setComment(e.target.value)}
-          rows={2}
-          className="min-h-[4.5rem]"
           placeholder="What this is, and any links"
         />
       </Field>
@@ -107,8 +105,6 @@ export function TaskForm({
         <Textarea
           value={criteria}
           onChange={(e) => setCriteria(e.target.value)}
-          rows={2}
-          className="min-h-[3.5rem]"
           placeholder="What should be true when this is finished?"
         />
       </Field>
