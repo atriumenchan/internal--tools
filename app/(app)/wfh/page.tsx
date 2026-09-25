@@ -33,7 +33,7 @@ export default function WfhPage() {
     if (err) {
       setError(
         err.message.includes("wfh_requests") || err.message.includes("schema cache")
-          ? "Work from home needs a SQL patch. Paste supabase/wfh.sql in the Supabase SQL editor, then refresh."
+          ? "WFH needs a SQL patch. Paste supabase/wfh.sql in the Supabase SQL editor, then refresh."
           : err.message
       );
       setRows([]);
@@ -65,7 +65,7 @@ export default function WfhPage() {
     if (err) {
       setError(
         err.message.includes("request_wfh") || err.message.includes("schema cache")
-          ? "Work from home needs a SQL patch. Paste supabase/wfh.sql in the Supabase SQL editor, then try again."
+          ? "WFH needs a SQL patch. Paste supabase/wfh.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -93,8 +93,8 @@ export default function WfhPage() {
   return (
     <div>
       <PageHeader
-        title="Work from home"
-        description="Ask Ryan Ritabrata before the day. Approved days are not counted as absent when attendance is uploaded."
+        title="WFH"
+        description="Send WFH for approval."
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
 
@@ -106,7 +106,7 @@ export default function WfhPage() {
           <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={3} placeholder="Why you need to be home" />
         </Field>
         <Button type="submit" disabled={busy}>
-          {busy ? "Sending…" : "Ask to work from home"}
+          {busy ? "Sending…" : "Send WFH for approval"}
         </Button>
       </form>
 

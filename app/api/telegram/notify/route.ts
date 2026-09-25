@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(workDate)) {
       return NextResponse.json({ error: "Date is required" }, { status: 400 });
     }
-    const text = [`${byName} asked to work from home`, workDate, "Approve it on Work from home"].join("\n");
+    const text = [`${byName} sent WFH for approval`, workDate, "Approve it on WFH"].join("\n");
     const group = await sendTelegram(text);
     const admin = createAdminClient();
     const { data: rows } = await admin.from("profiles").select("email, role, telegram_id");

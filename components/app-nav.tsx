@@ -7,9 +7,11 @@ import type { Icon } from "@phosphor-icons/react";
 import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
 import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
+import { Cards } from "@phosphor-icons/react/dist/ssr/Cards";
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
+import { House } from "@phosphor-icons/react/dist/ssr/House";
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
 import { GearSix } from "@phosphor-icons/react/dist/ssr/GearSix";
 import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
@@ -40,7 +42,9 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "Work",
     items: [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
-      { href: "/spaces", label: "Tasks", icon: ClipboardText },
+      { href: "/tasks", label: "Tasks", icon: ClipboardText },
+      { href: "/spaces", label: "Spaces", icon: Cards },
+      { href: "/wfh", label: "WFH", icon: House },
       { href: "/chat", label: "Chat", icon: ChatCircleDots },
       { href: "/notifications", label: "Alerts", icon: Bell },
     ],
@@ -49,7 +53,6 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "You",
     items: [
       { href: "/my-attendance", label: "My attendance", icon: CalendarBlank },
-      { href: "/wfh", label: "Work from home", icon: CalendarBlank },
       { href: "/notes", label: "Daily notes", icon: Notebook },
       { href: "/vault", label: "Logins", icon: Key },
       { href: "/handbook", label: "Handbook", icon: BookOpen },
@@ -164,7 +167,12 @@ export function AppNav({
                 {group.label}
               </p>
               {items.map((item) => {
-                const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+                const active =
+                  item.href === "/tasks"
+                    ? pathname === "/tasks" || pathname.includes("/tasks/")
+                    : item.href === "/spaces"
+                      ? pathname === "/spaces" || (pathname.startsWith("/spaces/") && !pathname.includes("/tasks/"))
+                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
                 const Icon = item.icon;
                 const count = item.href === "/chat" ? chatUnread : item.href === "/notifications" ? notifUnread : 0;
                 return (

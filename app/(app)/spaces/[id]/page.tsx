@@ -435,7 +435,7 @@ export default function SpaceDetailPage() {
     <div>
       <p className="mb-3 text-sm">
         <Link href="/spaces" className="text-muted hover:text-ink">
-          ← All boards
+          ← Spaces
         </Link>
       </p>
       <PageHeader
