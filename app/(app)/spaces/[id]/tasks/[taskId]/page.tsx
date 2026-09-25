@@ -184,15 +184,18 @@ export default function TaskPage() {
     }
     setSaving(true);
     setError(null);
-    const ok = await saveTask({
-      title,
-      description: descriptionDraft.trim() || null,
-      completion_criteria: criteriaDraft.trim() || null,
-      priority: priorityDraft,
-      assignee_id: assigneeDraft || null,
-      reviewer_id: reviewerDraft || null,
-      due_date: dueDraft || null,
-    });
+    const canEdit = Boolean(app && canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role }));
+    const ok = canEdit
+      ? await saveTask({
+          title,
+          description: descriptionDraft.trim() || null,
+          completion_criteria: criteriaDraft.trim() || null,
+          priority: priorityDraft,
+          assignee_id: assigneeDraft || null,
+          reviewer_id: reviewerDraft || null,
+          due_date: dueDraft || null,
+        })
+      : await saveTask({ status: task.status });
     setSaving(false);
     if (ok) setSaved(true);
   }
@@ -329,6 +332,16 @@ export default function TaskPage() {
   const locked = !task || !canManageTask(task, actor);
   const canMove = Boolean(task && canMoveTask(task, actor));
   const canDelete = Boolean(task && canDeleteTask(task, actor));
+  const showSave = Boolean(task && (canMove || !locked));
+
+  const saveControl = showSave ? (
+    <div className="flex items-center gap-3">
+      <Button type="button" onClick={() => void saveEdits()} disabled={saving}>
+        {saving ? "Saving…" : "Save"}
+      </Button>
+      {saved ? <p className="text-[13px] font-medium text-teal">Saved</p> : null}
+    </div>
+  ) : null;
 
   if (error && !task) {
     return <PageHeader title="Task" description={error} />;
@@ -347,20 +360,25 @@ export default function TaskPage() {
         description={
           locked
             ? canMove
-              ? `${space?.name || "Board"} · You can move status. Title and files stay with the requester.`
+              ? `${space?.name || "Board"} · You can move status, then Save. Title and files stay with the requester.`
               : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
               ? `On ${space.name} · edit the fields below, then Save.`
               : undefined
         }
         actions={
-          canDelete ? (
-            <ConfirmDelete
-              label="Delete task"
-              title="Delete this task?"
-              description="The task, comments, and files will be removed."
-              onConfirm={() => deleteTask()}
-            />
+          showSave || canDelete ? (
+            <div className="flex items-center gap-2">
+              {saveControl}
+              {canDelete ? (
+                <ConfirmDelete
+                  label="Delete task"
+                  title="Delete this task?"
+                  description="The task, comments, and files will be removed."
+                  onConfirm={() => deleteTask()}
+                />
+              ) : null}
+            </div>
           ) : undefined
         }
       />
@@ -415,14 +433,7 @@ export default function TaskPage() {
                 />
               </Field>
             </div>
-            {locked ? null : (
-              <div className="mt-4 flex items-center gap-3">
-                <Button type="button" onClick={() => void saveEdits()} disabled={saving}>
-                  {saving ? "Saving…" : "Save"}
-                </Button>
-                {saved ? <p className="text-[13px] font-medium text-teal">Saved</p> : null}
-              </div>
-            )}
+            {saveControl ? <div className="mt-4">{saveControl}</div> : null}
           </Card>
 
           <Card className="p-0">
@@ -579,14 +590,7 @@ export default function TaskPage() {
                   placeholder="Pick a due date"
                 />
               </Field>
-              {locked ? null : (
-                <div className="mt-4 flex items-center gap-3">
-                  <Button type="button" onClick={() => void saveEdits()} disabled={saving}>
-                    {saving ? "Saving…" : "Save"}
-                  </Button>
-                  {saved ? <p className="text-[13px] font-medium text-teal">Saved</p> : null}
-                </div>
-              )}
+              {saveControl ? <div className="mt-4">{saveControl}</div> : null}
             </div>
             <div className="px-4 py-4">
               <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
