@@ -197,7 +197,7 @@ export function TaskCard({
       <TaskForm
         members={members}
         initial={draftFromTask(task)}
-        submitLabel="Save"
+        submitLabel="Save task"
         busyLabel="Saving…"
         onCancel={() => setEditing(false)}
         onSubmit={async (values) => {
@@ -341,7 +341,7 @@ export function TaskListRow({
         <TaskForm
           members={members}
           initial={draftFromTask(task)}
-          submitLabel="Save"
+          submitLabel="Save task"
           busyLabel="Saving…"
           onCancel={() => setEditing(false)}
           onSubmit={async (values) => {

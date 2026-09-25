@@ -43,8 +43,33 @@ export default function TaskPage() {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
+  const [descriptionDraft, setDescriptionDraft] = useState("");
+  const [criteriaDraft, setCriteriaDraft] = useState("");
+  const [priorityDraft, setPriorityDraft] = useState(taskPriority(null));
+  const [assigneeDraft, setAssigneeDraft] = useState("");
+  const [reviewerDraft, setReviewerDraft] = useState("");
+  const [dueDraft, setDueDraft] = useState("");
+  const dirty = useRef(false);
   const bottom = useRef<HTMLDivElement>(null);
+
+  function applyTask(row: Task) {
+    setTask(row);
+    setTitleDraft(row.title);
+    setDescriptionDraft(row.description || "");
+    setCriteriaDraft(row.completion_criteria || "");
+    setPriorityDraft(taskPriority(row.priority));
+    setAssigneeDraft(row.assignee_id || "");
+    setReviewerDraft(row.reviewer_id || "");
+    setDueDraft(dueDateKey(row.due_date) || "");
+  }
+
+  function markDirty() {
+    dirty.current = true;
+    setSaved(false);
+  }
 
   useEffect(() => {
     if (!id || !taskId) return;
@@ -66,8 +91,7 @@ export default function TaskPage() {
       const byId = Object.fromEntries(allPeople.map((p) => [p.id, p]));
       const memberIds = new Set((memberRes.data ?? []).map((row) => row.user_id as string));
       setSpace((spaceRes.data as Space) ?? null);
-      setTask(taskRes.data as Task);
-      setTitleDraft((taskRes.data as Task).title);
+      applyTask(taskRes.data as Task);
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
       setComments((commentRes.data ?? []) as TaskComment[]);
       setFiles((filesRes.data ?? []) as TaskFile[]);
@@ -79,10 +103,7 @@ export default function TaskPage() {
     if (!taskId) return;
     const supabase = createClient();
     const { data } = await supabase.from("tasks").select("*").eq("id", taskId).maybeSingle();
-    if (data) {
-      setTask(data as Task);
-      setTitleDraft((data as Task).title);
-    }
+    if (data && !dirty.current) applyTask(data as Task);
   }, [taskId]);
 
   useSilentLive(() => void loadTask(), taskId ? `task-${taskId}` : "task");
@@ -111,7 +132,7 @@ export default function TaskPage() {
   }, [comments.length]);
 
   async function saveTask(patch: Partial<Task>) {
-    if (!task || !app) return;
+    if (!task || !app) return false;
     const actor = { id: app.userId, email: app.profile.email, role: app.profile.role };
     const statusOnly = Object.keys(patch).length === 1 && patch.status !== undefined;
     if (statusOnly ? !canMoveTask(task, actor) : !canManageTask(task, actor)) {
@@ -120,7 +141,7 @@ export default function TaskPage() {
           ? "Only the requester, the assignee, or a manager can move this task."
           : "Only the person who created this task, or a manager, can change it. You can still comment."
       );
-      return;
+      return false;
     }
     const supabase = createClient();
     const { data, error: err } = await supabase.from("tasks").update(patch).eq("id", task.id).select("*").single();
@@ -132,11 +153,14 @@ export default function TaskPage() {
             ? "Task review needs a SQL patch. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh."
             : err.message
       );
-      return;
+      return false;
     }
     const previous = task;
-    setTask(data as Task);
-    if (typeof patch.title === "string") setTitleDraft(patch.title);
+    if (statusOnly) setTask(data as Task);
+    else {
+      dirty.current = false;
+      applyTask(data as Task);
+    }
     if (patch.assignee_id && patch.assignee_id !== previous.assignee_id) {
       pingTaskAssigned({
         title: (data as Task).title,
@@ -148,6 +172,29 @@ export default function TaskPage() {
         assigneeId: patch.assignee_id,
       });
     }
+    return true;
+  }
+
+  async function saveEdits() {
+    if (!task) return;
+    const title = titleDraft.trim();
+    if (!title) {
+      setError("Title is required.");
+      return;
+    }
+    setSaving(true);
+    setError(null);
+    const ok = await saveTask({
+      title,
+      description: descriptionDraft.trim() || null,
+      completion_criteria: criteriaDraft.trim() || null,
+      priority: priorityDraft,
+      assignee_id: assigneeDraft || null,
+      reviewer_id: reviewerDraft || null,
+      due_date: dueDraft || null,
+    });
+    setSaving(false);
+    if (ok) setSaved(true);
   }
 
   async function uploadFile(file: File) {
@@ -303,7 +350,7 @@ export default function TaskPage() {
               ? `${space?.name || "Board"} · You can move status. Title and files stay with the requester.`
               : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
-              ? `On ${space.name} · edit the fields below, they save when you leave a box.`
+              ? `On ${space.name} · edit the fields below, then Save.`
               : undefined
         }
         actions={
@@ -326,15 +373,14 @@ export default function TaskPage() {
               <Input
                 value={titleDraft}
                 disabled={locked}
-                onChange={(e) => setTitleDraft(e.target.value)}
-                onBlur={() => {
-                  if (titleDraft.trim() && titleDraft.trim() !== task.title) void saveTask({ title: titleDraft.trim() });
-                  else setTitleDraft(task.title);
+                onChange={(e) => {
+                  markDirty();
+                  setTitleDraft(e.target.value);
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
-                    (e.target as HTMLInputElement).blur();
+                    if (!locked) void saveEdits();
                   }
                 }}
               />
@@ -342,10 +388,12 @@ export default function TaskPage() {
             <div className="mt-4">
               <Field label="Brief">
               <Textarea
-                value={task.description || ""}
+                value={descriptionDraft}
                 disabled={locked}
-                onChange={(e) => setTask({ ...task, description: e.target.value })}
-                onBlur={() => void saveTask({ description: task.description })}
+                onChange={(e) => {
+                  markDirty();
+                  setDescriptionDraft(e.target.value);
+                }}
                 rows={6}
                 placeholder="What this is, and any links."
                 className="min-h-[8rem]"
@@ -355,16 +403,26 @@ export default function TaskPage() {
             <div className="mt-4">
               <Field label="Done looks like">
                 <Textarea
-                  value={task.completion_criteria || ""}
+                  value={criteriaDraft}
                   disabled={locked}
-                  onChange={(e) => setTask({ ...task, completion_criteria: e.target.value })}
-                  onBlur={() => void saveTask({ completion_criteria: task.completion_criteria })}
+                  onChange={(e) => {
+                    markDirty();
+                    setCriteriaDraft(e.target.value);
+                  }}
                   rows={4}
                   placeholder="What should be true when this is finished?"
                   className="min-h-[6rem]"
                 />
               </Field>
             </div>
+            {locked ? null : (
+              <div className="mt-4 flex items-center gap-3">
+                <Button type="button" onClick={() => void saveEdits()} disabled={saving}>
+                  {saving ? "Saving…" : "Save"}
+                </Button>
+                {saved ? <p className="text-[13px] font-medium text-teal">Saved</p> : null}
+              </div>
+            )}
           </Card>
 
           <Card className="p-0">
@@ -451,12 +509,11 @@ export default function TaskPage() {
             <div className="px-4 py-4">
               <Field label="Priority">
                 <Select
-                  value={taskPriority(task.priority)}
+                  value={priorityDraft}
                   disabled={locked}
                   onChange={(e) => {
-                    const priority = taskPriority(e.target.value);
-                    setTask({ ...task, priority });
-                    void saveTask({ priority });
+                    markDirty();
+                    setPriorityDraft(taskPriority(e.target.value));
                   }}
                 >
                   {TASK_PRIORITIES.map((key) => (
@@ -470,12 +527,11 @@ export default function TaskPage() {
             <div className="px-4 py-4">
               <Field label="Assignee">
                 <Select
-                  value={task.assignee_id || ""}
+                  value={assigneeDraft}
                   disabled={locked}
                   onChange={(e) => {
-                    const assignee_id = e.target.value || null;
-                    setTask({ ...task, assignee_id });
-                    void saveTask({ assignee_id });
+                    markDirty();
+                    setAssigneeDraft(e.target.value);
                   }}
                 >
                   <option value="">Unassigned</option>
@@ -495,12 +551,11 @@ export default function TaskPage() {
             <div className="px-4 py-4">
               <Field label="Reviewer">
                 <Select
-                  value={task.reviewer_id || ""}
+                  value={reviewerDraft}
                   disabled={locked}
                   onChange={(e) => {
-                    const reviewer_id = e.target.value || null;
-                    setTask({ ...task, reviewer_id });
-                    void saveTask({ reviewer_id });
+                    markDirty();
+                    setReviewerDraft(e.target.value);
                   }}
                 >
                   <option value="">None</option>
@@ -515,15 +570,23 @@ export default function TaskPage() {
             <div className="px-4 py-4">
               <Field label="Due date">
                 <DatePicker
-                  value={dueDateKey(task.due_date)}
+                  value={dueDraft || null}
                   disabled={locked}
                   onChange={(due_date) => {
-                    setTask({ ...task, due_date });
-                    void saveTask({ due_date });
+                    markDirty();
+                    setDueDraft(due_date || "");
                   }}
                   placeholder="Pick a due date"
                 />
               </Field>
+              {locked ? null : (
+                <div className="mt-4 flex items-center gap-3">
+                  <Button type="button" onClick={() => void saveEdits()} disabled={saving}>
+                    {saving ? "Saving…" : "Save"}
+                  </Button>
+                  {saved ? <p className="text-[13px] font-medium text-teal">Saved</p> : null}
+                </div>
+              )}
             </div>
             <div className="px-4 py-4">
               <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
