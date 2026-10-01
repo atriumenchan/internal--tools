@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Card, Checkbox, ErrorText, Field, Input, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { missingSpacesSchema } from "@/lib/spaces";
-import { formatRelative } from "@/lib/datetime";
+import { formatStamp } from "@/lib/datetime";
 import type { Announcement } from "@/lib/types";
 
 export function Announcements({ operator, userId }: { operator: boolean; userId: string }) {
@@ -125,9 +125,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
                   ) : null}
                   <p className={`text-[15px] font-semibold tracking-tight text-ink ${row.pinned ? "mt-2" : ""}`}>{row.title}</p>
                   <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">{row.body}</p>
-                  <p className="mt-2 font-mono text-[12px] text-muted" title={formatStamp(row.created_at)}>
-                    {formatRelative(row.created_at)} IST
-                  </p>
+                  <p className="mt-2 font-mono text-[12px] text-muted">{formatStamp(row.created_at)}</p>
                 </div>
                 {operator ? (
                   <ConfirmDelete

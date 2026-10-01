@@ -9,6 +9,7 @@ import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
 import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
 import { Cards } from "@phosphor-icons/react/dist/ssr/Cards";
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
+import { ChartDonut } from "@phosphor-icons/react/dist/ssr/ChartDonut";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
 import { House } from "@phosphor-icons/react/dist/ssr/House";
@@ -44,6 +45,7 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
       { href: "/tasks", label: "Tasks", icon: ClipboardText },
       { href: "/spaces", label: "Spaces", icon: Cards },
+      { href: "/metrics", label: "Metrics", icon: ChartDonut },
       { href: "/wfh", label: "WFH", icon: House },
       { href: "/chat", label: "Chat", icon: ChatCircleDots },
       { href: "/notifications", label: "Alerts", icon: Bell },
