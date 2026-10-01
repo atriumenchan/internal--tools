@@ -138,6 +138,7 @@ export type TaskFile = {
   file_name: string;
   file_size: number;
   uploaded_by: string | null;
+  storage?: string | null;
   created_at: string;
 };
 

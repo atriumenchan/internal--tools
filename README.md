@@ -35,6 +35,27 @@ SUPABASE_SERVICE_ROLE_KEY=your_service_role_key_here
 
 `SUPABASE_SERVICE_ROLE_KEY` stays on the server. It lets an admin create logins from **Staff**. Never name it `NEXT_PUBLIC_`. On Vercel, add it as **Secret**.
 
+### Task files on Cloudflare R2
+
+Task attachments go to R2 when these are set, and fall back to Supabase Storage when they are not:
+
+```
+R2_ACCOUNT_ID=your_cloudflare_account_id
+R2_ACCESS_KEY_ID=your_r2_access_key
+R2_SECRET_ACCESS_KEY=your_r2_secret
+R2_BUCKET=task-files
+```
+
+All four are server-only — add them on Vercel as **Secret**. In the Cloudflare dashboard: R2 → create bucket `task-files` (keep it private), then R2 → Manage API tokens → create a token with **Object Read & Write** for that bucket. The account ID is in the R2 overview sidebar.
+
+The bucket needs CORS so the browser can upload straight to it. R2 → `task-files` → Settings → CORS policy:
+
+```json
+[{ "AllowedOrigins": ["https://your-site.vercel.app", "http://localhost:3000"], "AllowedMethods": ["PUT", "GET"], "AllowedHeaders": ["*"], "MaxAgeSeconds": 3600 }]
+```
+
+Then paste [`supabase/task-files-r2.sql`](supabase/task-files-r2.sql) in the SQL editor. Files already in Supabase Storage keep working; new ones go to R2, where the per-file cap is 50 MB instead of 8 MB.
+
 ## 3. Run
 
 ```bash

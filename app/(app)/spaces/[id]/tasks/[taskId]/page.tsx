@@ -43,6 +43,7 @@ export default function TaskPage() {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
@@ -206,41 +207,69 @@ export default function TaskPage() {
       setError("Only the requester, the assignee, or a manager can add files. You can still comment.");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setError("Each file must be 8 MB or smaller.");
-      return;
+    setError(null);
+    setUploading(true);
+    try {
+      const res = await fetch("/api/task-files", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ taskId: task.id, fileName: file.name, fileSize: file.size }),
+      });
+      const plan = (await res.json()) as { storage?: string; path?: string; url?: string; error?: string };
+      if (!res.ok || !plan.path) {
+        setError(plan.error || "Could not start the upload.");
+        return;
+      }
+
+      if (plan.storage === "r2") {
+        const put = await fetch(plan.url as string, { method: "PUT", body: file });
+        if (!put.ok) {
+          setError("Could not reach cloud storage. Check the R2 keys on Vercel, then try again.");
+          return;
+        }
+      } else {
+        const { error: upErr } = await createClient().storage.from("task-files").upload(plan.path, file);
+        if (upErr) {
+          setError(
+            upErr.message.includes("Bucket not found") || upErr.message.includes("not found")
+              ? "File storage is not set up yet. Paste supabase/workspace-plus.sql in the Supabase SQL editor."
+              : upErr.message
+          );
+          return;
+        }
+      }
+
+      const { data, error: err } = await createClient()
+        .from("task_files")
+        .insert({
+          task_id: task.id,
+          path: plan.path,
+          file_name: file.name,
+          file_size: file.size,
+          uploaded_by: app.userId,
+          storage: plan.storage || "supabase",
+        })
+        .select("*")
+        .single();
+      if (err) {
+        setError(
+          /storage/i.test(err.message) && /column|schema cache/i.test(err.message)
+            ? "File storage needs a SQL patch. Paste supabase/task-files-r2.sql in the Supabase SQL editor, then try again."
+            : err.message
+        );
+        return;
+      }
+      setFiles((prev) => [data as TaskFile, ...prev]);
+    } finally {
+      setUploading(false);
     }
-    const supabase = createClient();
-    const safe = file.name.replace(/[^\w.-]+/g, "_");
-    const path = `${task.id}/${Date.now()}-${safe}`;
-    const { error: upErr } = await supabase.storage.from("task-files").upload(path, file);
-    if (upErr) {
-      setError(
-        upErr.message.includes("Bucket not found") || upErr.message.includes("not found")
-          ? "File storage is not set up yet. Paste supabase/workspace-plus.sql in the Supabase SQL editor."
-          : upErr.message
-      );
-      return;
-    }
-    const { data, error: err } = await supabase
-      .from("task_files")
-      .insert({
-        task_id: task.id,
-        path,
-        file_name: file.name,
-        file_size: file.size,
-        uploaded_by: app.userId,
-      })
-      .select("*")
-      .single();
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setFiles((prev) => [data as TaskFile, ...prev]);
   }
 
   async function openFile(file: TaskFile) {
+    if (file.storage === "r2") {
+      window.open(`/api/task-files?id=${file.id}`, "_blank");
+      return;
+    }
     const supabase = createClient();
     const { data, error: err } = await supabase.storage.from("task-files").createSignedUrl(file.path, 120);
     if (err || !data?.signedUrl) {
@@ -308,6 +337,20 @@ export default function TaskPage() {
   }
 
   async function deleteFile(file: TaskFile) {
+    if (file.storage === "r2") {
+      const res = await fetch("/api/task-files", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: file.id }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(body.error || "Could not delete this file.");
+        return;
+      }
+      setFiles((prev) => prev.filter((row) => row.id !== file.id));
+      return;
+    }
     const supabase = createClient();
     await supabase.storage.from("task-files").remove([file.path]);
     const { error: err } = await supabase.from("task_files").delete().eq("id", file.id);
@@ -434,7 +477,13 @@ export default function TaskPage() {
 
           <Card>
             <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
-            {canMove ? <FileDrop onFile={(file) => void uploadFile(file)} hint="Drop a file or click to upload. Up to 8 MB each." /> : null}
+            {canMove ? (
+              <FileDrop
+                onFile={(file) => void uploadFile(file)}
+                label={uploading ? "Uploading…" : "Drop a file or click to upload"}
+                hint="Any file up to 50 MB."
+              />
+            ) : null}
             {files.length > 0 ? (
               <ul className={canMove ? "mt-3 space-y-2" : "space-y-2"}>
                 {files.map((file) => (
