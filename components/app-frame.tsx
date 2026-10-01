@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { AppNav, SidebarFallback } from "@/components/app-nav";
+import { HistoryBar } from "@/components/history-bar";
 import { mustSignHandbook } from "@/lib/handbook";
 import { loadChatBootstrap, loadEmployees, loadStaffBundle } from "@/lib/chat-bootstrap";
 import { missingSpacesSchema } from "@/lib/spaces";
@@ -325,7 +326,12 @@ export function AppFrame({ children }: { children: ReactNode }) {
           ) : (
             <SidebarFallback />
           )}
-          <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">{children}</main>
+          <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">
+            <Suspense fallback={null}>
+              <HistoryBar />
+            </Suspense>
+            {children}
+          </main>
         </div>
       </WorkspaceContext.Provider>
     </AppStateContext.Provider>
