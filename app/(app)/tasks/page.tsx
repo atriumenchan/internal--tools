@@ -45,7 +45,7 @@ function TasksPageInner() {
     void Promise.all([
       supabase.from("spaces").select("id, name, color, created_by, created_at").order("name"),
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
+      supabase.from("profiles").select("*").order("full_name"),
     ]).then(([spaceRes, taskRes, peopleRes]) => {
       if (spaceRes.error) {
         setError(
@@ -187,7 +187,8 @@ function TasksPageInner() {
     setTasks((prev) => (prev ?? []).filter((t) => t.id !== taskId));
   }
 
-  const sliceLabel = slice === "closed" ? "Closed today" : slice === "overdue" ? "Overdue today" : "Left";
+  const sliceLabel =
+    slice === "all" ? "Tasks" : slice === "closed" ? "Closed today" : slice === "overdue" ? "Overdue today" : "Left";
   const personLabel =
     !admin || person === "all"
       ? admin
@@ -205,8 +206,8 @@ function TasksPageInner() {
         title="Tasks"
         description={
           admin
-            ? "Every person, every board, in one list. Pick someone and a filter."
-            : "Your tasks across every board you are on."
+            ? "Every person, every board, in one list. All keeps finished work in view too."
+            : "Your tasks across every board you are on. All keeps finished work in view too."
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
@@ -216,6 +217,7 @@ function TasksPageInner() {
           value={slice}
           onChange={(next) => setOverview({ slice: next })}
           options={[
+            { id: "all", label: `All (${sliceCounts.all})` },
             { id: "left", label: `Left (${sliceCounts.left})` },
             { id: "closed", label: `Closed today (${sliceCounts.closed})` },
             { id: "overdue", label: `Overdue today (${sliceCounts.overdue})` },

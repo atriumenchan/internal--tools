@@ -5,7 +5,7 @@ import type { ChatBootstrap, Conversation, ConversationMember, Employee, Profile
 export async function loadChatBootstrap(userId: string): Promise<ChatBootstrap> {
   const supabase = createClient();
   const [peopleRes, mineRes] = await Promise.all([
-    supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
+    supabase.from("profiles").select("*").order("full_name"),
     supabase.from("conversation_members").select("conversation_id, user_id, last_read_at").eq("user_id", userId),
   ]);
   const people = (peopleRes.data ?? []) as Profile[];

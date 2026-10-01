@@ -42,7 +42,7 @@ export default function WfhPage() {
     setRows((data ?? []) as WfhRequest[]);
     const ids = [...new Set((data ?? []).map((row) => row.user_id as string))];
     if (ids.length) {
-      const { data: profiles } = await supabase.from("profiles").select("id, full_name, email, role").in("id", ids);
+      const { data: profiles } = await supabase.from("profiles").select("*").in("id", ids);
       setPeople(Object.fromEntries(((profiles ?? []) as Profile[]).map((p) => [p.id, p])));
     }
   }

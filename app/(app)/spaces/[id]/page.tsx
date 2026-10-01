@@ -14,6 +14,7 @@ import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
 import { TaskCard, TaskListRow } from "@/components/task-card";
 import { TaskForm, type TaskDraft } from "@/components/task-form";
 import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
 import {
   displayName,
   missingPriorityColumn,
@@ -68,7 +69,7 @@ export default function SpaceDetailPage() {
         supabase.from("spaces").select("id, name, color, icon, created_by, created_at").eq("id", id).maybeSingle(),
         supabase.from("tasks").select("*").eq("space_id", id).order("created_at", { ascending: false }),
         supabase.from("space_members").select("user_id").eq("space_id", id),
-        supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
+        supabase.from("profiles").select("*").order("full_name"),
         supabase.from("conversations").select("id").eq("space_id", id).eq("type", "space").maybeSingle(),
       ]);
       const loadedSpace =
@@ -526,7 +527,7 @@ export default function SpaceDetailPage() {
             />
             <div className="flex shrink-0 -space-x-2">
               {members.slice(0, 3).map((m) => (
-                <Avatar key={m.id} name={displayName(m)} className="border border-page" />
+                <Avatar key={m.id} name={displayName(m)} src={avatarSrc(m)} className="border border-page" />
               ))}
               {members.length > 3 ? (
                 <span
@@ -615,7 +616,7 @@ export default function SpaceDetailPage() {
                     key={person.id}
                     className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0"
                   >
-                    <Avatar name={displayName(person)} size="sm" />
+                    <Avatar name={displayName(person)} src={avatarSrc(person)} size="sm" />
                     <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{displayName(person)}</span>
                     {owner ? (
                       <span className="text-[11px] text-faint">Owner</span>

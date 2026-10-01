@@ -175,11 +175,15 @@ export async function PATCH(request: Request) {
   const password = String(body.password || "");
   const role = body.role != null ? parseAppRole(body.role) : null;
   const telegramRaw = body.telegram_id !== undefined ? String(body.telegram_id) : undefined;
+  const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined;
   if (!id) {
     return NextResponse.json({ error: "User is required" }, { status: 400 });
   }
-  if (!password && !role && telegramRaw === undefined) {
-    return NextResponse.json({ error: "Password, role, or Telegram id is required" }, { status: 400 });
+  if (!password && !role && telegramRaw === undefined && email === undefined) {
+    return NextResponse.json({ error: "Password, email ID, role, or Telegram id is required" }, { status: 400 });
+  }
+  if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return NextResponse.json({ error: "Enter a full email ID, like name@admexo.com." }, { status: 400 });
   }
   if (password && password.length < 6) {
     return NextResponse.json({ error: "Use a 6+ character password" }, { status: 400 });
@@ -195,12 +199,27 @@ export async function PATCH(request: Request) {
     const admin = createAdminClient();
     const { data: target } = await admin.from("profiles").select("id, email, role").eq("id", id).maybeSingle();
     const protect = target && isAdminUser({ email: target.email, role: target.role });
-    if (protect && (password || role)) {
+    if (protect && (password || role || email !== undefined)) {
       return NextResponse.json({ error: "Ryan Ritabrata's login cannot be changed from here." }, { status: 400 });
     }
     if (password) {
       const { error } = await admin.auth.admin.updateUserById(id, { password });
       if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+    if (email !== undefined && email !== (target?.email || "").toLowerCase()) {
+      const { error } = await admin.auth.admin.updateUserById(id, { email, email_confirm: true });
+      if (error) {
+        return NextResponse.json(
+          {
+            error: /already|registered|exists/i.test(error.message)
+              ? "Another login already uses that email ID."
+              : error.message,
+          },
+          { status: 400 }
+        );
+      }
+      await admin.from("profiles").update({ email }).eq("id", id);
+      await admin.from("employees").update({ email }).eq("user_id", id);
     }
     if (role) {
       const { error } = await admin.from("profiles").update({ role }).eq("id", id);

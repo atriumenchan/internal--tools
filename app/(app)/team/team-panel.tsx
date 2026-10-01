@@ -128,6 +128,27 @@ export function TeamPanel() {
     }
   }
 
+  async function saveEmail(user: StaffUser, value: string) {
+    setBusy(true);
+    setErr(null);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user.id, email: value.trim() }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not change the email ID");
+      setMsg(`${displayName(user)} now signs in with ${value.trim().toLowerCase()}. Their password is unchanged.`);
+      await cache?.refreshStaff();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not change the email ID");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function saveTelegram(user: StaffUser, value: string) {
     setBusy(true);
     setErr(null);
@@ -268,7 +289,13 @@ export function TeamPanel() {
                 <tr key={user.id} className="border-t border-border hover:bg-surface-2">
                   <td className="px-4 py-3 font-mono text-xs">{user.employee_code || "—"}</td>
                   <td className="px-4 py-3 font-medium">{displayName(user)}</td>
-                  <td className="px-4 py-3 text-muted">{user.email}</td>
+                  <td className="px-4 py-3">
+                    {isAdminUser({ email: user.email, role: user.role }) ? (
+                      <span className="text-muted">{user.email}</span>
+                    ) : (
+                      <EmailField key={`${user.id}-${user.email}`} user={user} disabled={busy} onSave={saveEmail} />
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <TelegramIdField
                       key={`${user.id}-${user.telegram_id || ""}`}
@@ -339,6 +366,39 @@ export function TeamPanel() {
           </table>
         )}
       </div>
+    </div>
+  );
+}
+
+function EmailField({
+  user,
+  disabled,
+  onSave,
+}: {
+  user: StaffUser;
+  disabled: boolean;
+  onSave: (user: StaffUser, value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(user.email || "");
+  const changed = value.trim().toLowerCase() !== (user.email || "").trim().toLowerCase();
+  return (
+    <div className="flex min-w-[13rem] items-center gap-1">
+      <Input
+        type="email"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="name@admexo.com"
+        className="text-[12px]"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={disabled || !changed || !value.trim()}
+        onClick={() => void onSave(user, value)}
+      >
+        Save
+      </Button>
     </div>
   );
 }

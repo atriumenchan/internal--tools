@@ -131,7 +131,7 @@ export default function DashboardPage() {
       const [taskRes, spaceRes, peopleRes, inboxRes, convRes, empRes, memberRes] = await Promise.all([
         supabase.from("tasks").select("*").order("created_at", { ascending: false }),
         supabase.from("spaces").select("*").order("name"),
-        supabase.from("profiles").select("id, email, full_name, role"),
+        supabase.from("profiles").select("*"),
         supabase.rpc("chat_inbox"),
         supabase.from("conversations").select("*"),
         supabase.from("employees").select("*").eq("user_id", app.userId).maybeSingle(),

@@ -57,7 +57,7 @@ function MetricsPageInner() {
     void Promise.all([
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("spaces").select("id, name, color, created_by, created_at").order("name"),
-      supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
+      supabase.from("profiles").select("*").order("full_name"),
     ]).then(([taskRes, spaceRes, peopleRes]) => {
       if (taskRes.error) {
         setError(

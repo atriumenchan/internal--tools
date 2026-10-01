@@ -19,7 +19,8 @@ const closed = {
 const theirs = { ...mine, assignee_id: "them", due_date: "2026-09-26" };
 
 describe("parseTaskSlice", () => {
-  it("maps closed and overdue, else left", () => {
+  it("maps all, closed and overdue, else left", () => {
+    expect(parseTaskSlice("all")).toBe("all");
     expect(parseTaskSlice("closed")).toBe("closed");
     expect(parseTaskSlice("done")).toBe("closed");
     expect(parseTaskSlice("overdue")).toBe("overdue");
@@ -40,10 +41,15 @@ describe("sliceTasks", () => {
     expect(sliceTasks([mine, closed, theirs], "closed", today)).toEqual([closed]);
     expect(sliceTasks([mine, closed, theirs], "overdue", today)).toEqual([mine]);
   });
+
+  it("keeps finished and cancelled work in all", () => {
+    const cancelled = { ...mine, status: "cancelled" as const };
+    expect(sliceTasks([mine, closed, cancelled], "all", today)).toEqual([mine, closed, cancelled]);
+  });
 });
 
 describe("taskSliceCounts", () => {
-  it("counts the three slices for the selected people", () => {
-    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ left: 2, closed: 1, overdue: 1 });
+  it("counts the slices for the selected people", () => {
+    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ all: 3, left: 2, closed: 1, overdue: 1 });
   });
 });

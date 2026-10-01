@@ -39,7 +39,7 @@ export function KnowledgeDocs() {
     const supabase = createClient();
     void Promise.all([
       supabase.from("knowledge_articles").select("*").order("updated_at", { ascending: false }),
-      supabase.from("profiles").select("id, email, full_name, role"),
+      supabase.from("profiles").select("*"),
     ]).then(([docs, peopleRes]) => {
       if (docs.error) {
         setError("Docs are not set up yet. Paste supabase/workspace-lite.sql in the Supabase SQL editor, then refresh.");

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui";
 import { OverflowStrip } from "@/components/overflow-strip";
 import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
 import { displayName } from "@/lib/spaces";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
@@ -74,7 +75,7 @@ export function PeoplePicker({
                   >
                     {on ? "✓" : null}
                   </span>
-                  <Avatar name={displayName(person)} size="sm" />
+                  <Avatar name={displayName(person)} src={avatarSrc(person)} size="sm" />
                   <span className="truncate">{displayName(person)}</span>
                 </button>
               </li>

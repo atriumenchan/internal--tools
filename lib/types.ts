@@ -15,6 +15,7 @@ export type Profile = {
   email: string;
   full_name: string;
   role: AppRole;
+  avatar_url?: string | null;
   handbook_version?: string | null;
   handbook_acknowledged_at?: string | null;
 };

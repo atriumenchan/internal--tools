@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui";
 import { OverflowStrip } from "@/components/overflow-strip";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
 import { TaskForm, draftFromTask, type TaskDraft } from "@/components/task-form";
 import {
   displayName,
@@ -177,7 +178,7 @@ function PersonChip({
   return (
     <span className="inline-flex shrink-0 items-center gap-1.5" title={`${label} ${name}`}>
       <span className="text-[11px] text-faint">{label}</span>
-      <Avatar name={name} size="sm" className="h-5 w-5 text-[9px]" />
+      <Avatar name={name} src={avatarSrc(person)} size="sm" className="h-5 w-5 text-[9px]" />
       {name}
     </span>
   );
@@ -334,7 +335,7 @@ function PersonCell({ person, empty }: { person?: Profile | null; empty: string 
   const name = person ? displayName(person) : empty;
   return (
     <span title={name} className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
-      <Avatar name={name} size="sm" className="h-5 w-5 shrink-0 text-[9px]" />
+      <Avatar name={name} src={avatarSrc(person)} size="sm" className="h-5 w-5 shrink-0 text-[9px]" />
       <span className="truncate">{person ? displayName(person) : "—"}</span>
     </span>
   );

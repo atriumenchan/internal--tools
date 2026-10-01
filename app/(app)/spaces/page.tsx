@@ -49,7 +49,7 @@ function SpacesPageInner() {
     void Promise.all([
       supabase.from("spaces").select("id, name, color, created_by, created_at").order("name"),
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-      supabase.from("profiles").select("id, email, full_name, role").order("full_name"),
+      supabase.from("profiles").select("*").order("full_name"),
     ]).then(([spaceRes, taskRes, peopleRes]) => {
       if (spaceRes.error) {
         setError(

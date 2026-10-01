@@ -113,6 +113,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
           ? await supabase.from("profiles").select("id, email, full_name, role").eq("id", user.id).maybeSingle()
           : profileFull;
 
+      // The photo column arrives with supabase/profile-photo.sql, so ask for it on its own.
+      const photo = await supabase.from("profiles").select("avatar_url").eq("id", user.id).maybeSingle();
+
       const settingsFull = await supabase
         .from("company_settings")
         .select("company_name, handbook_version, anyone_can_create_spaces")
@@ -134,11 +137,15 @@ export function AppFrame({ children }: { children: ReactNode }) {
       } | null;
 
       const schemaReady = !profileFull.error && !settingsFull.error;
-      const resolved: Profile = profileRow ?? {
+      const base: Profile = profileRow ?? {
         id: user.id,
         email: user.email ?? "",
         full_name: "",
         role: isAdminEmail(user.email) ? "admin" : "employee",
+      };
+      const resolved: Profile = {
+        ...base,
+        avatar_url: (photo.data as { avatar_url?: string | null } | null)?.avatar_url ?? null,
       };
       const acknowledged =
         isAdminUser({ email: resolved.email || user.email, role: resolved.role }) ||

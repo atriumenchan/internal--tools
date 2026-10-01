@@ -21,7 +21,10 @@ import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
 import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut";
 import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour";
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
+import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle";
 import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
+import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
 import { JoinMeetButton } from "@/components/join-meet";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -45,8 +48,6 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
       { href: "/tasks", label: "Tasks", icon: ClipboardText },
       { href: "/spaces", label: "Spaces", icon: Cards },
-      { href: "/metrics", label: "Metrics", icon: ChartDonut },
-      { href: "/wfh", label: "WFH", icon: House },
       { href: "/chat", label: "Chat", icon: ChatCircleDots },
       { href: "/notifications", label: "Alerts", icon: Bell },
     ],
@@ -55,8 +56,11 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
     label: "You",
     items: [
       { href: "/my-attendance", label: "My attendance", icon: CalendarBlank },
+      { href: "/wfh", label: "WFH", icon: House },
+      { href: "/metrics", label: "Metrics", icon: ChartDonut },
       { href: "/notes", label: "Daily notes", icon: Notebook },
       { href: "/vault", label: "Logins", icon: Key },
+      { href: "/profile", label: "Profile", icon: UserCircle },
       { href: "/handbook", label: "Handbook", icon: BookOpen },
     ],
   },
@@ -208,8 +212,13 @@ export function AppNav({
         <JoinMeetButton className="w-full" />
         <NoidaClock />
         <div>
-          <p className="truncate text-[13px] font-medium text-ink">{displayName(profile)}</p>
-          <p className="mt-0.5 text-[12px] text-muted">{roleLabel}</p>
+          <Link href="/profile" className="flex items-center gap-2.5">
+            <Avatar name={displayName(profile)} src={avatarSrc(profile)} />
+            <span className="min-w-0">
+              <span className="block truncate text-[13px] font-medium text-ink">{displayName(profile)}</span>
+              <span className="mt-0.5 block text-[12px] text-muted">{roleLabel}</span>
+            </span>
+          </Link>
           <button
             onClick={signOut}
             className="mt-3 flex items-center gap-2 text-[12px] text-muted transition duration-150 hover:text-ink"

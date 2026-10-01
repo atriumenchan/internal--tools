@@ -12,6 +12,7 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
 import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
 import {
   displayName,
   missingPriorityColumn,
@@ -81,7 +82,7 @@ export default function TaskPage() {
         supabase.from("tasks").select("*").eq("id", taskId).maybeSingle(),
         supabase.from("space_members").select("user_id").eq("space_id", id),
         supabase.from("task_comments").select("*").eq("task_id", taskId).order("created_at"),
-        supabase.from("profiles").select("id, email, full_name, role"),
+        supabase.from("profiles").select("*"),
         supabase.from("task_files").select("*").eq("task_id", taskId).order("created_at", { ascending: false }),
       ]);
       if (taskRes.error || !taskRes.data) {
@@ -525,7 +526,11 @@ export default function TaskPage() {
                 <ul className="space-y-3">
                   {comments.map((comment) => (
                     <li key={comment.id} className="flex gap-3 rounded-md border border-border bg-page px-4 py-3">
-                      <Avatar name={displayName(profiles[comment.author_id])} size="sm" />
+                      <Avatar
+                        name={displayName(profiles[comment.author_id])}
+                        src={avatarSrc(profiles[comment.author_id])}
+                        size="sm"
+                      />
                       <div className="min-w-0 flex-1">
                         <p className="font-mono text-[12px] text-muted">
                           <span className="font-medium text-ink">{displayName(profiles[comment.author_id])}</span>
