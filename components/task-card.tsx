@@ -164,10 +164,30 @@ function StatusMoveControl({
   );
 }
 
+function PersonChip({
+  label,
+  person,
+  empty,
+}: {
+  label: string;
+  person?: Profile | null;
+  empty: string;
+}) {
+  const name = person ? displayName(person) : empty;
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1.5" title={`${label} ${name}`}>
+      <span className="text-[11px] text-faint">{label}</span>
+      <Avatar name={name} size="sm" className="h-5 w-5 text-[9px]" />
+      {name}
+    </span>
+  );
+}
+
 export function TaskCard({
   task,
   href,
   spaceName,
+  requester,
   assignee,
   members,
   onMove,
@@ -177,6 +197,7 @@ export function TaskCard({
   task: Task;
   href: string;
   spaceName?: string;
+  requester?: Profile | null;
   assignee?: Profile | null;
   members?: Profile[];
   onMove?: (status: TaskStatus) => void;
@@ -283,10 +304,8 @@ export function TaskCard({
               {TASK_PRIORITY_LABELS[priority]}
             </Badge>
             {spaceName ? <span className="shrink-0 text-muted">{spaceName}</span> : null}
-            <span className="inline-flex shrink-0 items-center gap-1.5">
-              <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
-              {assignee ? displayName(assignee) : "Unassigned"}
-            </span>
+            <PersonChip label="Created by" person={requester} empty="Unknown" />
+            <PersonChip label="Assignee" person={assignee} empty="Unassigned" />
             {when || due ? (
               <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
                 {when && due ? `${when} · ${due}` : when || due}
@@ -311,9 +330,20 @@ export function TaskCard({
   );
 }
 
+function PersonCell({ person, empty }: { person?: Profile | null; empty: string }) {
+  const name = person ? displayName(person) : empty;
+  return (
+    <span title={name} className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
+      <Avatar name={name} size="sm" className="h-5 w-5 shrink-0 text-[9px]" />
+      <span className="truncate">{person ? displayName(person) : "—"}</span>
+    </span>
+  );
+}
+
 export function TaskListRow({
   task,
   href,
+  requester,
   assignee,
   members,
   spaceName,
@@ -323,6 +353,7 @@ export function TaskListRow({
 }: {
   task: Task;
   href: string;
+  requester?: Profile | null;
   assignee?: Profile | null;
   members?: Profile[];
   spaceName?: string;
@@ -359,8 +390,8 @@ export function TaskListRow({
       className={cn(
         "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-2.5 transition duration-150 hover:bg-surface-2",
         spaceName
-          ? "md:grid-cols-[minmax(12rem,1.6fr)_8rem_minmax(10rem,13rem)_8rem_8.5rem_2.25rem]"
-          : "md:grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem]"
+          ? "md:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(9rem,12rem)_8rem_8.5rem_2.25rem]"
+          : "md:grid-cols-[minmax(0,1.4fr)_8rem_8rem_7rem_8.5rem_2.25rem]"
       )}
     >
       <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
@@ -368,16 +399,17 @@ export function TaskListRow({
         <p title={task.title} className="truncate text-[14px] font-medium tracking-tight text-ink">
           {task.title}
         </p>
+        <p className="mt-0.5 truncate text-[12px] text-muted md:hidden">
+          {requester ? displayName(requester) : "Unknown"} → {assignee ? displayName(assignee) : "Unassigned"}
+        </p>
         {spaceName ? (
           <p title={spaceName} className="mt-0.5 truncate text-[12px] text-muted">
             {spaceName}
           </p>
         ) : null}
       </div>
-      <span className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
-        <Avatar name={assignee ? displayName(assignee) : "Unassigned"} size="sm" className="h-5 w-5 text-[9px]" />
-        <span className="truncate">{assignee ? displayName(assignee) : "—"}</span>
-      </span>
+      <PersonCell person={requester} empty="Unknown" />
+      <PersonCell person={assignee} empty="Unassigned" />
       {spaceName ? (
         <span title={spaceName} className="pointer-events-none relative z-[1] hidden text-[12px] leading-snug text-muted md:block">
           {spaceName}

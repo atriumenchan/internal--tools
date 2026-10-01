@@ -532,6 +532,11 @@ export default function TaskPage() {
               </Field>
             </div>
             <div className="px-4 py-4">
+              <Field label="Created by">
+                <p className="text-sm">{displayName(profiles[task.created_by])}</p>
+              </Field>
+            </div>
+            <div className="px-4 py-4">
               <Field label="Assignee">
                 <Select
                   value={assigneeDraft}
@@ -548,11 +553,6 @@ export default function TaskPage() {
                     </option>
                   ))}
                 </Select>
-              </Field>
-            </div>
-            <div className="px-4 py-4">
-              <Field label="Requester">
-                <p className="text-sm">{displayName(profiles[task.created_by])}</p>
               </Field>
             </div>
             <div className="px-4 py-4">

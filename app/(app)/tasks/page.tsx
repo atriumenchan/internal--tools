@@ -240,9 +240,10 @@ function TasksPageInner() {
       </div>
 
       <section className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
-        <div className="hidden border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted md:grid md:grid-cols-[minmax(12rem,1.6fr)_8rem_minmax(10rem,13rem)_8rem_8.5rem_2.25rem] md:gap-3">
+        <div className="hidden border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted md:grid md:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(9rem,12rem)_8rem_8.5rem_2.25rem] md:gap-3">
           <span>Task</span>
-          <span>Person</span>
+          <span>Created by</span>
+          <span>Assignee</span>
           <span>Space</span>
           <span>Due</span>
           <span>Status</span>
@@ -259,6 +260,7 @@ function TasksPageInner() {
                 <TaskListRow
                   task={task}
                   href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                  requester={peopleMap[task.created_by] ?? null}
                   assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
                   members={people}
                   spaceName={spaceMap[task.space_id]?.name || "Board"}

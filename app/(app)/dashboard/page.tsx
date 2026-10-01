@@ -397,6 +397,7 @@ export default function DashboardPage() {
                     task={task}
                     href={`/spaces/${task.space_id}/tasks/${task.id}`}
                     spaceName={spaceMap[task.space_id]?.name}
+                    requester={peopleMap[task.created_by] ?? null}
                     assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
                     members={people}
                     onEdit={

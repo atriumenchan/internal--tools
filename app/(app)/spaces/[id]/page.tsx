@@ -134,6 +134,7 @@ export default function SpaceDetailPage() {
   }, [shownTasks]);
 
   const memberMap = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m])), [members]);
+  const peopleMap = useMemo(() => Object.fromEntries(people.map((p) => [p.id, p])), [people]);
   const outsiders = people.filter((p) => !members.some((m) => m.id === p.id));
   const actor = app ? { id: app.userId, email: app.profile.email, role: app.profile.role } : null;
   const whosePeople = useMemo(() => {
@@ -637,8 +638,9 @@ export default function SpaceDetailPage() {
 
       {view === "list" ? (
         <div className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
-          <div className="hidden grid-cols-[minmax(0,1.4fr)_8rem_7rem_8.5rem_2.25rem] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold tracking-wide text-faint uppercase md:grid">
+          <div className="hidden grid-cols-[minmax(0,1.4fr)_8rem_8rem_7rem_8.5rem_2.25rem] gap-3 border-b border-border px-3 py-2 text-[11px] font-semibold tracking-wide text-faint uppercase md:grid">
             <span>Name</span>
+            <span>Created by</span>
             <span>Assignee</span>
             <span>Due</span>
             <span>Status</span>
@@ -679,7 +681,8 @@ export default function SpaceDetailPage() {
                   key={task.id}
                   task={task}
                   href={`/spaces/${space.id}/tasks/${task.id}`}
-                  assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
+                  requester={peopleMap[task.created_by] ?? null}
+                  assignee={task.assignee_id ? peopleMap[task.assignee_id] ?? memberMap[task.assignee_id] : null}
                   members={members}
                   onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                   onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
@@ -750,7 +753,8 @@ export default function SpaceDetailPage() {
                   <TaskCard
                     task={task}
                     href={`/spaces/${space.id}/tasks/${task.id}`}
-                    assignee={task.assignee_id ? memberMap[task.assignee_id] : null}
+                    requester={peopleMap[task.created_by] ?? null}
+                    assignee={task.assignee_id ? peopleMap[task.assignee_id] ?? memberMap[task.assignee_id] : null}
                     members={members}
                     onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
                     onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
