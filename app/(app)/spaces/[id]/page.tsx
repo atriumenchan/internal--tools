@@ -103,13 +103,18 @@ export default function SpaceDetailPage() {
     const stored = sessionStorage.getItem(`it-space-view-${id}`);
     if (stored === "list" || stored === "board") setView(stored);
     const peopleStored = sessionStorage.getItem(`it-space-whose-v2-${id}`);
-    if (peopleStored) setWhose(peopleStored);
+    if (peopleStored && peopleStored !== "me") setWhose(peopleStored);
   }, [id]);
 
   const shownTasks = useMemo(
     () => visibleSpaceTasks(tasks, whose, app?.userId),
     [tasks, whose, app?.userId]
   );
+  const hiddenOpen = useMemo(() => {
+    if (whose === "all") return 0;
+    const shown = new Set(shownTasks.map((t) => t.id));
+    return tasks.filter((t) => !shown.has(t.id) && t.status !== "done" && t.status !== "cancelled").length;
+  }, [tasks, shownTasks, whose]);
 
   const columns = useMemo(() => {
     const by: Record<TaskStatus, Task[]> = {
@@ -499,13 +504,13 @@ export default function SpaceDetailPage() {
               className="w-[11.5rem] shrink-0"
               aria-label="Whose tasks"
             >
+              <option value="all">Everyone</option>
               <option value="me">My tasks</option>
               {whosePeople.map((person) => (
                 <option key={person.id} value={person.id}>
                   {displayName(person)}
                 </option>
               ))}
-              <option value="all">Everyone</option>
             </Select>
             <Segmented
               value={view}
@@ -554,6 +559,21 @@ export default function SpaceDetailPage() {
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
+      {hiddenOpen > 0 ? (
+        <p className="mb-4 text-sm text-muted">
+          {hiddenOpen} open {hiddenOpen === 1 ? "task is" : "tasks are"} on this board for other people.{" "}
+          <button
+            type="button"
+            className="font-medium text-teal hover:text-teal-soft"
+            onClick={() => {
+              setWhose("all");
+              if (id) sessionStorage.setItem(`it-space-whose-v2-${id}`, "all");
+            }}
+          >
+            Show everyone
+          </button>
+        </p>
+      ) : null}
 
       {peopleOpen ? (
         <div className="mb-5 max-w-xl space-y-3">
