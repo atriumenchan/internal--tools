@@ -202,8 +202,8 @@ export default function TaskPage() {
 
   async function uploadFile(file: File) {
     if (!task || !app) return;
-    if (!canManageTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
-      setError("Only the person who created this task, or a manager, can add files. You can still comment.");
+    if (!canMoveTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
+      setError("Only the requester, the assignee, or a manager can add files. You can still comment.");
       return;
     }
     if (file.size > 8 * 1024 * 1024) {
@@ -360,7 +360,7 @@ export default function TaskPage() {
         description={
           locked
             ? canMove
-              ? `${space?.name || "Board"} · You can move status, then Save. Title and files stay with the requester.`
+              ? `${space?.name || "Board"} · You can move status, add files, then Save. Title stays with the requester.`
               : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
               ? `On ${space.name} · edit the fields below, then Save.`
@@ -430,6 +430,36 @@ export default function TaskPage() {
               </Field>
             </div>
             {saveControl ? <div className="mt-4">{saveControl}</div> : null}
+          </Card>
+
+          <Card>
+            <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
+            {canMove ? <FileDrop onFile={(file) => void uploadFile(file)} hint="Drop a file or click to upload. Up to 8 MB each." /> : null}
+            {files.length > 0 ? (
+              <ul className={canMove ? "mt-3 space-y-2" : "space-y-2"}>
+                {files.map((file) => (
+                  <li key={file.id} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-sm transition duration-200 hover:border-border-strong"
+                      onClick={() => void openFile(file)}
+                    >
+                      <FileText size={18} weight="light" className="shrink-0 text-teal" />
+                      <span className="min-w-0 truncate">{file.file_name}</span>
+                    </button>
+                    {app && (file.uploaded_by === app.userId || !locked) ? (
+                      <ConfirmDelete
+                        label="Delete file"
+                        title="Delete this file?"
+                        onConfirm={() => deleteFile(file)}
+                      />
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            ) : canMove ? null : (
+              <p className="text-sm text-faint">No files on this task.</p>
+            )}
           </Card>
 
           <Card className="p-0">
@@ -587,33 +617,6 @@ export default function TaskPage() {
                 />
               </Field>
               {saveControl ? <div className="mt-4">{saveControl}</div> : null}
-            </div>
-            <div className="px-4 py-4">
-              <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
-              {locked ? null : <FileDrop onFile={(file) => void uploadFile(file)} hint="Optional. Up to 8 MB each." />}
-              {files.length > 0 ? (
-                <ul className="mt-3 space-y-2">
-                  {files.map((file) => (
-                    <li key={file.id} className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-sm transition duration-200 hover:border-border-strong"
-                        onClick={() => void openFile(file)}
-                      >
-                        <FileText size={18} weight="light" className="shrink-0 text-teal" />
-                        <span className="min-w-0 truncate">{file.file_name}</span>
-                      </button>
-                      {locked ? null : (
-                      <ConfirmDelete
-                        label="Delete file"
-                        title="Delete this file?"
-                        onConfirm={() => deleteFile(file)}
-                      />
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
             </div>
           </Card>
         </aside>
