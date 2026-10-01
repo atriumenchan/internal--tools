@@ -125,8 +125,8 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
                   ) : null}
                   <p className={`text-[15px] font-semibold tracking-tight text-ink ${row.pinned ? "mt-2" : ""}`}>{row.title}</p>
                   <p className="mt-1.5 whitespace-pre-wrap text-[14px] leading-relaxed text-ink-soft">{row.body}</p>
-                  <p className="mt-2 font-mono text-[12px] text-muted" title={new Date(row.created_at).toLocaleString()}>
-                    {formatRelative(row.created_at)}
+                  <p className="mt-2 font-mono text-[12px] text-muted" title={formatStamp(row.created_at)}>
+                    {formatRelative(row.created_at)} IST
                   </p>
                 </div>
                 {operator ? (

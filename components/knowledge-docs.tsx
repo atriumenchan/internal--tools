@@ -7,6 +7,7 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { displayName } from "@/lib/spaces";
+import { formatStamp } from "@/lib/datetime";
 import { canPublishKnowledge } from "@/lib/roles";
 import type { Profile } from "@/lib/types";
 
@@ -183,7 +184,7 @@ export function KnowledgeDocs() {
                 {row.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">{row.body}</p> : null}
                 <p className="mt-3 text-[12px] text-muted">
                   Last edited by {displayName(people[row.updated_by || ""] || people[row.created_by || ""])} ·{" "}
-                  {new Date(row.updated_at || row.created_at).toLocaleString()}
+                  {formatStamp(row.updated_at || row.created_at)}
                 </p>
               </Card>
             </li>

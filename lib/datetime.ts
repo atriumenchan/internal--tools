@@ -173,6 +173,25 @@ export function formatRelative(value: string | Date | null | undefined) {
   }).format(date);
 }
 
+export function formatStamp(value: string | Date | null | undefined) {
+  if (!value) return "—";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "—";
+  try {
+    return `${new Intl.DateTimeFormat("en-IN", {
+      timeZone: TZ,
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    }).format(date)} IST`;
+  } catch {
+    return "—";
+  }
+}
+
 export function hoursLabel(value: number | string | null | undefined) {
   const n = Number(value);
   if (!Number.isFinite(n)) return "—";

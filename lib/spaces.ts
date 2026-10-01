@@ -61,7 +61,7 @@ export function displayName(
   return profile.full_name?.trim() || profile.email || "Someone";
 }
 
-/** Board default is your cards; `all` or another user id shows theirs. */
+/** Board default is everyone; `me` is assigned to you or requested by you. */
 export function visibleSpaceTasks<T extends { assignee_id: string | null; created_by: string }>(
   tasks: T[],
   whose: string,
@@ -70,6 +70,9 @@ export function visibleSpaceTasks<T extends { assignee_id: string | null; create
   if (!myId) return [];
   if (whose === "all") return tasks;
   const personId = whose === "me" ? myId : whose;
+  if (personId === myId) {
+    return tasks.filter((task) => task.assignee_id === personId || task.created_by === personId);
+  }
   return tasks.filter((task) => task.assignee_id === personId || (!task.assignee_id && task.created_by === personId));
 }
 

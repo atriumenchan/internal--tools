@@ -46,7 +46,7 @@ export default function SpaceDetailPage() {
   const [dragOver, setDragOver] = useState<TaskStatus | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
-  const [whose, setWhose] = useState("me");
+  const [whose, setWhose] = useState("all");
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -102,7 +102,7 @@ export default function SpaceDetailPage() {
     if (!id) return;
     const stored = sessionStorage.getItem(`it-space-view-${id}`);
     if (stored === "list" || stored === "board") setView(stored);
-    const peopleStored = sessionStorage.getItem(`it-space-whose-${id}`);
+    const peopleStored = sessionStorage.getItem(`it-space-whose-v2-${id}`);
     if (peopleStored) setWhose(peopleStored);
   }, [id]);
 
@@ -144,7 +144,7 @@ export default function SpaceDetailPage() {
     whose === "all"
       ? "Everyone's tasks on this board."
       : whose === "me"
-        ? "Your tasks on this board. Pick someone else to see theirs."
+        ? "Tasks assigned to you or requested by you."
         : `${displayName(whosePeople.find((p) => p.id === whose) || memberMap[whose])}'s tasks.`;
 
   async function setStatus(taskId: string, status: TaskStatus) {
@@ -301,11 +301,14 @@ export default function SpaceDetailPage() {
       return;
     }
     const supabase = createClient();
-    const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
+    const { error: err } = await supabase.rpc("delete_space", { p_space_id: space.id });
     if (err) {
       setError(
-        err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this board. Paste supabase/space-owner.sql in the Supabase SQL editor, then try again."
+        err.message.includes("row-level security") ||
+          err.message.includes("policy") ||
+          err.message.includes("delete_space") ||
+          err.message.includes("schema cache")
+          ? "Could not delete this board. Paste supabase/fix-spaces.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;
@@ -395,7 +398,7 @@ export default function SpaceDetailPage() {
     setMembers((prev) => prev.filter((p) => p.id !== personId));
     if (whose === personId) {
       setWhose("me");
-      if (id) sessionStorage.setItem(`it-space-whose-${id}`, "me");
+      if (id) sessionStorage.setItem(`it-space-whose-v2-${id}`, "me");
     }
   }
 
@@ -491,7 +494,7 @@ export default function SpaceDetailPage() {
               onChange={(e) => {
                 const next = e.target.value;
                 setWhose(next);
-                if (id) sessionStorage.setItem(`it-space-whose-${id}`, next);
+                if (id) sessionStorage.setItem(`it-space-whose-v2-${id}`, next);
               }}
               className="w-[11.5rem] shrink-0"
               aria-label="Whose tasks"

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareDueSoon, dueOffsetDays, dueWhenLabel, isClosedToday } from "./datetime";
+import { compareDueSoon, dueOffsetDays, dueWhenLabel, formatStamp, isClosedToday } from "./datetime";
 
 describe("dueWhenLabel", () => {
   it("names today, tomorrow, and overdue", () => {
@@ -28,6 +28,13 @@ describe("dueOffsetDays", () => {
   it("counts days from today", () => {
     expect(dueOffsetDays("2026-09-24", "2026-09-24")).toBe(0);
     expect(dueOffsetDays("2026-09-26", "2026-09-24")).toBe(2);
+  });
+});
+
+describe("formatStamp", () => {
+  it("prints Noida time with IST", () => {
+    expect(formatStamp("2026-09-25T06:30:00.000Z")).toMatch(/IST$/);
+    expect(formatStamp("2026-09-25T06:30:00.000Z")).toContain("12:00");
   });
 });
 

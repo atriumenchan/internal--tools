@@ -17,6 +17,7 @@ import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import { missingChatLook } from "@/lib/chat-icons";
+import { formatStamp } from "@/lib/datetime";
 import type { ChatInboxRow, ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
 type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
@@ -756,7 +757,7 @@ function ChatApp() {
                   return (
                     <div key={message.id} className={mine ? "ml-8 text-right" : "mr-8"}>
                       <p className="font-mono text-[11px] text-muted">
-                        {displayName(profiles[message.author_id])} · {new Date(message.created_at).toLocaleString()}
+                        {displayName(profiles[message.author_id])} · {formatStamp(message.created_at)}
                       </p>
                       <div className={`mt-1 inline-flex max-w-full items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
                         <p

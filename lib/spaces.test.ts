@@ -7,9 +7,10 @@ const unassignedMine = { assignee_id: null, created_by: "me" };
 const unassignedTheirs = { assignee_id: null, created_by: "them" };
 
 describe("visibleSpaceTasks", () => {
-  it("defaults to assigned-to-me plus my unassigned cards", () => {
+  it("defaults to assigned-to-me plus cards I requested", () => {
     expect(visibleSpaceTasks([mine, theirs, unassignedMine, unassignedTheirs], "me", "me")).toEqual([
       mine,
+      theirs,
       unassignedMine,
     ]);
   });

@@ -23,7 +23,7 @@ import {
 } from "@/lib/spaces";
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
-import { dueDateKey } from "@/lib/datetime";
+import { dueDateKey, formatStamp } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
@@ -451,7 +451,7 @@ export default function TaskPage() {
                         <p className="font-mono text-[12px] text-muted">
                           <span className="font-medium text-ink">{displayName(profiles[comment.author_id])}</span>
                           {" · "}
-                          {new Date(comment.created_at).toLocaleString()}
+                          {formatStamp(comment.created_at)}
                         </p>
                         <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed">
                           <MentionBody text={comment.body} people={Object.values(profiles)} />

@@ -124,11 +124,14 @@ function SpacesPageInner() {
       return;
     }
     const supabase = createClient();
-    const { error: err } = await supabase.from("spaces").delete().eq("id", space.id);
+    const { error: err } = await supabase.rpc("delete_space", { p_space_id: space.id });
     if (err) {
       setError(
-        err.message.includes("row-level security") || err.message.includes("policy")
-          ? "Could not delete this board. Paste supabase/space-owner.sql in the Supabase SQL editor, then try again."
+        err.message.includes("row-level security") ||
+          err.message.includes("policy") ||
+          err.message.includes("delete_space") ||
+          err.message.includes("schema cache")
+          ? "Could not delete this board. Paste supabase/fix-spaces.sql in the Supabase SQL editor, then try again."
           : err.message
       );
       return;

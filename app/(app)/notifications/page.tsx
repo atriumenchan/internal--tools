@@ -7,6 +7,7 @@ import { EmptyState, ErrorText, PageHeader } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
+import { formatStamp } from "@/lib/datetime";
 import type { NotificationItem } from "@/lib/types";
 
 function deleteBlocked(message: string) {
@@ -132,7 +133,7 @@ export default function NotificationsPage() {
                   <div className="min-w-0 flex-1">
                     <p className={row.read_at ? "font-medium text-muted" : "font-semibold text-ink"}>{row.title}</p>
                     {row.body ? <p className="mt-0.5 truncate text-sm text-muted">{row.body}</p> : null}
-                    <p className="mt-1 font-mono text-[12px] text-faint">{new Date(row.created_at).toLocaleString()}</p>
+                    <p className="mt-1 font-mono text-[12px] text-faint">{formatStamp(row.created_at)}</p>
                   </div>
                 </div>
               </Link>
