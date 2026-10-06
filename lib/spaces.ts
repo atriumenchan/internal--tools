@@ -9,6 +9,9 @@ export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
   cancelled: "Cancelled",
 };
 
+/** Cards shown in a board column before See more. */
+export const SPACE_COLUMN_PREVIEW = 6;
+
 export const TASK_COLUMNS: { status: TaskStatus; hint: string; accent: string; column: string }[] = [
   { status: "open", hint: "Not started", accent: "bg-muted", column: "border-border bg-surface" },
   { status: "in_progress", hint: "In motion", accent: "bg-amber", column: "border-border bg-surface" },

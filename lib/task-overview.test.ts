@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseTaskSlice, sliceTasks, taskSliceCounts, tasksForPerson } from "./task-overview";
+import {
+  filterTasksByDue,
+  matchTaskQuery,
+  paginate,
+  parseTaskSlice,
+  sliceTasks,
+  taskSliceCounts,
+  tasksForPerson,
+} from "./task-overview";
 
 const today = "2026-09-25";
 const mine = {
@@ -19,12 +27,14 @@ const closed = {
 const theirs = { ...mine, assignee_id: "them", due_date: "2026-09-26" };
 
 describe("parseTaskSlice", () => {
-  it("maps all, closed and overdue, else left", () => {
+  it("maps today by default, then all, left, closed, overdue", () => {
+    expect(parseTaskSlice(null)).toBe("today");
+    expect(parseTaskSlice("today")).toBe("today");
     expect(parseTaskSlice("all")).toBe("all");
+    expect(parseTaskSlice("left")).toBe("left");
     expect(parseTaskSlice("closed")).toBe("closed");
     expect(parseTaskSlice("done")).toBe("closed");
     expect(parseTaskSlice("overdue")).toBe("overdue");
-    expect(parseTaskSlice("mine")).toBe("left");
   });
 });
 
@@ -46,10 +56,39 @@ describe("sliceTasks", () => {
     const cancelled = { ...mine, status: "cancelled" as const };
     expect(sliceTasks([mine, closed, cancelled], "all", today)).toEqual([mine, closed, cancelled]);
   });
+
+  it("today is due, created, or closed on that day", () => {
+    const dueToday = { ...theirs, due_date: today };
+    expect(sliceTasks([mine, closed, dueToday], "today", today)).toEqual([closed, dueToday]);
+  });
 });
 
 describe("taskSliceCounts", () => {
   it("counts the slices for the selected people", () => {
-    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ all: 3, left: 2, closed: 1, overdue: 1 });
+    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ today: 1, all: 3, left: 2, closed: 1, overdue: 1 });
+  });
+});
+
+describe("filterTasksByDue", () => {
+  it("keeps only that due date", () => {
+    expect(filterTasksByDue([mine, theirs], "2026-09-26")).toEqual([theirs]);
+    expect(filterTasksByDue([mine], "")).toEqual([mine]);
+  });
+});
+
+describe("matchTaskQuery", () => {
+  it("matches title, space, and people on every word", () => {
+    const task = { title: "September Full Month Report", description: "CPL numbers" };
+    expect(matchTaskQuery(task, "sept report", { spaceName: "Kartik (CPS)" })).toBe(true);
+    expect(matchTaskQuery(task, "gaurav", { assignee: "Kartik Dhyani" })).toBe(false);
+  });
+});
+
+describe("paginate", () => {
+  it("clips to a page and never goes past the last one", () => {
+    const rows = Array.from({ length: 45 }, (_, i) => i);
+    expect(paginate(rows, 1, 20)).toMatchObject({ page: 1, pages: 3, start: 1, end: 20, rows: rows.slice(0, 20) });
+    expect(paginate(rows, 3, 20)).toMatchObject({ page: 3, pages: 3, start: 41, end: 45 });
+    expect(paginate(rows, 9, 20).page).toBe(3);
   });
 });

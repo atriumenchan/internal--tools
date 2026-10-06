@@ -21,6 +21,7 @@ import {
   missingSpacesSchema,
   TASK_COLUMNS,
   TASK_STATUS_LABELS,
+  SPACE_COLUMN_PREVIEW,
   visibleSpaceTasks,
 } from "@/lib/spaces";
 import { useAppState } from "@/components/app-frame";
@@ -48,6 +49,7 @@ export default function SpaceDetailPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [view, setView] = useState<"board" | "list">("board");
   const [whose, setWhose] = useState("all");
+  const [openColumns, setOpenColumns] = useState<Partial<Record<TaskStatus, boolean>>>({});
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [peopleOpen, setPeopleOpen] = useState(false);
@@ -677,7 +679,7 @@ export default function SpaceDetailPage() {
                   + Add a task
                 </button>
               )}
-              {columns[col.status].map((task) => (
+              {columns[col.status].slice(0, openColumns[col.status] ? undefined : SPACE_COLUMN_PREVIEW).map((task) => (
                 <TaskListRow
                   key={task.id}
                   task={task}
@@ -690,6 +692,17 @@ export default function SpaceDetailPage() {
                   onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
                 />
               ))}
+              {columns[col.status].length > SPACE_COLUMN_PREVIEW ? (
+                <button
+                  type="button"
+                  onClick={() => setOpenColumns((current) => ({ ...current, [col.status]: !current[col.status] }))}
+                  className="w-full cursor-pointer border-t border-border bg-transparent px-3 py-2 text-left text-[13px] font-medium text-teal transition duration-150 hover:bg-surface-2"
+                >
+                  {openColumns[col.status]
+                    ? "See less"
+                    : `See ${columns[col.status].length - SPACE_COLUMN_PREVIEW} more`}
+                </button>
+              ) : null}
             </section>
           ))}
         </div>
@@ -749,7 +762,7 @@ export default function SpaceDetailPage() {
                   <p className="text-[13px] text-faint">{col.hint}</p>
                 </li>
               ) : null}
-              {columns[col.status].map((task) => (
+              {columns[col.status].slice(0, openColumns[col.status] ? undefined : SPACE_COLUMN_PREVIEW).map((task) => (
                 <li key={task.id}>
                   <TaskCard
                     task={task}
@@ -763,6 +776,19 @@ export default function SpaceDetailPage() {
                   />
                 </li>
               ))}
+              {columns[col.status].length > SPACE_COLUMN_PREVIEW ? (
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => setOpenColumns((current) => ({ ...current, [col.status]: !current[col.status] }))}
+                    className="w-full cursor-pointer rounded-sm px-3 py-2 text-[13px] font-medium text-teal transition duration-150 hover:bg-surface-2"
+                  >
+                    {openColumns[col.status]
+                      ? "See less"
+                      : `See ${columns[col.status].length - SPACE_COLUMN_PREVIEW} more`}
+                  </button>
+                </li>
+              ) : null}
             </ul>
           </section>
         ))}

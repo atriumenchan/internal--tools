@@ -3,19 +3,21 @@
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { PageHeader, Select } from "@/components/ui";
+import { PageHeader, Select, Input } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { TaskListRow } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { Segmented } from "@/components/overflow-strip";
+import { DatePicker } from "@/components/date-picker";
+import { Pager } from "@/components/pager";
 import { isAdminUser, isIgnoredEmployee } from "@/lib/admin";
 import { displayName, missingPriorityColumn, missingSpacesSchema } from "@/lib/spaces";
 import { compareDueSoon, dueDateKey, kolkataTodayKey } from "@/lib/datetime";
 import { useSilentLive } from "@/lib/silent-live";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { applyTaskStatus, canDeleteTask, canManageTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
-import { parseTaskSlice, sliceTasks, taskSliceCounts, tasksForPerson, type TaskSlice } from "@/lib/task-overview";
+import { parseTaskSlice, sliceTasks, taskSliceCounts, tasksForPerson, filterTasksByDue, matchTaskQuery, paginate, type TaskSlice } from "@/lib/task-overview";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
 
 function TasksPageInner() {
@@ -27,6 +29,9 @@ function TasksPageInner() {
   const slice = parseTaskSlice(search.get("slice") || search.get("filter"));
   const personParam = search.get("person");
   const person = admin ? personParam || "all" : "me";
+  const due = dueDateKey(search.get("due"));
+  const pageParam = Math.max(1, Number(search.get("page") || 1) || 1);
+  const [query, setQuery] = useState(search.get("q") || "");
   const [spaces, setSpaces] = useState<Space[]>([]);
   const [tasks, setTasks] = useState<Task[] | null>(null);
   const [people, setPeople] = useState<Profile[]>([]);
@@ -76,11 +81,20 @@ function TasksPageInner() {
   const sliceCounts = useMemo(() => taskSliceCounts(scoped, todayKey), [scoped, todayKey]);
   const listed = useMemo(() => {
     const rows = sliceTasks(scoped, slice, todayKey);
+    const dated = filterTasksByDue(rows, due);
+    const found = dated.filter((task) =>
+      matchTaskQuery(task, query, {
+        spaceName: spaceMap[task.space_id]?.name,
+        assignee: task.assignee_id ? displayName(peopleMap[task.assignee_id]) : "Unassigned",
+        requester: displayName(peopleMap[task.created_by]),
+      })
+    );
     if (slice === "closed") {
-      return [...rows].sort((a, b) => String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)));
+      return [...found].sort((a, b) => String(b.updated_at || b.created_at).localeCompare(String(a.updated_at || a.created_at)));
     }
-    return [...rows].sort(compareDueSoon);
-  }, [scoped, slice, todayKey]);
+    return [...found].sort(compareDueSoon);
+  }, [scoped, slice, todayKey, due, query, spaceMap, peopleMap]);
+  const paged = useMemo(() => paginate(listed, pageParam), [listed, pageParam]);
 
   const peopleOptions = useMemo(() => {
     const rows: { id: string; label: string }[] = [];
@@ -100,10 +114,14 @@ function TasksPageInner() {
     return rows;
   }, [cache?.employees, people, app?.userId, ignoredIds]);
 
-  function setOverview(next: { slice?: TaskSlice; person?: string }) {
+  function setOverview(next: { slice?: TaskSlice; person?: string; due?: string | null; page?: number }) {
     const params = new URLSearchParams();
     params.set("slice", next.slice ?? slice);
     if (admin) params.set("person", next.person ?? person);
+    const dueNext = next.due === undefined ? due : next.due;
+    if (dueNext) params.set("due", dueNext);
+    const pageNext = next.page ?? 1;
+    if (pageNext > 1) params.set("page", String(pageNext));
     router.replace(`/tasks?${params.toString()}`);
   }
 
@@ -188,7 +206,15 @@ function TasksPageInner() {
   }
 
   const sliceLabel =
-    slice === "all" ? "Tasks" : slice === "closed" ? "Closed today" : slice === "overdue" ? "Overdue today" : "Left";
+    slice === "today"
+      ? "Today"
+      : slice === "all"
+        ? "Tasks"
+        : slice === "closed"
+          ? "Closed today"
+          : slice === "overdue"
+            ? "Overdue today"
+            : "Left";
   const personLabel =
     !admin || person === "all"
       ? admin
@@ -206,8 +232,8 @@ function TasksPageInner() {
         title="Tasks"
         description={
           admin
-            ? "Every person, every board, in one list. All keeps finished work in view too."
-            : "Your tasks across every board you are on. All keeps finished work in view too."
+            ? "Today first. All is paged. Search and the due date filter stay on this list, not on boards."
+            : "Today first. All is paged. Search this list with a keyword."
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
@@ -217,6 +243,7 @@ function TasksPageInner() {
           value={slice}
           onChange={(next) => setOverview({ slice: next })}
           options={[
+            { id: "today", label: `Today (${sliceCounts.today})` },
             { id: "all", label: `All (${sliceCounts.all})` },
             { id: "left", label: `Left (${sliceCounts.left})` },
             { id: "closed", label: `Closed today (${sliceCounts.closed})` },
@@ -239,6 +266,22 @@ function TasksPageInner() {
             ))}
           </Select>
         ) : null}
+        <Input
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            if (paged.page !== 1) setOverview({ page: 1 });
+          }}
+          placeholder="Search tasks"
+          aria-label="Search tasks"
+          className="w-full max-w-[16rem] py-2 text-[13px]"
+        />
+        <DatePicker
+          value={due}
+          onChange={(next) => setOverview({ due: next })}
+          placeholder="Due date"
+          className="min-w-[12rem] w-[14rem]"
+        />
       </div>
 
       <section className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
@@ -253,26 +296,38 @@ function TasksPageInner() {
         </div>
         {listed.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-faint">
-            No {sliceLabel.toLowerCase()} for {personLabel}.
+            No {sliceLabel.toLowerCase()} for {personLabel}
+            {query.trim() ? ` matching “${query.trim()}”` : ""}
+            {due ? " on that due date" : ""}.
           </p>
         ) : (
-          <ul>
-            {listed.map((task) => (
-              <li key={task.id}>
-                <TaskListRow
-                  task={task}
-                  href={`/spaces/${task.space_id}/tasks/${task.id}`}
-                  requester={peopleMap[task.created_by] ?? null}
-                  assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
-                  members={people}
-                  spaceName={spaceMap[task.space_id]?.name || "Board"}
-                  onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
-                  onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
-                  onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
-                />
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul>
+              {paged.rows.map((task) => (
+                <li key={task.id}>
+                  <TaskListRow
+                    task={task}
+                    href={`/spaces/${task.space_id}/tasks/${task.id}`}
+                    requester={peopleMap[task.created_by] ?? null}
+                    assignee={task.assignee_id ? peopleMap[task.assignee_id] : null}
+                    members={people}
+                    spaceName={spaceMap[task.space_id]?.name || "Board"}
+                    onMove={canMoveTask(task, actor) ? (status) => void setStatus(task.id, status) : undefined}
+                    onEdit={canManageTask(task, actor) ? (values) => editTask(task.id, values) : undefined}
+                    onDelete={canDeleteTask(task, actor) ? () => deleteTask(task.id) : undefined}
+                  />
+                </li>
+              ))}
+            </ul>
+            <Pager
+              page={paged.page}
+              pages={paged.pages}
+              start={paged.start}
+              end={paged.end}
+              total={listed.length}
+              onChange={(next) => setOverview({ page: next })}
+            />
+          </>
         )}
       </section>
     </div>
