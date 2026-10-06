@@ -8,6 +8,7 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { canCreateSpace, displayName, missingSpacesSchema, SPACE_COLORS } from "@/lib/spaces";
+import { isReportsSpace } from "@/lib/reports";
 import { isOverdue } from "@/lib/datetime";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageSpace } from "@/lib/task-workflow";
@@ -235,7 +236,7 @@ function SpacesPageInner() {
         </p>
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {spaces.map((space) => {
+          {[...spaces].sort((a, b) => Number(isReportsSpace(b)) - Number(isReportsSpace(a)) || a.name.localeCompare(b.name)).map((space) => {
             const c = counts.get(space.id) ?? { open: 0, overdue: 0 };
             return (
               <li key={space.id}>

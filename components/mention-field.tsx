@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Textarea } from "@/components/ui";
 import { displayName } from "@/lib/spaces";
-import { applyMention, mentionMatches, mentionQueryAt, splitMentions, type MentionPerson } from "@/lib/mentions";
+import { applyMention, isEveryone, mentionMatches, mentionQueryAt, splitMentions, type MentionPerson } from "@/lib/mentions";
 
 export function MentionBody({ text, people }: { text: string; people: MentionPerson[] }) {
   const parts = splitMentions(text, people);
@@ -83,7 +83,7 @@ export function MentionField({
                   pick(person);
                 }}
               >
-                {displayName(person)}
+                {isEveryone(person) ? "everyone — notify the whole list" : displayName(person)}
               </button>
             </li>
           ))}

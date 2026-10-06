@@ -515,7 +515,7 @@ export default function TaskPage() {
           <Card className="p-0">
             <div className="border-b border-border px-5 py-4">
               <h2 className="font-display text-xl font-medium tracking-tight">Comments</h2>
-              <p className="mt-1 text-sm text-muted">Type @ to mention someone on this board.</p>
+              <p className="mt-1 text-sm text-muted">Type @ to mention someone, or @everyone.</p>
             </div>
             <div className="space-y-3 px-5 py-4">
               {comments.length === 0 ? (
@@ -557,7 +557,7 @@ export default function TaskPage() {
                   onChange={setBody}
                   people={Object.values(profiles)}
                   rows={1}
-                  placeholder="Write a comment — type @ to mention someone"
+                  placeholder="Write a comment — type @ to mention someone or @everyone"
                   required
                 />
                 <div className="flex justify-end">

@@ -3,19 +3,26 @@ import type { Profile } from "@/lib/types";
 
 export type MentionPerson = Pick<Profile, "id" | "full_name" | "email">;
 
+export const EVERYONE_ID = "__everyone__";
+export const EVERYONE: MentionPerson = { id: EVERYONE_ID, full_name: "everyone", email: "" };
+
+export function isEveryone(person: MentionPerson | null | undefined) {
+  return person?.id === EVERYONE_ID || (person?.full_name || "").trim().toLowerCase() === "everyone";
+}
+
 export function mentionQueryAt(text: string, caret: number) {
   const before = text.slice(0, caret);
-  const match = /(?:^|[\s])@([A-Za-z][A-Za-z .'-]{0,60})$/.exec(before);
+  const match = /(?:^|[\s])@([A-Za-z][A-Za-z .'-]{0,60})?$/.exec(before);
   if (!match) return null;
   const start = before.lastIndexOf("@");
-  return { start, query: match[1] };
+  return { start, query: match[1] || "" };
 }
 
 export function mentionMatches(query: string, people: MentionPerson[]) {
   const q = query.trim().toLowerCase();
-  return people
-    .filter((person) => displayName(person).toLowerCase().includes(q))
-    .slice(0, 8);
+  const rows = people.filter((person) => displayName(person).toLowerCase().includes(q));
+  const showEveryone = !q || "everyone".startsWith(q);
+  return (showEveryone ? [EVERYONE, ...rows.filter((person) => !isEveryone(person))] : rows).slice(0, 8);
 }
 
 export function applyMention(text: string, caret: number, start: number, name: string) {
@@ -30,6 +37,7 @@ function escapeRegExp(value: string) {
 
 export function mentionLabels(people: MentionPerson[]) {
   const names = people.map((p) => displayName(p).trim()).filter(Boolean);
+  names.push("everyone");
   const firsts = new Map<string, number>();
   for (const name of names) {
     const first = name.split(/\s+/)[0];

@@ -502,9 +502,9 @@ function ChatApp() {
 
   const composerHint =
     selected?.type === "space"
-      ? "Message the board — type @ to mention someone"
+      ? "Message the board — type @ to mention someone or @everyone"
       : selected?.type === "group"
-        ? "Message the group — type @ to mention someone"
+        ? "Message the group — type @ to mention someone or @everyone"
         : `Message ${selected ? convoLabel(selected, memberships, profiles, myId || "") : ""} — type @ to mention someone`;
 
   return (

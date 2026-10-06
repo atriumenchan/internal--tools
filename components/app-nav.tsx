@@ -6,14 +6,15 @@ import { usePathname, useRouter } from "next/navigation";
 import type { Icon } from "@phosphor-icons/react";
 import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
 import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
-import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
 import { Cards } from "@phosphor-icons/react/dist/ssr/Cards";
 import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
 import { ChartDonut } from "@phosphor-icons/react/dist/ssr/ChartDonut";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
-import { House } from "@phosphor-icons/react/dist/ssr/House";
 import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
+import { House } from "@phosphor-icons/react/dist/ssr/House";
+import { Newspaper } from "@phosphor-icons/react/dist/ssr/Newspaper";
+import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
 import { GearSix } from "@phosphor-icons/react/dist/ssr/GearSix";
 import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
 import { Key } from "@phosphor-icons/react/dist/ssr/Key";
@@ -48,6 +49,7 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
       { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
       { href: "/tasks", label: "Tasks", icon: ClipboardText },
       { href: "/spaces", label: "Spaces", icon: Cards },
+      { href: "/reports", label: "Reports", icon: Newspaper },
       { href: "/chat", label: "Chat", icon: ChatCircleDots },
       { href: "/notifications", label: "Alerts", icon: Bell },
     ],
