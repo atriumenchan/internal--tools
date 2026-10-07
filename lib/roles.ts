@@ -32,6 +32,10 @@ export function canPublishKnowledge(profile: Pick<Profile, "email" | "role"> | n
   return isManagerUser(profile);
 }
 
+export function canPostAnnouncements(profile: Pick<Profile, "email" | "role"> | null | undefined) {
+  return isManagerUser(profile);
+}
+
 export function isProtectedAdmin(email: string | null | undefined) {
   return isAdminEmail(email);
 }

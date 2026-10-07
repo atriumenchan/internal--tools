@@ -42,8 +42,8 @@ create policy "staff read announcements" on public.announcements
   using (public.has_signed_handbook() or public.is_admin());
 create policy "operators write announcements" on public.announcements
   for all to authenticated
-  using (public.is_operator())
-  with check (public.is_operator());
+  using (public.is_operator() or public.is_manager())
+  with check (public.is_operator() or public.is_manager());
 
 grant select, insert, update, delete on public.announcements to authenticated;
 

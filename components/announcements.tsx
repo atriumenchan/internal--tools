@@ -56,7 +56,11 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
     });
     setBusy(false);
     if (err) {
-      setError(err.message);
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Managers can post after a SQL patch. Paste supabase/announcements-managers.sql in the Supabase SQL editor."
+          : err.message
+      );
       return;
     }
     setTitle("");

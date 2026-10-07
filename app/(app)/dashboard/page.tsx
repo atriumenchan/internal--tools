@@ -17,6 +17,7 @@ import { Announcements } from "@/components/announcements";
 import { TaskCard } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
+import { canPostAnnouncements } from "@/lib/roles";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { pingTaskAssigned } from "@/lib/ping-task";
@@ -352,7 +353,7 @@ export default function DashboardPage() {
       ) : null}
 
       <div className="mb-6">
-        <Announcements operator={operator} userId={app.userId} />
+        <Announcements operator={canPostAnnouncements(app.profile) || operator} userId={app.userId} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
