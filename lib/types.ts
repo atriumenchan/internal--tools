@@ -96,6 +96,11 @@ export type ChatMessage = {
   conversation_id: string;
   author_id: string;
   body: string;
+  file_path?: string | null;
+  file_name?: string | null;
+  file_type?: string | null;
+  file_size?: number | null;
+  storage?: string | null;
   created_at: string;
 };
 
@@ -192,6 +197,7 @@ export type ChatInboxRow = {
   conversation_id: string;
   unread_count: number;
   last_body: string | null;
+  last_at?: string | null;
 };
 
 export type ChatBootstrap = {

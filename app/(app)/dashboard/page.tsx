@@ -22,6 +22,7 @@ import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, com
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { inboxPreview } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
 
@@ -509,7 +510,7 @@ export default function DashboardPage() {
                       <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-teal">
                         <span className="font-medium">{label}</span>
                         <span className="ml-2 rounded-sm bg-teal-dim px-1.5 font-mono text-[10px] font-medium text-teal">{row.unread_count}</span>
-                        {row.last_body ? <span className="mt-0.5 block truncate text-xs text-muted">{row.last_body}</span> : null}
+                        {row.last_body ? <span className="mt-0.5 block truncate text-xs text-muted">{inboxPreview(row.last_body)}</span> : null}
                       </Link>
                     </li>
                   );

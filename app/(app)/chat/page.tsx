@@ -9,18 +9,24 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { ChatIconPicker } from "@/components/chat-icon-picker";
-import { MentionBody, MentionField } from "@/components/mention-field";
+import { MentionBody } from "@/components/mention-field";
 import { ConversationMark } from "@/components/conversation-mark";
+import { ChatComposer } from "@/components/chat-composer";
+import { ChatAttachment } from "@/components/chat-media";
+import { Avatar } from "@/components/avatar";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
+import { clusterMessages, dayLabel, inboxPreview } from "@/lib/chat-thread";
+import { formatClock } from "@/lib/datetime";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import { missingChatLook } from "@/lib/chat-icons";
-import { formatStamp } from "@/lib/datetime";
+import { cn } from "@/lib/utils";
 import type { ChatInboxRow, ChatMessage, Conversation, ConversationMember, ConversationType, Profile } from "@/lib/types";
 
-type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null };
+type ConvoRow = Conversation & { last_read_at: string | null; unread: number; last_body: string | null; last_at: string | null };
+type ChatTab = "people" | "boards";
 
 function convoLabel(
   convo: Conversation,
@@ -47,6 +53,11 @@ function memberNames(
 
 function memberCount(convo: Conversation, members: ConversationMember[]) {
   return members.filter((m) => m.conversation_id === convo.id).length;
+}
+
+function otherPerson(convo: Conversation, members: ConversationMember[], profiles: Record<string, Profile>, myId: string) {
+  const other = members.find((m) => m.conversation_id === convo.id && m.user_id !== myId);
+  return other ? profiles[other.user_id] : null;
 }
 
 function GroupPeople({ names, total }: { names: string[]; total: number }) {
@@ -88,6 +99,7 @@ function ChatApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(cache?.chatError ?? null);
   const [body, setBody] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [groupName, setGroupName] = useState("");
   const [groupIcon, setGroupIcon] = useState("UsersRound");
   const [groupMembers, setGroupMembers] = useState<string[]>([]);
@@ -98,6 +110,7 @@ function ChatApp() {
   const [editName, setEditName] = useState("");
   const [editIcon, setEditIcon] = useState("");
   const [spaceOwnerId, setSpaceOwnerId] = useState<string | null>(null);
+  const [tab, setTab] = useState<ChatTab>("people");
   const bottom = useRef<HTMLDivElement>(null);
   const myId = app?.userId;
 
@@ -148,15 +161,20 @@ function ChatApp() {
           last_read_at: mine?.last_read_at ?? null,
           unread: info?.unread_count ?? 0,
           last_body: info?.last_body ?? null,
+          last_at: info?.last_at ?? null,
         };
       })
-      .sort((a, b) => b.unread - a.unread || (b.last_body ? 1 : 0) || a.created_at.localeCompare(b.created_at));
+      .sort(
+        (a, b) =>
+          b.unread - a.unread ||
+          (b.last_at || "").localeCompare(a.last_at || "") ||
+          (b.last_body ? 1 : 0) ||
+          a.created_at.localeCompare(b.created_at)
+      );
   }, [convos, memberships, myId, inbox]);
 
-  const grouped = useMemo(() => {
-    const bucket = (type: ConversationType) => rows.filter((r) => r.type === type);
-    return { dm: bucket("dm"), group: bucket("group"), space: bucket("space") };
-  }, [rows]);
+  const peopleRows = useMemo(() => rows.filter((r) => r.type !== "space"), [rows]);
+  const boardRows = useMemo(() => rows.filter((r) => r.type === "space"), [rows]);
 
   function applyBootstrap(next: NonNullable<typeof cache>["chat"]) {
     if (!next) return;
@@ -191,6 +209,7 @@ function ChatApp() {
   useEffect(() => {
     if (!selectedId || !myId) {
       setMessages([]);
+      setFile(null);
       return;
     }
     const supabase = createClient();
@@ -237,23 +256,92 @@ function ChatApp() {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
 
-  async function send(e: React.FormEvent) {
-    e.preventDefault();
-    if (!selectedId || !myId || !body.trim()) return;
+  const selected = convos.find((c) => c.id === selectedId);
+
+  useEffect(() => {
+    if (selected?.type === "space") setTab("boards");
+    else if (selected) setTab("people");
+  }, [selected?.id, selected?.type]);
+
+  async function send() {
+    if (!selectedId || !myId) return;
+    const caption = body.trim();
+    if (!caption && !file) return;
     setBusy(true);
+    setError(null);
     const supabase = createClient();
+    let attachment: {
+      file_path?: string;
+      file_name?: string;
+      file_type?: string | null;
+      file_size?: number;
+      storage?: string;
+    } = {};
+
+    if (file) {
+      const res = await fetch("/api/chat-files", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ conversationId: selectedId, fileName: file.name, fileSize: file.size }),
+      });
+      const plan = (await res.json()) as { storage?: string; path?: string; url?: string; error?: string };
+      if (!res.ok || !plan.path) {
+        setBusy(false);
+        setError(plan.error || "Could not start the upload.");
+        return;
+      }
+      if (plan.storage === "r2") {
+        const put = await fetch(plan.url as string, { method: "PUT", body: file });
+        if (!put.ok) {
+          setBusy(false);
+          setError("Could not reach cloud storage. Check the R2 keys on Vercel, then try again.");
+          return;
+        }
+      } else {
+        const { error: upErr } = await supabase.storage.from("chat-files").upload(plan.path, file);
+        if (upErr) {
+          setBusy(false);
+          setError(
+            upErr.message.includes("Bucket not found") || upErr.message.includes("not found")
+              ? "Chat photos need a SQL patch. Paste supabase/chat-media.sql in the Supabase SQL editor."
+              : upErr.message
+          );
+          return;
+        }
+      }
+      attachment = {
+        file_path: plan.path,
+        file_name: file.name,
+        file_type: file.type || null,
+        file_size: file.size,
+        storage: plan.storage || "supabase",
+      };
+    }
+
     const { data, error: err } = await supabase
       .from("messages")
-      .insert({ conversation_id: selectedId, author_id: myId, body: body.trim() })
+      .insert({ conversation_id: selectedId, author_id: myId, body: caption, ...attachment })
       .select("*")
       .single();
     setBusy(false);
     if (err) {
-      setError(err.message);
+      if (attachment.file_path) {
+        void fetch("/api/chat-files", {
+          method: "DELETE",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ path: attachment.file_path, storage: attachment.storage }),
+        });
+      }
+      setError(
+        err.message.includes("file_path") || err.message.includes("schema cache") || err.message.includes("column")
+          ? "Chat photos need a SQL patch. Paste supabase/chat-media.sql in the Supabase SQL editor."
+          : err.message
+      );
       return;
     }
     setMessages((prev) => (prev.some((m) => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage]));
     setBody("");
+    setFile(null);
   }
 
   async function openDm(userId: string) {
@@ -408,9 +496,9 @@ function ChatApp() {
     if (selectedId === conversationId) router.push("/chat");
   }
 
-  async function deleteMessage(messageId: string) {
+  async function deleteMessage(message: ChatMessage) {
     const supabase = createClient();
-    const { error: err } = await supabase.from("messages").delete().eq("id", messageId);
+    const { error: err } = await supabase.from("messages").delete().eq("id", message.id);
     if (err) {
       setError(
         err.message.includes("row-level security") || err.message.includes("policy")
@@ -419,82 +507,80 @@ function ChatApp() {
       );
       return;
     }
-    setMessages((prev) => prev.filter((m) => m.id !== messageId));
+    setMessages((prev) => prev.filter((m) => m.id !== message.id));
+    if (message.file_path) {
+      void fetch("/api/chat-files", {
+        method: "DELETE",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ path: message.file_path, storage: message.storage }),
+      });
+    }
   }
 
-  const selected = convos.find((c) => c.id === selectedId);
   const admin = app ? isAdminUser(app.profile) : false;
   const selectedNames = selected ? memberNames(selected, memberships, profiles, myId || "") : [];
   const selectedCount = selected ? memberCount(selected, memberships) : 0;
+  const clusters = useMemo(() => clusterMessages(messages), [messages]);
 
-  function Section({ title, items }: { title: string; items: ConvoRow[] }) {
-    if (items.length === 0) return null;
+  function InboxList({ items }: { items: ConvoRow[] }) {
+    if (items.length === 0) {
+      return (
+        <p className="px-2 py-6 text-center text-xs text-faint">
+          {tab === "boards" ? "Board channels show up when you join a space." : "Start a chat or a group."}
+        </p>
+      );
+    }
     return (
-      <div className="mb-4">
-        <p className="mb-1 px-2 text-[11px] font-medium tracking-[0.07em] text-faint uppercase">{title}</p>
-        <ul className="space-y-0.5">
-          {items.map((convo) => {
-            const label = convoLabel(convo, memberships, profiles, myId || "");
-            const names = memberNames(convo, memberships, profiles, myId || "");
-            const count = memberCount(convo, memberships);
-            const active = convo.id === selectedId;
-            return (
-              <li key={convo.id} className="group flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={() => router.push(`/chat?c=${convo.id}`)}
-                  className={`flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200 ${
-                    active
-                      ? "bg-amber-dim text-ink"
-                      : convo.unread > 0
-                        ? "bg-teal-dim text-ink"
-                        : "text-muted hover:bg-surface-2 hover:text-ink"
-                  }`}
-                >
+      <ul className="space-y-0.5">
+        {items.map((convo) => {
+          const label = convoLabel(convo, memberships, profiles, myId || "");
+          const names = memberNames(convo, memberships, profiles, myId || "");
+          const count = memberCount(convo, memberships);
+          const active = convo.id === selectedId;
+          const person = convo.type === "dm" ? otherPerson(convo, memberships, profiles, myId || "") : null;
+          const preview = inboxPreview(convo.last_body);
+          return (
+            <li key={convo.id} className="group flex items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => router.push(`/chat?c=${convo.id}`)}
+                className={cn(
+                  "flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200",
+                  active ? "bg-amber-dim text-ink" : convo.unread > 0 ? "bg-teal-dim text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"
+                )}
+              >
+                {convo.type === "dm" ? (
+                  <Avatar name={label} src={person?.avatar_url || undefined} size="sm" />
+                ) : (
                   <ConversationMark type={convo.type} names={names.length ? names : [label]} icon={convo.icon} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="truncate text-sm font-medium">{label}</span>
-                      {convo.type === "group" ? (
-                        <span className="shrink-0 font-mono text-[10px] text-faint">{count}</span>
-                      ) : null}
-                      {convo.unread > 0 ? (
-                        <span className={`rounded-sm px-1.5 font-mono text-[10px] font-medium ${active ? "bg-amber-dim text-amber" : "bg-teal-dim text-teal"}`}>
-                          {convo.unread}
-                        </span>
-                      ) : null}
-                    </span>
-                    {convo.last_body ? (
-                      <span className="mt-0.5 block truncate text-[11px] opacity-70">{convo.last_body}</span>
+                )}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium">{label}</span>
+                    {convo.type === "group" ? <span className="shrink-0 font-mono text-[10px] text-faint">{count}</span> : null}
+                    {convo.unread > 0 ? (
+                      <span className={`rounded-sm px-1.5 font-mono text-[10px] font-medium ${active ? "bg-amber-dim text-amber" : "bg-teal-dim text-teal"}`}>
+                        {convo.unread}
+                      </span>
                     ) : null}
                   </span>
-                </button>
-                {convo.type !== "dm" ? (
-                  <ConfirmDelete
-                    align="left"
-                    label={convo.type === "group" ? "Delete group" : "Delete chat"}
-                    title={convo.type === "group" ? "Delete this group?" : "Delete this chat?"}
-                    description="All messages in this conversation will be removed."
-                    onConfirm={() => deleteConversation(convo.id, convo.type)}
-                    extra={extraFor(convo)}
-                    showDelete={convo.type !== "space"}
-                    className="opacity-70 transition duration-200 group-hover:opacity-100"
-                  />
-                ) : (
-                  <ConfirmDelete
-                    align="left"
-                    label="Delete chat"
-                    title="Delete this chat?"
-                    description="All messages in this conversation will be removed."
-                    onConfirm={() => deleteConversation(convo.id, convo.type)}
-                    className="opacity-70 transition duration-200 group-hover:opacity-100"
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      </div>
+                  {preview ? <span className="mt-0.5 block truncate text-[11px] opacity-70">{preview}</span> : null}
+                </span>
+              </button>
+              <ConfirmDelete
+                align="left"
+                label={convo.type === "group" ? "Delete group" : "Delete chat"}
+                title={convo.type === "group" ? "Delete this group?" : "Delete this chat?"}
+                description="All messages in this conversation will be removed."
+                onConfirm={() => deleteConversation(convo.id, convo.type)}
+                extra={extraFor(convo)}
+                showDelete={convo.type !== "space"}
+                className="opacity-0 transition duration-200 group-hover:opacity-100 focus-within:opacity-100"
+              />
+            </li>
+          );
+        })}
+      </ul>
     );
   }
 
@@ -502,26 +588,44 @@ function ChatApp() {
 
   const composerHint =
     selected?.type === "space"
-      ? "Message the board — type @ to mention someone or @everyone"
+      ? "Message the board — @ to mention, or drop a photo"
       : selected?.type === "group"
-        ? "Message the group — type @ to mention someone or @everyone"
-        : `Message ${selected ? convoLabel(selected, memberships, profiles, myId || "") : ""} — type @ to mention someone`;
+        ? "Message the group — @ to mention, or drop a photo"
+        : `Message ${selected ? convoLabel(selected, memberships, profiles, myId || "") : ""}`;
 
   return (
     <div className="flex h-[calc(100vh-5rem)] min-h-[28rem] flex-col">
-      <PageHeader title="Chat" description="Message someone, or make a group. Each task board also has a channel here." />
+      <PageHeader title="Chat" description="People in one place, board channels in the other. Share a photo the same way you send a note." />
       <ErrorText className="mb-3">{error}</ErrorText>
       <div className="grid min-h-0 flex-1 overflow-hidden rounded-md border border-border bg-surface shadow-card lg:grid-cols-[280px_1fr]">
         <aside className="min-h-0 overflow-y-auto border-b border-border p-3 lg:border-b-0 lg:border-r">
-          <div className="mb-3 grid grid-cols-2 gap-2">
-            <Button type="button" size="sm" variant={compose === "dm" ? "primary" : "secondary"} onClick={() => setCompose(compose === "dm" ? "idle" : "dm")}>
-              New chat
-            </Button>
-            <Button type="button" size="sm" variant={compose === "group" ? "primary" : "secondary"} onClick={() => setCompose(compose === "group" ? "idle" : "group")}>
-              New group
-            </Button>
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-sm bg-surface-2 p-1">
+            <button
+              type="button"
+              onClick={() => setTab("people")}
+              className={cn("rounded-sm px-2 py-1.5 text-[13px] font-medium", tab === "people" ? "bg-surface text-ink shadow-card" : "text-muted")}
+            >
+              People
+            </button>
+            <button
+              type="button"
+              onClick={() => setTab("boards")}
+              className={cn("rounded-sm px-2 py-1.5 text-[13px] font-medium", tab === "boards" ? "bg-surface text-ink shadow-card" : "text-muted")}
+            >
+              Boards
+            </button>
           </div>
-          {compose === "dm" ? (
+          {tab === "people" ? (
+            <div className="mb-3 grid grid-cols-2 gap-2">
+              <Button type="button" size="sm" variant={compose === "dm" ? "primary" : "secondary"} onClick={() => setCompose(compose === "dm" ? "idle" : "dm")}>
+                New chat
+              </Button>
+              <Button type="button" size="sm" variant={compose === "group" ? "primary" : "secondary"} onClick={() => setCompose(compose === "group" ? "idle" : "group")}>
+                New group
+              </Button>
+            </div>
+          ) : null}
+          {compose === "dm" && tab === "people" ? (
             <div className="mb-4 rounded-md border border-border bg-page p-3">
               <Field label="Pick a person">
                 <Select
@@ -541,7 +645,7 @@ function ChatApp() {
               </Field>
             </div>
           ) : null}
-          {compose === "group" ? (
+          {compose === "group" && tab === "people" ? (
             <form onSubmit={startGroup} className="mb-4 space-y-3 rounded-md border border-border bg-page p-3">
               <Field label="Group name">
                 <Input value={groupName} onChange={(e) => setGroupName(e.target.value)} placeholder="e.g. Ops" required />
@@ -601,51 +705,37 @@ function ChatApp() {
               </Button>
             </form>
           ) : null}
-          <Section title="Direct" items={grouped.dm} />
-          <Section title="Groups" items={grouped.group} />
-          <Section title="Boards" items={grouped.space} />
+          {tab === "people" ? <InboxList items={peopleRows} /> : <InboxList items={boardRows} />}
         </aside>
         <section className="flex min-h-0 flex-col">
           {selected ? (
             <>
-              <div
-                className={`flex items-start justify-between gap-3 border-b px-4 py-3 ${
-                  selected.type === "space"
-                    ? "border-teal bg-teal-dim"
-                    : selected.type === "group"
-                      ? "border-border bg-surface-2"
-                      : "border-border bg-surface"
-                }`}
-              >
-                <div className="flex min-w-0 items-start gap-3">
-                  <ConversationMark
-                    type={selected.type}
-                    names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]}
-                    icon={selected.icon}
-                    onClick={selected.type === "dm" ? undefined : () => void openManage(selected, "edit")}
-                  />
+              <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  {selected.type === "dm" ? (
+                    <Avatar
+                      name={convoLabel(selected, memberships, profiles, myId || "")}
+                      src={otherPerson(selected, memberships, profiles, myId || "")?.avatar_url || undefined}
+                      size="sm"
+                    />
+                  ) : (
+                    <ConversationMark
+                      type={selected.type}
+                      names={selectedNames.length ? selectedNames : [convoLabel(selected, memberships, profiles, myId || "")]}
+                      icon={selected.icon}
+                      onClick={() => void openManage(selected, "edit")}
+                    />
+                  )}
                   <div className="min-w-0">
-                    <p className="font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
+                    <p className="truncate text-sm font-medium">{convoLabel(selected, memberships, profiles, myId || "")}</p>
                     {selected.type === "group" ? (
                       <GroupPeople names={selectedNames} total={selectedCount || selectedNames.length} />
                     ) : (
-                      <p className="text-xs text-muted">
-                        {selected.type === "dm" ? "Direct message" : "Board channel"}
-                      </p>
+                      <p className="text-[11px] text-faint">{selected.type === "dm" ? "Direct" : "Board channel"}</p>
                     )}
-                    {selected.type !== "dm" ? (
-                      <p className="mt-0.5 text-[11px] text-faint">Tap the icon to pick a favicon</p>
-                    ) : null}
                   </div>
                 </div>
-                {selected.type === "dm" ? (
-                  <ConfirmDelete
-                    label="Delete chat"
-                    title="Delete this chat?"
-                    description="All messages in this conversation will be removed."
-                    onConfirm={() => deleteConversation(selected.id, selected.type)}
-                  />
-                ) : (
+                <div className="opacity-70 hover:opacity-100">
                   <ConfirmDelete
                     label={selected.type === "group" ? "Delete group" : "Delete chat"}
                     title={selected.type === "group" ? "Delete this group?" : "Delete this chat?"}
@@ -654,7 +744,7 @@ function ChatApp() {
                     extra={extraFor(selected)}
                     showDelete={selected.type !== "space"}
                   />
-                )}
+                </div>
               </div>
               {manage && selected.type !== "dm" ? (
                 <div className="border-b border-border bg-page px-4 py-3">
@@ -728,6 +818,7 @@ function ChatApp() {
                             const owner = spaceOwnerId === m.user_id;
                             return (
                               <li key={m.user_id} className="flex items-center gap-2 border-t border-border px-3 py-2 first:border-t-0">
+                                <Avatar name={displayName(profiles[m.user_id])} src={profiles[m.user_id]?.avatar_url || undefined} size="sm" />
                                 <span className="min-w-0 flex-1 truncate text-[13px] font-medium">
                                   {displayName(profiles[m.user_id])}
                                 </span>
@@ -750,60 +841,81 @@ function ChatApp() {
                   )}
                 </div>
               ) : null}
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-4">
-                {messages.map((message) => {
-                  const mine = message.author_id === myId;
-                  const canDelete = mine || admin;
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                {clusters.map((cluster, index) => {
+                  const mine = cluster.authorId === myId;
+                  const author = profiles[cluster.authorId];
+                  const name = displayName(author);
+                  const prevDay = index > 0 ? clusters[index - 1].day : "";
+                  const showDay = cluster.day && cluster.day !== prevDay;
                   return (
-                    <div key={message.id} className={mine ? "ml-8 text-right" : "mr-8"}>
-                      <p className="font-mono text-[11px] text-muted">
-                        {displayName(profiles[message.author_id])} · {formatStamp(message.created_at)}
-                      </p>
-                      <div className={`mt-1 inline-flex max-w-full items-end gap-1.5 ${mine ? "flex-row-reverse" : ""}`}>
-                        <p
-                          className={`whitespace-pre-wrap rounded-md px-3 py-2 text-left text-sm ${
-                            mine
-                              ? "bg-amber-dim text-ink ring-1 ring-amber-line"
-                              : "bg-surface-2 text-ink ring-1 ring-border"
-                          }`}
-                        >
-                          <MentionBody text={message.body} people={chatPeople} />
+                    <div key={cluster.messages[0].id}>
+                      {showDay ? (
+                        <p className="my-4 text-center text-[11px] font-medium tracking-[0.06em] text-faint uppercase">
+                          {dayLabel(cluster.messages[0].created_at)}
                         </p>
-                        {canDelete ? (
-                          <ConfirmDelete
-                            align={mine ? "right" : "left"}
-                            label="Delete message"
-                            title="Delete this message?"
-                            onConfirm={() => deleteMessage(message.id)}
-                          />
-                        ) : null}
+                      ) : null}
+                      <div className={cn("group/cluster mb-3 flex gap-2", mine ? "flex-row-reverse" : "")}>
+                        {!mine ? <Avatar name={name} src={author?.avatar_url || undefined} size="sm" className="mt-0.5" /> : <span className="w-7" />}
+                        <div className={cn("min-w-0 max-w-[min(28rem,85%)]", mine ? "items-end text-right" : "")}>
+                          <p className={cn("mb-1 flex items-baseline gap-2 text-[11px] text-faint", mine ? "flex-row-reverse" : "")}>
+                            <span className="font-medium text-muted">{mine ? "You" : name}</span>
+                            <span className="font-mono">{formatClock(cluster.messages[cluster.messages.length - 1].created_at)}</span>
+                          </p>
+                          <div className={cn("space-y-1", mine ? "flex flex-col items-end" : "")}>
+                            {cluster.messages.map((message) => {
+                              const canDelete = mine || admin;
+                              const hasText = Boolean(message.body?.trim());
+                              return (
+                                <div key={message.id} className={cn("group/msg inline-flex max-w-full items-end gap-1", mine ? "flex-row-reverse" : "")}>
+                                  <div
+                                    className={cn(
+                                      "max-w-full overflow-hidden rounded-md text-left text-sm",
+                                      hasText ? "px-3 py-2" : "p-1",
+                                      mine ? "bg-amber-dim text-ink ring-1 ring-amber-line" : "bg-surface-2 text-ink ring-1 ring-border"
+                                    )}
+                                  >
+                                    {hasText ? (
+                                      <p className="whitespace-pre-wrap">
+                                        <MentionBody text={message.body} people={chatPeople} />
+                                      </p>
+                                    ) : null}
+                                    <ChatAttachment message={message} className={hasText ? "mt-2" : ""} />
+                                  </div>
+                                  {canDelete ? (
+                                    <ConfirmDelete
+                                      align={mine ? "right" : "left"}
+                                      label="Delete message"
+                                      title="Delete this message?"
+                                      onConfirm={() => deleteMessage(message)}
+                                      className="opacity-0 transition duration-200 group-hover/msg:opacity-100 focus-within:opacity-100"
+                                    />
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
                 <div ref={bottom} />
               </div>
-              <form
-                onSubmit={send}
-                className={`border-t p-3 ${
-                  selected.type === "space"
-                    ? "border-teal bg-teal-dim"
-                    : selected.type === "group"
-                      ? "border-border bg-surface-2"
-                      : "border-border bg-page"
-                }`}
-              >
-                <MentionField value={body} onChange={setBody} people={chatPeople} rows={2} placeholder={composerHint} required />
-                <div className="mt-2 flex justify-end">
-                  <Button type="submit" disabled={busy}>
-                    Send
-                  </Button>
-                </div>
-              </form>
+              <ChatComposer
+                value={body}
+                onChange={setBody}
+                people={chatPeople}
+                placeholder={composerHint}
+                file={file}
+                onFile={setFile}
+                onSend={() => void send()}
+                busy={busy}
+              />
             </>
           ) : (
             <div className="flex flex-1 items-center justify-center p-8 text-sm text-faint">
-              Pick a conversation, start a DM, or create a group.
+              Pick a person, a group, or a board channel.
             </div>
           )}
         </section>

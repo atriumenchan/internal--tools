@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type KeyboardEventHandler } from "react";
 import { Textarea } from "@/components/ui";
 import { displayName } from "@/lib/spaces";
 import { applyMention, isEveryone, mentionMatches, mentionQueryAt, splitMentions, type MentionPerson } from "@/lib/mentions";
@@ -29,6 +29,7 @@ export function MentionField({
   placeholder,
   rows = 1,
   required,
+  onKeyDown,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -36,6 +37,7 @@ export function MentionField({
   placeholder?: string;
   rows?: number;
   required?: boolean;
+  onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
@@ -67,6 +69,14 @@ export function MentionField({
         onChange={(e) => {
           onChange(e.target.value);
           setCaret(e.target.selectionStart ?? e.target.value.length);
+        }}
+        onKeyDown={(e) => {
+          if (active && options.length > 0 && e.key === "Enter") {
+            e.preventDefault();
+            pick(options[0]);
+            return;
+          }
+          onKeyDown?.(e);
         }}
         onKeyUp={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
         onClick={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
