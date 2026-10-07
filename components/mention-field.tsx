@@ -30,6 +30,7 @@ export function MentionField({
   rows = 1,
   required,
   onKeyDown,
+  className,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -38,6 +39,7 @@ export function MentionField({
   rows?: number;
   required?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+  className?: string;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
@@ -80,6 +82,7 @@ export function MentionField({
         }}
         onKeyUp={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
         onClick={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
+        className={className}
       />
       {active && options.length > 0 ? (
         <ul className="absolute bottom-full z-10 mb-1 w-full overflow-hidden rounded-sm border border-border bg-surface shadow-float">

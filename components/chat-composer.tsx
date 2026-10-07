@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import { ImageSquare } from "@phosphor-icons/react/dist/ssr/ImageSquare";
 import { PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
-import { Button } from "@/components/ui";
 import { MentionField } from "@/components/mention-field";
 import { PendingPhoto } from "@/components/chat-media";
 import type { MentionPerson } from "@/lib/mentions";
@@ -29,6 +28,7 @@ export function ChatComposer({
   busy?: boolean;
 }) {
   const input = useRef<HTMLInputElement>(null);
+  const empty = !value.trim() && !file;
 
   function take(next?: File | null) {
     if (next) onFile(next);
@@ -40,7 +40,7 @@ export function ChatComposer({
         e.preventDefault();
         onSend();
       }}
-      className="border-t border-border bg-surface p-3"
+      className="border-t border-border bg-page px-4 py-3"
       onDragOver={(e) => {
         e.preventDefault();
       }}
@@ -58,14 +58,14 @@ export function ChatComposer({
       }}
     >
       {file ? <PendingPhoto file={file} onClear={() => onFile(null)} /> : null}
-      <div className="flex items-end gap-2">
+      <div className="flex items-end rounded-md border border-border-strong bg-surface focus-within:border-amber focus-within:shadow-[0_0_0_3px_var(--amber-dim)]">
         <button
           type="button"
           aria-label="Share a photo"
           onClick={() => input.current?.click()}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-ink"
+          className="grid h-11 w-11 shrink-0 place-items-center text-muted hover:text-ink"
         >
-          <ImageSquare size={18} weight="light" />
+          <ImageSquare size={20} weight="light" />
         </button>
         <input
           ref={input}
@@ -84,6 +84,7 @@ export function ChatComposer({
             people={people}
             rows={1}
             placeholder={placeholder}
+            className="min-h-11 border-0 bg-transparent px-1 py-2.5 shadow-none hover:border-transparent focus:border-transparent focus:shadow-none"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -92,12 +93,18 @@ export function ChatComposer({
             }}
           />
         </div>
-        <Button type="submit" size="sm" disabled={busy || (!value.trim() && !file)} className={cn("shrink-0")}>
+        <button
+          type="submit"
+          disabled={busy || empty}
+          aria-label="Send"
+          className={cn(
+            "m-1 grid h-9 w-9 shrink-0 place-items-center rounded-sm text-white",
+            "bg-[linear-gradient(135deg,var(--amber-soft),var(--amber))] disabled:opacity-40"
+          )}
+        >
           <PaperPlaneTilt size={16} weight="fill" />
-          Send
-        </Button>
+        </button>
       </div>
-      <p className="mt-1.5 text-[11px] text-faint">Drop a photo here, or paste it. Enter sends, Shift+Enter is a new line.</p>
     </form>
   );
 }

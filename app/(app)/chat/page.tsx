@@ -857,7 +857,7 @@ function ChatApp() {
                       ) : null}
                       <div className={cn("group/cluster mb-3 flex gap-2", mine ? "flex-row-reverse" : "")}>
                         {!mine ? <Avatar name={name} src={author?.avatar_url || undefined} size="sm" className="mt-0.5" /> : <span className="w-7" />}
-                        <div className={cn("min-w-0 max-w-[min(28rem,85%)]", mine ? "items-end text-right" : "")}>
+                        <div className={cn("min-w-0 max-w-[min(28rem,85%)]", mine ? "flex flex-col items-end" : "")}>
                           <p className={cn("mb-1 flex items-baseline gap-2 text-[11px] text-faint", mine ? "flex-row-reverse" : "")}>
                             <span className="font-medium text-muted">{mine ? "You" : name}</span>
                             <span className="font-mono">{formatClock(cluster.messages[cluster.messages.length - 1].created_at)}</span>
