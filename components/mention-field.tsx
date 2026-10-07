@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState, type KeyboardEventHandler } from "react";
+import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type KeyboardEventHandler, type MouseEvent } from "react";
 import { Textarea } from "@/components/ui";
 import { displayName } from "@/lib/spaces";
 import { applyMention, isEveryone, mentionMatches, mentionQueryAt, splitMentions, type MentionPerson } from "@/lib/mentions";
+import { cn } from "@/lib/utils";
 
 export function MentionBody({ text, people }: { text: string; people: MentionPerson[] }) {
   const parts = splitMentions(text, people);
@@ -31,6 +32,7 @@ export function MentionField({
   required,
   onKeyDown,
   className,
+  plain,
 }: {
   value: string;
   onChange: (value: string) => void;
@@ -40,6 +42,7 @@ export function MentionField({
   required?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
   className?: string;
+  plain?: boolean;
 }) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const [caret, setCaret] = useState(0);
@@ -60,30 +63,39 @@ export function MentionField({
     });
   }
 
+  const field = {
+    ref,
+    value,
+    rows,
+    required,
+    placeholder,
+    onChange: (e: ChangeEvent<HTMLTextAreaElement>) => {
+      onChange(e.target.value);
+      setCaret(e.target.selectionStart ?? e.target.value.length);
+    },
+    onKeyDown: (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (active && options.length > 0 && e.key === "Enter") {
+        e.preventDefault();
+        pick(options[0]);
+        return;
+      }
+      onKeyDown?.(e);
+    },
+    onKeyUp: (e: KeyboardEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart ?? 0),
+    onClick: (e: MouseEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart ?? 0),
+    className,
+  };
+
   return (
-    <div className="relative">
-      <Textarea
-        ref={ref}
-        value={value}
-        rows={rows}
-        required={required}
-        placeholder={placeholder}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setCaret(e.target.selectionStart ?? e.target.value.length);
-        }}
-        onKeyDown={(e) => {
-          if (active && options.length > 0 && e.key === "Enter") {
-            e.preventDefault();
-            pick(options[0]);
-            return;
-          }
-          onKeyDown?.(e);
-        }}
-        onKeyUp={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
-        onClick={(e) => setCaret(e.currentTarget.selectionStart ?? 0)}
-        className={className}
-      />
+    <div className={cn("relative min-w-0 flex-1", plain && "flex h-10 items-center")}>
+      {plain ? (
+        <textarea
+          {...field}
+          className={cn("w-full resize-none bg-transparent outline-none placeholder:text-faint", className)}
+        />
+      ) : (
+        <Textarea {...field} />
+      )}
       {active && options.length > 0 ? (
         <ul className="absolute bottom-full z-10 mb-1 w-full overflow-hidden rounded-sm border border-border bg-surface shadow-float">
           {options.map((person) => (

@@ -40,7 +40,7 @@ export function ChatComposer({
         e.preventDefault();
         onSend();
       }}
-      className="border-t border-border bg-page px-4 py-3"
+      className="border-t border-border bg-surface px-3 py-2.5"
       onDragOver={(e) => {
         e.preventDefault();
       }}
@@ -58,14 +58,14 @@ export function ChatComposer({
       }}
     >
       {file ? <PendingPhoto file={file} onClear={() => onFile(null)} /> : null}
-      <div className="flex items-end rounded-md border border-border-strong bg-surface focus-within:border-amber focus-within:shadow-[0_0_0_3px_var(--amber-dim)]">
+      <div className="flex h-11 items-center gap-0.5 rounded-md border border-border bg-page px-0.5">
         <button
           type="button"
           aria-label="Share a photo"
           onClick={() => input.current?.click()}
-          className="grid h-11 w-11 shrink-0 place-items-center text-muted hover:text-ink"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface hover:text-ink"
         >
-          <ImageSquare size={20} weight="light" />
+          <ImageSquare size={18} weight="light" />
         </button>
         <input
           ref={input}
@@ -77,28 +77,27 @@ export function ChatComposer({
             e.currentTarget.value = "";
           }}
         />
-        <div className="min-w-0 flex-1">
-          <MentionField
-            value={value}
-            onChange={onChange}
-            people={people}
-            rows={1}
-            placeholder={placeholder}
-            className="min-h-11 border-0 bg-transparent px-1 py-2.5 shadow-none hover:border-transparent focus:border-transparent focus:shadow-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                onSend();
-              }
-            }}
-          />
-        </div>
+        <MentionField
+          plain
+          value={value}
+          onChange={onChange}
+          people={people}
+          rows={1}
+          placeholder={placeholder}
+          className="block h-10 border-0 px-2 py-0 text-[14px] leading-10"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              onSend();
+            }
+          }}
+        />
         <button
           type="submit"
           disabled={busy || empty}
           aria-label="Send"
           className={cn(
-            "m-1 grid h-9 w-9 shrink-0 place-items-center rounded-sm text-white",
+            "grid h-10 w-10 shrink-0 place-items-center rounded-sm text-white",
             "bg-[linear-gradient(135deg,var(--amber-soft),var(--amber))] disabled:opacity-40"
           )}
         >
