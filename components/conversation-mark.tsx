@@ -42,13 +42,14 @@ export function ConversationMark({
         })()}
       </span>
     ) : type === "group" ? (
-      <span className={cn("relative h-8 w-8 shrink-0", className)} aria-hidden>
-        <Avatar name={names[0] || "Group"} size="sm" className="absolute top-0 left-0 h-5 w-5 text-[8px]" />
-        <Avatar
-          name={names[1] || names[0] || "Group"}
-          size="sm"
-          className="absolute right-0 bottom-0 h-5 w-5 text-[8px] ring-2 ring-surface"
-        />
+      <span
+        className={cn("grid h-8 w-8 shrink-0 place-items-center rounded-[9px] bg-violet-dim text-violet", className)}
+        aria-hidden
+      >
+        {(() => {
+          const Users = chatIconComponent("UsersRound") || chatIconComponent("Users");
+          return Users ? <Users size={16} strokeWidth={1.6} /> : <span className="text-[11px] font-bold">G</span>;
+        })()}
       </span>
     ) : (
       <Avatar name={names[0] || "DM"} size="sm" className={className} />

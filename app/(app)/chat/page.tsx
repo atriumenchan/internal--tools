@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
 import { createClient } from "@/lib/supabase/client";
@@ -62,17 +61,14 @@ function otherPerson(convo: Conversation, members: ConversationMember[], profile
 
 function GroupPeople({ names, total }: { names: string[]; total: number }) {
   const [open, setOpen] = useState(false);
-  const extra = Math.max(0, names.length - 2);
   return (
     <div className="relative">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1 text-xs text-muted hover:text-ink"
+        className="text-[11px] text-faint hover:text-ink"
       >
-        <UsersThree size={14} weight="light" />
         {total} {total === 1 ? "person" : "people"}
-        {extra > 0 ? <span className="rounded-sm bg-surface-2 px-1 font-mono text-[10px]">+{extra}</span> : null}
       </button>
       {open ? (
         <ul className="absolute top-full left-0 z-20 mt-1 min-w-[10rem] rounded-md border border-border bg-surface p-2 text-xs shadow-card">
@@ -711,7 +707,7 @@ function ChatApp() {
           {selected ? (
             <>
               <div className="flex items-center justify-between gap-3 border-b border-border bg-surface px-4 py-2.5">
-                <div className="flex min-w-0 items-center gap-3">
+                <div className="flex min-w-0 items-center gap-2.5">
                   {selected.type === "dm" ? (
                     <Avatar
                       name={convoLabel(selected, memberships, profiles, myId || "")}
