@@ -109,7 +109,7 @@ export async function ensureWhatsAppTemplate() {
     components: [
       {
         type: "BODY",
-        text: "{{1}}\n{{2}}",
+        text: "Admexo workspace: {{1}} - {{2}}. Open the app for the full task.",
         example: {
           body_text: [["Ryan assigned you a task", "Close the books"]],
         },
