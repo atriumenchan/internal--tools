@@ -82,8 +82,9 @@ Add env vars under Settings → Environment Variables:
 - `ADMIN_PASSWORD` as **Secret** (creates that admin login in Supabase if it does not exist)
 - `WHATSAPP_ACCESS_TOKEN` as **Secret** (system user token from Meta → WhatsApp → API Setup)
 - `WHATSAPP_PHONE_NUMBER_ID` as **Config** (`1269726706235216`, the Registered Admexo number)
+- `WHATSAPP_WABA_ID` as **Config** (`4130948003709192`)
 
-In-app alerts also go to WhatsApp as soon as they are created (task assigned to someone, comments, chat, announcements), as long as that person has a Staff WhatsApp number and they have messaged Admexo once in the last 24 hours. Paste [`supabase/whatsapp-phones.sql`](supabase/whatsapp-phones.sql) in the SQL editor first.
+In-app alerts go one-way to WhatsApp (task assigned, comments, chat, announcements). People do not have to keep replying. Meta only allows that through an approved **utility template**; the app creates `admexo_workspace_alert` on the first send and uses it after Meta approves it. Until then, a session text still works if they recently messaged Admexo. Paste [`supabase/whatsapp-phones.sql`](supabase/whatsapp-phones.sql) in the SQL editor, and save each person’s number on Staff.
 
 Then run [`supabase/seed.sql`](supabase/seed.sql) in the SQL editor. Ryan Ray (0003) is stored as ignored and dropped from attendance and logins. If the app already exists, also run [`supabase/spaces.sql`](supabase/spaces.sql) — that adds Spaces, Chat, and the handbook gate. Every current login must sign the handbook once after that.
 

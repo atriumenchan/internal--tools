@@ -6,6 +6,7 @@ import { appOrigin, normalizeTelegramId, sendTelegram, taskAssignedText } from "
 import { displayName } from "@/lib/spaces";
 import {
   drainWhatsAppNotifications,
+  ensureWhatsAppTemplate,
   markTaskAssignedWhatsAppSent,
   normalizeWhatsAppPhone,
   sendWhatsApp,
@@ -52,6 +53,7 @@ export async function POST(request: Request) {
       "If you got this, task and chat pings will reach this number too.",
     ].join("\n");
     const group = await sendTelegram(text);
+    const template = await ensureWhatsAppTemplate();
     const admin = createAdminClient();
     const { data: rows, error } = await admin.from("profiles").select("id, full_name, telegram_id, whatsapp_phone");
     if (error) {
@@ -89,6 +91,7 @@ export async function POST(request: Request) {
       group,
       dms,
       whatsapp,
+      template,
     });
   }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeWhatsAppPhone, notificationText } from "./whatsapp";
+import { normalizeWhatsAppPhone, notificationText, sanitizeTemplateParam, templateParamsFromText } from "./whatsapp";
 
 describe("normalizeWhatsAppPhone", () => {
   it("turns Indian mobiles into 91 plus ten digits", () => {
@@ -25,5 +25,14 @@ describe("notificationText", () => {
     expect(text).toContain("New task");
     expect(text).toContain("Close the books");
     expect(text).toContain("https://workspace.admexo.us/tasks");
+  });
+});
+
+describe("templateParamsFromText", () => {
+  it("flattens the alert into two WhatsApp template variables", () => {
+    const parts = templateParamsFromText("Ryan assigned you a task\nClose the books\nhttps://app/tasks/1");
+    expect(parts.heading).toBe("Ryan assigned you a task");
+    expect(parts.detail).toBe("Close the books — https://app/tasks/1");
+    expect(sanitizeTemplateParam("line\n\n  two")).toBe("line two");
   });
 });

@@ -123,8 +123,14 @@ export function TeamPanel() {
       if (json.hint) throw new Error(json.hint);
       const wa = (json.whatsapp ?? []) as { name: string; ok: boolean; skipped?: boolean }[];
       const waSent = wa.filter((d) => d.ok).length;
+      const templateNote =
+        json.template?.status === "pending"
+          ? " One-way WhatsApp is waiting on Meta to approve the template; after that nobody has to reply."
+          : json.template?.status === "approved"
+            ? " WhatsApp is one-way (no reply needed)."
+            : "";
       setMsg(
-        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} Telegram message${sent === 1 ? "" : "s"}. ${waSent} WhatsApp message${waSent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id.`
+        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} Telegram message${sent === 1 ? "" : "s"}. ${waSent} WhatsApp message${waSent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id.${templateNote}`
       );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not send test");
