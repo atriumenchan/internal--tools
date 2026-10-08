@@ -1,31 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ErrorText, Field, PageHeader, Textarea } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { FileDrop } from "@/components/file-drop";
-import { Segmented } from "@/components/overflow-strip";
 import { useAppState } from "@/components/app-frame";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import { dueDateKey, formatStamp, kolkataTodayKey } from "@/lib/datetime";
-import { reportPeriodLabel, reportTitle } from "@/lib/reports";
+import { REPORT_PROMPTS, reportKindFromTitle, reportPeriodLabel, reportTitle } from "@/lib/reports";
+import { isManagerUser } from "@/lib/roles";
 import { useSilentLive } from "@/lib/silent-live";
-import type { Space, Task } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { Profile, Space, Task } from "@/lib/types";
 
 type Kind = "weekly" | "monthly";
 
-export default function ReportsPage() {
+function ReportsApp() {
   const app = useAppState();
+  const router = useRouter();
+  const search = useSearchParams();
+  const kind: Kind = search.get("kind") === "monthly" ? "monthly" : "weekly";
   const [space, setSpace] = useState<Space | null>(null);
   const [tasks, setTasks] = useState<Task[] | null>(null);
-  const [kind, setKind] = useState<Kind>("weekly");
+  const [people, setPeople] = useState<Record<string, Profile>>({});
   const [body, setBody] = useState("");
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const today = kolkataTodayKey();
+  const manager = app ? isManagerUser(app.profile) : false;
 
   const load = useCallback(async () => {
     const supabase = createClient();
@@ -41,12 +47,14 @@ export default function ReportsPage() {
       setTasks([]);
       return;
     }
-    const [spaceRes, taskRes] = await Promise.all([
+    const [spaceRes, taskRes, peopleRes] = await Promise.all([
       supabase.from("spaces").select("id, name, color, created_by, created_at").eq("id", spaceId).maybeSingle(),
       supabase.from("tasks").select("*").eq("space_id", spaceId).order("created_at", { ascending: false }),
+      supabase.from("profiles").select("*"),
     ]);
     setSpace((spaceRes.data as Space) ?? null);
     setTasks((taskRes.data ?? []) as Task[]);
+    setPeople(Object.fromEntries(((peopleRes.data ?? []) as Profile[]).map((p) => [p.id, p])));
     setError(null);
   }, []);
 
@@ -56,9 +64,17 @@ export default function ReportsPage() {
 
   useSilentLive(() => void load(), "reports");
 
+  const forKind = useMemo(
+    () => (tasks ?? []).filter((task) => (reportKindFromTitle(task.title) || "weekly") === kind),
+    [tasks, kind]
+  );
   const mine = useMemo(
-    () => (tasks ?? []).filter((task) => task.created_by === app?.userId),
-    [tasks, app?.userId]
+    () => forKind.filter((task) => task.created_by === app?.userId),
+    [forKind, app?.userId]
+  );
+  const team = useMemo(
+    () => forKind.filter((task) => task.created_by !== app?.userId),
+    [forKind, app?.userId]
   );
 
   async function attach(taskId: string, file: File) {
@@ -125,11 +141,13 @@ export default function ReportsPage() {
 
   if (!app || tasks === null) return <PageFallback />;
 
+  const period = reportPeriodLabel(kind, today);
+
   return (
     <div>
       <PageHeader
         title="Reports"
-        description="Submit this week's or this month's write-up. It lands on the Reports board, where everyone can open it."
+        description="Pick weekly or monthly, write it up, and it lands on the Reports board for the team."
         actions={
           space ? (
             <Link href={`/spaces/${space.id}`} className="text-[13px] font-medium text-teal hover:text-teal-soft">
@@ -140,26 +158,45 @@ export default function ReportsPage() {
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-2">
+        {(
+          [
+            { id: "weekly" as const, label: "Weekly report", hint: "This week" },
+            { id: "monthly" as const, label: "Monthly report", hint: "This month" },
+          ] as const
+        ).map((option) => {
+          const active = kind === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => router.replace(`/reports?kind=${option.id}`)}
+              className={cn(
+                "rounded-md border px-4 py-3 text-left transition duration-150",
+                active ? "border-amber bg-amber-dim ring-1 ring-amber-line" : "border-border bg-surface hover:border-border-strong"
+              )}
+            >
+              <p className="text-[15px] font-semibold tracking-tight">{option.label}</p>
+              <p className="mt-1 text-[13px] text-muted">
+                {option.hint} · {reportPeriodLabel(option.id, today)}
+              </p>
+            </button>
+          );
+        })}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <form onSubmit={submit} className="space-y-4">
-            <Segmented
-              value={kind}
-              onChange={setKind}
-              options={[
-                { id: "weekly", label: "Weekly" },
-                { id: "monthly", label: "Monthly" },
-              ]}
-            />
-            <p className="text-sm text-muted">
-              {kind === "weekly" ? "This week" : "This month"} · {reportPeriodLabel(kind, today)}
+            <p className="text-sm font-medium text-ink">
+              {kind === "weekly" ? "Weekly" : "Monthly"} · {period}
             </p>
             <Field label="Report">
               <Textarea
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 required
-                placeholder="What moved, what is stuck, and what you need."
+                placeholder={REPORT_PROMPTS[kind]}
               />
             </Field>
             <div>
@@ -192,25 +229,62 @@ export default function ReportsPage() {
           </form>
         </Card>
 
-        <Card>
-          <h2 className="font-display text-xl font-medium tracking-tight">Yours</h2>
-          <p className="mt-1 mb-4 text-sm text-muted">Reports you have already sent.</p>
-          {mine.length === 0 ? (
-            <p className="text-[13px] text-faint">None yet.</p>
-          ) : (
-            <ul className="space-y-2">
-              {mine.slice(0, 12).map((task) => (
-                <li key={task.id}>
-                  <Link href={`/spaces/${task.space_id}/tasks/${task.id}`} className="block rounded-sm border border-border px-3 py-2 hover:bg-surface-2">
-                    <p className="truncate text-[13px] font-medium text-ink">{task.title}</p>
-                    <p className="mt-0.5 text-[12px] text-muted">{formatStamp(task.created_at)}</p>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <h2 className="font-display text-xl font-medium tracking-tight">Yours</h2>
+            <p className="mt-1 mb-4 text-sm text-muted">
+              {kind === "weekly" ? "Weekly" : "Monthly"} reports you have sent.
+            </p>
+            <ReportList tasks={mine} empty="None yet for this period type." />
+          </Card>
+          {manager ? (
+            <Card>
+              <h2 className="font-display text-xl font-medium tracking-tight">Team</h2>
+              <p className="mt-1 mb-4 text-sm text-muted">Everyone else’s {kind} write-ups.</p>
+              <ReportList
+                tasks={team}
+                people={people}
+                empty="No one else has sent this type yet."
+              />
+            </Card>
+          ) : null}
+        </div>
       </div>
     </div>
+  );
+}
+
+function ReportList({
+  tasks,
+  people,
+  empty,
+}: {
+  tasks: Task[];
+  people?: Record<string, Profile>;
+  empty: string;
+}) {
+  if (tasks.length === 0) return <p className="text-[13px] text-faint">{empty}</p>;
+  return (
+    <ul className="space-y-2">
+      {tasks.slice(0, 12).map((task) => (
+        <li key={task.id}>
+          <Link href={`/spaces/${task.space_id}/tasks/${task.id}`} className="block rounded-sm border border-border px-3 py-2 hover:bg-surface-2">
+            <p className="truncate text-[13px] font-medium text-ink">{task.title}</p>
+            <p className="mt-0.5 text-[12px] text-muted">
+              {people ? `${displayName(people[task.created_by])} · ` : ""}
+              {formatStamp(task.created_at)}
+            </p>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export default function ReportsPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <ReportsApp />
+    </Suspense>
   );
 }

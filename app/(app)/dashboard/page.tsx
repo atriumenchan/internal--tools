@@ -20,6 +20,7 @@ import { isAdminUser } from "@/lib/admin";
 import { canPostAnnouncements } from "@/lib/roles";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
+import { reportPeriodLabel } from "@/lib/reports";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
@@ -354,6 +355,23 @@ export default function DashboardPage() {
 
       <div className="mb-6">
         <Announcements operator={canPostAnnouncements(app.profile) || operator} userId={app.userId} />
+      </div>
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-2">
+        <Link
+          href="/reports?kind=weekly"
+          className="rounded-md border border-border bg-surface px-4 py-3 hover:border-border-strong"
+        >
+          <p className="text-[13px] font-semibold">Weekly report</p>
+          <p className="mt-1 text-[12px] text-muted">This week · {reportPeriodLabel("weekly")}</p>
+        </Link>
+        <Link
+          href="/reports?kind=monthly"
+          className="rounded-md border border-border bg-surface px-4 py-3 hover:border-border-strong"
+        >
+          <p className="text-[13px] font-semibold">Monthly report</p>
+          <p className="mt-1 text-[12px] text-muted">This month · {reportPeriodLabel("monthly")}</p>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">

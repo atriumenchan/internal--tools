@@ -33,3 +33,15 @@ export function reportTitle(kind: "weekly" | "monthly", personName: string, toda
   const label = kind === "weekly" ? "Weekly report" : "Monthly report";
   return `${label} · ${who} · ${reportPeriodLabel(kind, today)}`;
 }
+
+export function reportKindFromTitle(title?: string | null): "weekly" | "monthly" | null {
+  const text = (title || "").trim().toLowerCase();
+  if (text.startsWith("weekly report")) return "weekly";
+  if (text.startsWith("monthly report")) return "monthly";
+  return null;
+}
+
+export const REPORT_PROMPTS: Record<"weekly" | "monthly", string> = {
+  weekly: "What moved this week, what is stuck, and what you need next week.",
+  monthly: "What shipped this month, what slipped, and the plan for next month.",
+};
