@@ -7,6 +7,7 @@ import { Badge, Button, Card, Checkbox, ErrorText, Field, Input, Textarea } from
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { missingSpacesSchema } from "@/lib/spaces";
 import { formatStamp } from "@/lib/datetime";
+import { pingWhatsApp } from "@/lib/ping-task";
 import type { Announcement } from "@/lib/types";
 
 export function Announcements({ operator, userId }: { operator: boolean; userId: string }) {
@@ -66,6 +67,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
     setTitle("");
     setBody("");
     setCompose(false);
+    pingWhatsApp();
     await load();
   }
 

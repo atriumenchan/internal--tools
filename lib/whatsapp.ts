@@ -73,6 +73,17 @@ export async function sendWhatsAppToUser(userId: string, text: string) {
   return sendWhatsApp(phone, text);
 }
 
+/** After a live assignment ping, skip draining that same in-app row. */
+export async function markTaskAssignedWhatsAppSent(userId: string) {
+  const admin = createAdminClient();
+  await admin
+    .from("notifications")
+    .update({ whatsapp_sent_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .eq("type", "task_assigned")
+    .is("whatsapp_sent_at", null);
+}
+
 type PendingNote = {
   id: string;
   user_id: string;

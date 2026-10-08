@@ -4,7 +4,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin";
 import { appOrigin, normalizeTelegramId, sendTelegram, taskAssignedText } from "@/lib/telegram";
 import { displayName } from "@/lib/spaces";
-import { drainWhatsAppNotifications, normalizeWhatsAppPhone, sendWhatsApp, sendWhatsAppToUser } from "@/lib/whatsapp";
+import {
+  drainWhatsAppNotifications,
+  markTaskAssignedWhatsAppSent,
+  normalizeWhatsAppPhone,
+  sendWhatsApp,
+  sendWhatsAppToUser,
+} from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -147,9 +153,12 @@ export async function POST(request: Request) {
     const wa = task.assignee_id
       ? await sendWhatsAppToUser(String(task.assignee_id), text)
       : { ok: false as const, skipped: true as const };
+    if (task.assignee_id && wa.ok) {
+      await markTaskAssignedWhatsAppSent(String(task.assignee_id)).catch(() => {});
+    }
     const group = await sendTelegram(text);
-    void drainWhatsAppNotifications().catch(() => {});
-    return NextResponse.json({ ok: dm.ok || wa.ok || group.ok, dm, whatsapp: wa, group });
+    const drained = await drainWhatsAppNotifications().catch(() => ({ ok: false, sent: 0 }));
+    return NextResponse.json({ ok: dm.ok || wa.ok || group.ok || Boolean(drained.sent), dm, whatsapp: wa, group, drained });
   }
 
   if (!body || body.kind !== "task_assigned" || !body.title?.trim() || !body.assigneeName?.trim()) {
@@ -180,7 +189,10 @@ export async function POST(request: Request) {
 
   const dm = dmId ? await sendTelegram(text, dmId) : { ok: false as const, skipped: true };
   const wa = body.assigneeId ? await sendWhatsAppToUser(body.assigneeId, text) : { ok: false as const, skipped: true as const };
+  if (body.assigneeId && wa.ok) {
+    await markTaskAssignedWhatsAppSent(body.assigneeId).catch(() => {});
+  }
   const group = await sendTelegram(text);
-  void drainWhatsAppNotifications().catch(() => {});
-  return NextResponse.json({ ok: dm.ok || group.ok || wa.ok, dm, group, whatsapp: wa });
+  const drained = await drainWhatsAppNotifications().catch(() => ({ ok: false, sent: 0 }));
+  return NextResponse.json({ ok: dm.ok || group.ok || wa.ok || Boolean(drained.sent), dm, group, whatsapp: wa, drained });
 }

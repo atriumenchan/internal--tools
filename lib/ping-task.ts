@@ -1,3 +1,8 @@
+/** Pushes remaining in-app alerts (comments, chat, announcements) to WhatsApp. */
+export function pingWhatsApp() {
+  void fetch("/api/whatsapp/drain", { method: "POST" }).catch(() => {});
+}
+
 /** WhatsApp (and Telegram) as soon as a task exists or changes assignee. */
 export function pingNewTask(taskId: string | null | undefined) {
   if (!taskId) return;

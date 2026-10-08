@@ -25,7 +25,7 @@ import {
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
 import { dueDateKey, formatStamp } from "@/lib/datetime";
-import { pingTaskAssigned } from "@/lib/ping-task";
+import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
 import { applyTaskStatus, canManageTask, canDeleteTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
@@ -302,6 +302,7 @@ export default function TaskPage() {
     }
     setComments((prev) => (prev.some((c) => c.id === (data as TaskComment).id) ? prev : [...prev, data as TaskComment]));
     setBody("");
+    pingWhatsApp();
   }
 
   function deleteBlocked(message: string, kind: string) {

@@ -18,6 +18,7 @@ import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
 import { clusterMessages, dayLabel, inboxPreview } from "@/lib/chat-thread";
+import { pingWhatsApp } from "@/lib/ping-task";
 import { formatClock } from "@/lib/datetime";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import { missingChatLook } from "@/lib/chat-icons";
@@ -338,6 +339,7 @@ function ChatApp() {
     setMessages((prev) => (prev.some((m) => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage]));
     setBody("");
     setFile(null);
+    pingWhatsApp();
   }
 
   async function openDm(userId: string) {
