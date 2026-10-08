@@ -7,18 +7,19 @@ export type TaskSlice = "today" | "all" | "left" | "closed" | "overdue";
 export const TASKS_PAGE_SIZE = 20;
 
 export function parseTaskSlice(value: string | null | undefined): TaskSlice {
+  if (value === "today") return "today";
   if (value === "left" || value === "open") return "left";
-  if (value === "all" || value === "everything") return "all";
   if (value === "closed" || value === "done") return "closed";
   if (value === "overdue") return "overdue";
-  return "today";
+  return "all";
 }
 
-/** Due this IST day, created this day, or closed this day. */
+/** Due this IST day, created this day, closed this day, or still open and overdue. */
 export function isOnDay(
   task: Pick<Task, "due_date" | "created_at" | "updated_at" | "status">,
   day = kolkataTodayKey()
 ) {
+  if (isOverdue(task.due_date, task.status, day)) return true;
   if (dueDateKey(task.due_date) === day) return true;
   if (kolkataDateKeyFromInstant(task.created_at) === day) return true;
   return isClosedToday(task, day);

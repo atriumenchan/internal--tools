@@ -213,7 +213,7 @@ function TasksPageInner() {
         : slice === "closed"
           ? "Closed today"
           : slice === "overdue"
-            ? "Overdue today"
+            ? "Overdue"
             : "Left";
   const personLabel =
     !admin || person === "all"
@@ -232,8 +232,8 @@ function TasksPageInner() {
         title="Tasks"
         description={
           admin
-            ? "Today first. All is paged. Search and the due date filter stay on this list, not on boards."
-            : "Today first. All is paged. Search this list with a keyword."
+            ? "All is the default. Today is due, created, closed, or overdue. Search and the due date filter stay on this list, not on boards."
+            : "All is the default. Today is due, created, closed, or overdue. Search this list with a keyword."
         }
       />
       {error ? <p className="mb-4 text-sm text-coral">{error}</p> : null}
@@ -247,7 +247,7 @@ function TasksPageInner() {
             { id: "all", label: `All (${sliceCounts.all})` },
             { id: "left", label: `Left (${sliceCounts.left})` },
             { id: "closed", label: `Closed today (${sliceCounts.closed})` },
-            { id: "overdue", label: `Overdue today (${sliceCounts.overdue})` },
+            { id: "overdue", label: `Overdue (${sliceCounts.overdue})` },
           ]}
         />
         {admin ? (

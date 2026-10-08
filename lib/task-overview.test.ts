@@ -27,8 +27,8 @@ const closed = {
 const theirs = { ...mine, assignee_id: "them", due_date: "2026-09-26" };
 
 describe("parseTaskSlice", () => {
-  it("maps today by default, then all, left, closed, overdue", () => {
-    expect(parseTaskSlice(null)).toBe("today");
+  it("maps all by default, then today, left, closed, overdue", () => {
+    expect(parseTaskSlice(null)).toBe("all");
     expect(parseTaskSlice("today")).toBe("today");
     expect(parseTaskSlice("all")).toBe("all");
     expect(parseTaskSlice("left")).toBe("left");
@@ -57,15 +57,15 @@ describe("sliceTasks", () => {
     expect(sliceTasks([mine, closed, cancelled], "all", today)).toEqual([mine, closed, cancelled]);
   });
 
-  it("today is due, created, or closed on that day", () => {
+  it("today is due, created, closed, or still open and overdue", () => {
     const dueToday = { ...theirs, due_date: today };
-    expect(sliceTasks([mine, closed, dueToday], "today", today)).toEqual([closed, dueToday]);
+    expect(sliceTasks([mine, closed, dueToday], "today", today)).toEqual([mine, closed, dueToday]);
   });
 });
 
 describe("taskSliceCounts", () => {
   it("counts the slices for the selected people", () => {
-    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ today: 1, all: 3, left: 2, closed: 1, overdue: 1 });
+    expect(taskSliceCounts([mine, closed, theirs], today)).toEqual({ today: 2, all: 3, left: 2, closed: 1, overdue: 1 });
   });
 });
 
