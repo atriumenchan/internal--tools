@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin";
 import { appOrigin, normalizeTelegramId, sendTelegram, taskAssignedText } from "@/lib/telegram";
+import { displayName } from "@/lib/spaces";
 import { drainWhatsAppNotifications, normalizeWhatsAppPhone, sendWhatsApp, sendWhatsAppToUser } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
@@ -25,6 +26,7 @@ export async function POST(request: Request) {
 
   const body = (await request.json().catch(() => null)) as {
     kind?: string;
+    taskId?: string;
     title?: string;
     assigneeName?: string;
     byName?: string;
@@ -104,6 +106,50 @@ export async function POST(request: Request) {
       if (phone) whatsapp.push(await sendWhatsApp(phone, text));
     }
     return NextResponse.json({ ok: group.ok || dms.some((d) => d.ok) || whatsapp.some((d) => d.ok), group, dms, whatsapp });
+  }
+
+  if (body?.kind === "task" && body.taskId) {
+    const admin = createAdminClient();
+    const { data: task } = await admin.from("tasks").select("*").eq("id", body.taskId).maybeSingle();
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+    const [{ data: assignee }, { data: actor }, { data: board }] = await Promise.all([
+      task.assignee_id
+        ? admin.from("profiles").select("id, full_name, email, role, telegram_id, whatsapp_phone").eq("id", task.assignee_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      admin.from("profiles").select("id, full_name, email, role").eq("id", task.created_by).maybeSingle(),
+      admin.from("spaces").select("name").eq("id", task.space_id).maybeSingle(),
+    ]);
+    const origin = appOrigin(request.url);
+    const url = origin ? `${origin}/spaces/${task.space_id}/tasks/${task.id}` : undefined;
+    const text = task.assignee_id
+      ? taskAssignedText({
+          title: String(task.title || "Untitled"),
+          assigneeName: displayName(assignee),
+          byName: displayName(actor),
+          spaceName: (board as { name?: string } | null)?.name,
+          due: task.due_date,
+          url,
+        })
+      : [
+          "New task",
+          String(task.title || "Untitled").trim(),
+          (board as { name?: string } | null)?.name ? `Board: ${(board as { name?: string }).name}` : "",
+          task.due_date ? `Due: ${task.due_date}` : "",
+          `From ${displayName(actor)}`,
+          url || "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+    const dmId = normalizeTelegramId((assignee as { telegram_id?: string | null } | null)?.telegram_id);
+    const dm = dmId ? await sendTelegram(text, dmId) : { ok: false as const, skipped: true };
+    const wa = task.assignee_id
+      ? await sendWhatsAppToUser(String(task.assignee_id), text)
+      : { ok: false as const, skipped: true as const };
+    const group = await sendTelegram(text);
+    void drainWhatsAppNotifications().catch(() => {});
+    return NextResponse.json({ ok: dm.ok || wa.ok || group.ok, dm, whatsapp: wa, group });
   }
 
   if (!body || body.kind !== "task_assigned" || !body.title?.trim() || !body.assigneeName?.trim()) {

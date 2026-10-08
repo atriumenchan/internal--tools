@@ -29,7 +29,7 @@ import { Segmented } from "@/components/overflow-strip";
 import { applyTaskStatus, canManageSpace, canManageTask, canDeleteTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
 import { dueDateKey, compareDueSoon } from "@/lib/datetime";
 import { missingChatLook } from "@/lib/chat-icons";
-import { pingTaskAssigned } from "@/lib/ping-task";
+import { pingNewTask, pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
 import type { Profile, Space, Task, TaskStatus } from "@/lib/types";
@@ -230,17 +230,7 @@ export default function SpaceDetailPage() {
     }
     setTasks((prev) => [task, ...prev]);
     setAddingStatus(null);
-    if (assigneeId) {
-      pingTaskAssigned({
-        title: task.title,
-        assigneeName: displayName(members.find((m) => m.id === assigneeId) || people.find((p) => p.id === assigneeId)),
-        byName: displayName(app?.profile),
-        spaceName: space.name,
-        due: task.due_date,
-        path: `/spaces/${space.id}/tasks/${task.id}`,
-        assigneeId,
-      });
-    }
+    pingNewTask(task.id);
     return true;
   }
 

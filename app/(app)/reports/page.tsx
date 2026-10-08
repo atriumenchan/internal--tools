@@ -11,6 +11,7 @@ import { useAppState } from "@/components/app-frame";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
 import { dueDateKey, formatStamp, kolkataTodayKey } from "@/lib/datetime";
 import { REPORT_PROMPTS, reportKindFromTitle, reportPeriodLabel, reportTitle } from "@/lib/reports";
+import { pingNewTask } from "@/lib/ping-task";
 import { isManagerUser } from "@/lib/roles";
 import { useSilentLive } from "@/lib/silent-live";
 import { cn } from "@/lib/utils";
@@ -134,6 +135,7 @@ function ReportsApp() {
       setError(caught instanceof Error ? caught.message : "Report saved, but a file did not upload.");
     }
     setTasks((prev) => [data as Task, ...(prev ?? [])]);
+    pingNewTask((data as Task).id);
     setBody("");
     setPendingFiles([]);
     setBusy(false);
