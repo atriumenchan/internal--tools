@@ -33,11 +33,23 @@ begin
   end if;
 
   for p in
-    select id, full_name
+    select id, full_name, email, role
     from public.profiles
     where id is distinct from p_actor_id
-      and coalesce(nullif(trim(full_name), ''), '') <> ''
   loop
+    if p.role = 'admin' or lower(coalesce(p.email, '')) = 'ryan@admexo.com' then
+      if public.mention_hit(p_body, 'Ryan Ritabrata')
+        or public.mention_hit(p_body, 'Ryan')
+        or public.mention_hit(p_body, coalesce(p.full_name, '')) then
+        perform public.push_notification(p.id, p_actor_id, p_type, p_title, p_body, p_href);
+      end if;
+      continue;
+    end if;
+
+    if coalesce(nullif(trim(p.full_name), ''), '') = '' then
+      continue;
+    end if;
+
     if public.mention_hit(p_body, p.full_name) then
       perform public.push_notification(p.id, p_actor_id, p_type, p_title, p_body, p_href);
       continue;

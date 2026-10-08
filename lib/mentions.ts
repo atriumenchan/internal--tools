@@ -20,9 +20,20 @@ export function mentionQueryAt(text: string, caret: number) {
 
 export function mentionMatches(query: string, people: MentionPerson[]) {
   const q = query.trim().toLowerCase();
-  const rows = people.filter((person) => displayName(person).toLowerCase().includes(q));
+  const rows = people
+    .filter((person) => !isEveryone(person) && displayName(person).toLowerCase().includes(q))
+    .sort((a, b) => {
+      const an = displayName(a).toLowerCase();
+      const bn = displayName(b).toLowerCase();
+      if (q) {
+        const aHit = an.startsWith(q) ? 0 : 1;
+        const bHit = bn.startsWith(q) ? 0 : 1;
+        if (aHit !== bHit) return aHit - bHit;
+      }
+      return an.localeCompare(bn);
+    });
   const showEveryone = !q || "everyone".startsWith(q);
-  return (showEveryone ? [EVERYONE, ...rows.filter((person) => !isEveryone(person))] : rows).slice(0, 8);
+  return showEveryone ? [EVERYONE, ...rows] : rows;
 }
 
 export function applyMention(text: string, caret: number, start: number, name: string) {

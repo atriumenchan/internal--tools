@@ -19,6 +19,22 @@ describe("mentionMatches", () => {
     expect(mentionMatches("every", people)[0]).toEqual(EVERYONE);
     expect(mentionMatches("kartik", people).map((p) => p.id)).toEqual(["1"]);
   });
+
+  it("keeps Ryan Ritabrata in the list when the team is larger than eight", () => {
+    const crowd = [
+      ...people,
+      { id: "admin", full_name: "Admin", email: "ryan@admexo.com", role: "admin" as const },
+      { id: "3", full_name: "Abhishek Tiwari", email: "a@admexo.com" },
+      { id: "4", full_name: "Ashok Rawat", email: "as@admexo.com" },
+      { id: "5", full_name: "Yogesh Mishra", email: "y@admexo.com" },
+      { id: "6", full_name: "Sneha Chadda", email: "s@admexo.com" },
+      { id: "7", full_name: "Mudit Chauhan", email: "m@admexo.com" },
+      { id: "8", full_name: "Gaurav Two", email: "g2@admexo.com" },
+    ];
+    const ids = mentionMatches("", crowd).map((p) => p.id);
+    expect(ids).toContain("admin");
+    expect(mentionMatches("ryan", crowd).map((p) => p.id)).toEqual(["admin"]);
+  });
 });
 
 describe("applyMention and splitMentions", () => {

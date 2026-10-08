@@ -97,7 +97,7 @@ export function MentionField({
         <Textarea {...field} />
       )}
       {active && options.length > 0 ? (
-        <ul className="absolute bottom-full z-10 mb-1 w-full overflow-hidden rounded-sm border border-border bg-surface shadow-float">
+        <ul className="absolute bottom-full z-10 mb-1 max-h-64 w-full overflow-y-auto rounded-sm border border-border bg-surface shadow-float">
           {options.map((person) => (
             <li key={person.id}>
               <button
