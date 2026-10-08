@@ -189,6 +189,7 @@ export type StaffUser = {
   role: AppRole;
   employee_code: string | null;
   telegram_id?: string | null;
+  whatsapp_phone?: string | null;
   created_at: string;
   last_sign_in_at: string | null;
 };

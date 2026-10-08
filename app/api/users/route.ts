@@ -5,6 +5,7 @@ import { isAdminUser, isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { rehomeStaffWork } from "@/lib/delete-staff";
 import { parseAppRole } from "@/lib/roles";
 import { normalizeTelegramId } from "@/lib/telegram";
+import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 import { ensureAdminFromEnv } from "@/lib/ensure-admin";
 import type { AppRole } from "@/lib/types";
 
@@ -32,7 +33,10 @@ export async function GET() {
     const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const withTelegram = await admin.from("profiles").select("id, full_name, role, email, telegram_id");
+    const withPhones = await admin.from("profiles").select("id, full_name, role, email, telegram_id, whatsapp_phone");
+    const withTelegram = withPhones.error
+      ? await admin.from("profiles").select("id, full_name, role, email, telegram_id")
+      : withPhones;
     const profiles = withTelegram.error
       ? (await admin.from("profiles").select("id, full_name, role, email")).data
       : withTelegram.data;
@@ -54,6 +58,7 @@ export async function GET() {
           role: (profile?.role as AppRole) || "employee",
           employee_code: employee?.employee_code ?? null,
           telegram_id: (profile as { telegram_id?: string | null } | undefined)?.telegram_id ?? null,
+          whatsapp_phone: (profile as { whatsapp_phone?: string | null } | undefined)?.whatsapp_phone ?? null,
           created_at: u.created_at,
           last_sign_in_at: u.last_sign_in_at,
         };
@@ -81,6 +86,7 @@ export async function POST(request: Request) {
   const fullName = String(body.full_name || body.name || "").trim();
   const role = parseAppRole(body.role);
   const telegramId = body.telegram_id != null ? String(body.telegram_id).trim() : "";
+  const whatsappPhone = body.whatsapp_phone != null ? String(body.whatsapp_phone).trim() : "";
   if (role === "admin") {
     return NextResponse.json({ error: "Create a normal login. Ryan Ritabrata's account stays as-is." }, { status: 400 });
   }
@@ -148,6 +154,7 @@ export async function POST(request: Request) {
           role,
           email,
           ...(normalizeTelegramId(telegramId) ? { telegram_id: normalizeTelegramId(telegramId) } : {}),
+          ...(normalizeWhatsAppPhone(whatsappPhone) ? { whatsapp_phone: normalizeWhatsAppPhone(whatsappPhone) } : {}),
         })
         .eq("id", data.user.id);
       await admin.from("employees").update({ user_id: data.user.id, email }).eq("id", employee.id);
@@ -175,12 +182,13 @@ export async function PATCH(request: Request) {
   const password = String(body.password || "");
   const role = body.role != null ? parseAppRole(body.role) : null;
   const telegramRaw = body.telegram_id !== undefined ? String(body.telegram_id) : undefined;
+  const whatsappRaw = body.whatsapp_phone !== undefined ? String(body.whatsapp_phone) : undefined;
   const email = body.email !== undefined ? String(body.email).trim().toLowerCase() : undefined;
   if (!id) {
     return NextResponse.json({ error: "User is required" }, { status: 400 });
   }
-  if (!password && !role && telegramRaw === undefined && email === undefined) {
-    return NextResponse.json({ error: "Password, email ID, role, or Telegram id is required" }, { status: 400 });
+  if (!password && !role && telegramRaw === undefined && whatsappRaw === undefined && email === undefined) {
+    return NextResponse.json({ error: "Password, email ID, role, Telegram id, or WhatsApp is required" }, { status: 400 });
   }
   if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: "Enter a full email ID, like name@admexo.com." }, { status: 400 });
@@ -236,6 +244,23 @@ export async function PATCH(request: Request) {
           {
             error: error.message.includes("telegram_id")
               ? "Telegram ids need a SQL patch. Paste supabase/telegram-ids.sql in the Supabase SQL editor, then try again."
+              : error.message,
+          },
+          { status: 400 }
+        );
+      }
+    }
+    if (whatsappRaw !== undefined) {
+      const whatsapp_phone = normalizeWhatsAppPhone(whatsappRaw);
+      if (whatsappRaw.trim() && !whatsapp_phone) {
+        return NextResponse.json({ error: "WhatsApp should be a mobile number, like 6307276542." }, { status: 400 });
+      }
+      const { error } = await admin.from("profiles").update({ whatsapp_phone }).eq("id", id);
+      if (error) {
+        return NextResponse.json(
+          {
+            error: error.message.includes("whatsapp_phone")
+              ? "WhatsApp phones need a SQL patch. Paste supabase/whatsapp-phones.sql in the Supabase SQL editor, then try again."
               : error.message,
           },
           { status: 400 }

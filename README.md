@@ -80,6 +80,8 @@ Add env vars under Settings → Environment Variables:
 - `NEXT_PUBLIC_ADMIN_EMAIL` as **Config** (`ryan@admexo.com`)
 - `SUPABASE_SERVICE_ROLE_KEY` as **Secret** (Settings → API → service_role)
 - `ADMIN_PASSWORD` as **Secret** (creates that admin login in Supabase if it does not exist)
+- `WHATSAPP_ACCESS_TOKEN` as **Secret** (system user token from Meta → WhatsApp → API Setup)
+- `WHATSAPP_PHONE_NUMBER_ID` as **Config** (`1269726706235216`, the Registered Admexo number)
 
 Then run [`supabase/seed.sql`](supabase/seed.sql) in the SQL editor. Ryan Ray (0003) is stored as ignored and dropped from attendance and logins. If the app already exists, also run [`supabase/spaces.sql`](supabase/spaces.sql) — that adds Spaces, Chat, and the handbook gate. Every current login must sign the handbook once after that.
 

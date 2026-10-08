@@ -20,6 +20,7 @@ export function TeamPanel() {
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"employee" | "manager">("employee");
   const [telegramId, setTelegramId] = useState("");
+  const [whatsappPhone, setWhatsappPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(cache?.staffError ?? null);
@@ -59,6 +60,7 @@ export function TeamPanel() {
           password,
           role,
           telegram_id: telegramId,
+          whatsapp_phone: whatsappPhone,
         }),
       });
       const json = await res.json();
@@ -70,6 +72,7 @@ export function TeamPanel() {
       setPassword("");
       setRole("employee");
       setTelegramId("");
+      setWhatsappPhone("");
       await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Create failed");
@@ -118,8 +121,10 @@ export function TeamPanel() {
       const skipped = dms.filter((d) => d.skipped).length;
       const groupOk = Boolean(json.group?.ok);
       if (json.hint) throw new Error(json.hint);
+      const wa = (json.whatsapp ?? []) as { name: string; ok: boolean; skipped?: boolean }[];
+      const waSent = wa.filter((d) => d.ok).length;
       setMsg(
-        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} personal message${sent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id or have not Started the bot.`
+        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} Telegram message${sent === 1 ? "" : "s"}. ${waSent} WhatsApp message${waSent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id.`
       );
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not send test");
@@ -144,6 +149,25 @@ export function TeamPanel() {
       await cache?.refreshStaff();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Could not change the email ID");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveWhatsApp(user: StaffUser, value: string) {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: user.id, whatsapp_phone: value }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Could not save WhatsApp number");
+      await cache?.refreshStaff();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Could not save WhatsApp number");
     } finally {
       setBusy(false);
     }
@@ -249,9 +273,16 @@ export function TeamPanel() {
             inputMode="numeric"
           />
         </Field>
+        <Field label="WhatsApp">
+          <Input
+            value={whatsappPhone}
+            onChange={(e) => setWhatsappPhone(e.target.value)}
+            placeholder="6307276542"
+            inputMode="tel"
+          />
+        </Field>
         <p className="text-[12px] text-muted">
-          The number from getUpdates <span className="font-mono">from.id</span>. They must open @Admexo_bot and tap Start
-          once.
+          Telegram: getUpdates <span className="font-mono">from.id</span>. WhatsApp: their mobile, like 6307276542.
         </p>
         <Field label="Password">
           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} minLength={6} required />
@@ -280,6 +311,7 @@ export function TeamPanel() {
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Email ID</th>
                 <th className="px-4 py-3">Telegram id</th>
+                <th className="px-4 py-3">WhatsApp</th>
                 <th className="px-4 py-3">Access level</th>
                 <th className="px-4 py-3">Password</th>
               </tr>
@@ -302,6 +334,14 @@ export function TeamPanel() {
                       user={user}
                       disabled={busy}
                       onSave={saveTelegram}
+                    />
+                  </td>
+                  <td className="px-4 py-3">
+                    <WhatsAppField
+                      key={`${user.id}-${user.whatsapp_phone || ""}`}
+                      user={user}
+                      disabled={busy}
+                      onSave={saveWhatsApp}
                     />
                   </td>
                   <td className="px-4 py-3">
@@ -395,6 +435,38 @@ function EmailField({
         size="sm"
         variant="secondary"
         disabled={disabled || !changed || !value.trim()}
+        onClick={() => void onSave(user, value)}
+      >
+        Save
+      </Button>
+    </div>
+  );
+}
+
+function WhatsAppField({
+  user,
+  disabled,
+  onSave,
+}: {
+  user: StaffUser;
+  disabled: boolean;
+  onSave: (user: StaffUser, value: string) => Promise<void>;
+}) {
+  const [value, setValue] = useState(user.whatsapp_phone || "");
+  return (
+    <div className="flex min-w-[11rem] items-center gap-1">
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        placeholder="6307276542"
+        inputMode="tel"
+        className="font-mono text-[12px]"
+      />
+      <Button
+        type="button"
+        size="sm"
+        variant="secondary"
+        disabled={disabled || value.trim() === (user.whatsapp_phone || "").trim()}
         onClick={() => void onSave(user, value)}
       >
         Save

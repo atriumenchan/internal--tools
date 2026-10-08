@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin";
 import { appOrigin, normalizeTelegramId, sendTelegram, taskAssignedText } from "@/lib/telegram";
+import { drainWhatsAppNotifications, normalizeWhatsAppPhone, sendWhatsApp, sendWhatsAppToUser } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -39,42 +40,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Admin only" }, { status: 403 });
     }
     const text = [
-      "Telegram test from ADMEXO Workspace",
-      "If you got this, task pings will reach you too.",
-      "Group messages still go to Workspace notifications.",
+      "ADMEXO Workspace test",
+      "If you got this, task and chat pings will reach this number too.",
     ].join("\n");
     const group = await sendTelegram(text);
     const admin = createAdminClient();
-    const { data: rows, error } = await admin.from("profiles").select("id, full_name, telegram_id");
+    const { data: rows, error } = await admin.from("profiles").select("id, full_name, telegram_id, whatsapp_phone");
     if (error) {
       return NextResponse.json({
         ok: group.ok,
         group,
         dms: [],
-        hint: error.message.includes("telegram_id")
-          ? "Paste supabase/telegram-ids.sql in the Supabase SQL editor, then save each person’s Telegram id on Staff."
-          : error.message,
+        whatsapp: [],
+        hint: error.message.includes("whatsapp_phone")
+          ? "Paste supabase/whatsapp-phones.sql in the Supabase SQL editor, then save each person’s WhatsApp on Staff."
+          : error.message.includes("telegram_id")
+            ? "Paste supabase/telegram-ids.sql in the Supabase SQL editor, then save each person’s Telegram id on Staff."
+            : error.message,
       });
     }
     const dms: { name: string; ok: boolean; skipped?: boolean; error?: string }[] = [];
+    const whatsapp: { name: string; ok: boolean; skipped?: boolean; error?: string }[] = [];
     for (const row of rows ?? []) {
+      const name = String(row.full_name || row.id);
       const id = normalizeTelegramId((row as { telegram_id?: string | null }).telegram_id);
-      if (!id) {
-        dms.push({ name: String(row.full_name || row.id), ok: false, skipped: true });
-        continue;
+      if (!id) dms.push({ name, ok: false, skipped: true });
+      else {
+        const sent = await sendTelegram(text, id);
+        dms.push({ name, ok: sent.ok, skipped: sent.skipped, error: "error" in sent ? sent.error : undefined });
       }
-      const sent = await sendTelegram(text, id);
-      dms.push({
-        name: String(row.full_name || row.id),
-        ok: sent.ok,
-        skipped: sent.skipped,
-        error: "error" in sent ? sent.error : undefined,
-      });
+      const phone = normalizeWhatsAppPhone((row as { whatsapp_phone?: string | null }).whatsapp_phone);
+      if (!phone) whatsapp.push({ name, ok: false, skipped: true });
+      else {
+        const sent = await sendWhatsApp(phone, text);
+        whatsapp.push({ name, ok: sent.ok, skipped: sent.skipped, error: "error" in sent ? sent.error : undefined });
+      }
     }
     return NextResponse.json({
-      ok: group.ok || dms.some((d) => d.ok),
+      ok: group.ok || dms.some((d) => d.ok) || whatsapp.some((d) => d.ok),
       group,
       dms,
+      whatsapp,
     });
   }
 
@@ -87,15 +93,17 @@ export async function POST(request: Request) {
     const text = [`${byName} sent WFH for approval`, workDate, "Approve it on WFH"].join("\n");
     const group = await sendTelegram(text);
     const admin = createAdminClient();
-    const { data: rows } = await admin.from("profiles").select("email, role, telegram_id");
+    const { data: rows } = await admin.from("profiles").select("email, role, telegram_id, whatsapp_phone");
     const dms = [];
+    const whatsapp = [];
     for (const row of rows ?? []) {
       if (!isAdminUser({ email: row.email, role: row.role })) continue;
       const id = normalizeTelegramId((row as { telegram_id?: string | null }).telegram_id);
-      if (!id) continue;
-      dms.push(await sendTelegram(text, id));
+      if (id) dms.push(await sendTelegram(text, id));
+      const phone = normalizeWhatsAppPhone((row as { whatsapp_phone?: string | null }).whatsapp_phone);
+      if (phone) whatsapp.push(await sendWhatsApp(phone, text));
     }
-    return NextResponse.json({ ok: group.ok || dms.some((d) => d.ok), group, dms });
+    return NextResponse.json({ ok: group.ok || dms.some((d) => d.ok) || whatsapp.some((d) => d.ok), group, dms, whatsapp });
   }
 
   if (!body || body.kind !== "task_assigned" || !body.title?.trim() || !body.assigneeName?.trim()) {
@@ -125,6 +133,8 @@ export async function POST(request: Request) {
   }
 
   const dm = dmId ? await sendTelegram(text, dmId) : { ok: false as const, skipped: true };
+  const wa = body.assigneeId ? await sendWhatsAppToUser(body.assigneeId, text) : { ok: false as const, skipped: true as const };
   const group = await sendTelegram(text);
-  return NextResponse.json({ ok: dm.ok || group.ok, dm, group });
+  void drainWhatsAppNotifications().catch(() => {});
+  return NextResponse.json({ ok: dm.ok || group.ok || wa.ok, dm, group, whatsapp: wa });
 }
