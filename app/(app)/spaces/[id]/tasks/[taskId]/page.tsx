@@ -95,6 +95,13 @@ export default function TaskPage() {
       setSpace((spaceRes.data as Space) ?? null);
       applyTask(taskRes.data as Task);
       setMembers(allPeople.filter((p) => memberIds.has(p.id)));
+      if (commentRes.error) {
+        setError(
+          commentRes.error.message.includes("row-level security") || commentRes.error.message.includes("policy")
+            ? "Comments on this task are hidden by a SQL patch. Paste supabase/task-comments-shared.sql in the Supabase SQL editor, then refresh."
+            : commentRes.error.message
+        );
+      }
       setComments((commentRes.data ?? []) as TaskComment[]);
       setFiles((filesRes.data ?? []) as TaskFile[]);
       setProfiles(byId);
@@ -108,7 +115,30 @@ export default function TaskPage() {
     if (data && !dirty.current) applyTask(data as Task);
   }, [taskId]);
 
-  useSilentLive(() => void loadTask(), taskId ? `task-${taskId}` : "task");
+  const loadComments = useCallback(async () => {
+    if (!taskId) return;
+    const supabase = createClient();
+    const { data, error: err } = await supabase
+      .from("task_comments")
+      .select("*")
+      .eq("task_id", taskId)
+      .order("created_at")
+      .limit(500);
+    if (err) {
+      setError(
+        err.message.includes("row-level security") || err.message.includes("policy")
+          ? "Comments on this task are hidden by a SQL patch. Paste supabase/task-comments-shared.sql in the Supabase SQL editor, then refresh."
+          : err.message
+      );
+      return;
+    }
+    if (data) setComments(data as TaskComment[]);
+  }, [taskId]);
+
+  useSilentLive(() => {
+    void loadTask();
+    void loadComments();
+  }, taskId ? `task-${taskId}` : "task");
 
   useEffect(() => {
     if (!taskId) return;
@@ -117,17 +147,16 @@ export default function TaskPage() {
       .channel(`task-comments:${taskId}`)
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "task_comments", filter: `task_id=eq.${taskId}` },
-        (payload) => {
-          const row = payload.new as TaskComment;
-          setComments((prev) => (prev.some((c) => c.id === row.id) ? prev : [...prev, row]));
+        { event: "*", schema: "public", table: "task_comments", filter: `task_id=eq.${taskId}` },
+        () => {
+          void loadComments();
         }
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [taskId]);
+  }, [taskId, loadComments]);
 
   useEffect(() => {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
