@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const DEFAULT_PHONE_ID = "1269726706235216";
-const DEFAULT_WABA_ID = "4130948003709192";
+const DEFAULT_WABA_ID = "1438727304857568";
+const FALLBACK_WABA_IDS = ["1438727304857568", "4130948003709192"];
 const DEFAULT_TEMPLATE = "admexo_workspace_alert";
 const DEFAULT_TEMPLATE_LANG = "en_US";
 
@@ -50,7 +51,10 @@ export function notificationText(input: { title?: string | null; body?: string |
   const body = String(input.body || "").trim();
   if (body) lines.push(body);
   const href = String(input.href || "").trim();
-  const origin = (input.origin || process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
+  const origin = (input.origin || process.env.NEXT_PUBLIC_APP_URL || "https://workspace.admexo.us")
+    .replace(/\/$/, "")
+    .replace(/\/setup$/i, "")
+    .replace(/https:\/\/[^/]*\.vercel\.app/i, "https://workspace.admexo.us");
   if (href.startsWith("http")) lines.push(href);
   else if (href.startsWith("/") && origin) lines.push(`${origin}${href}`);
   return lines.join("\n");
@@ -82,10 +86,18 @@ async function graphJson(config: NonNullable<ReturnType<typeof whatsappConfig>>,
 type TemplateRow = { name?: string; status?: string; language?: string };
 
 async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappConfig>>) {
-  const listed = await graphJson(
-    config,
-    `${config.wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category&limit=10`
-  );
+  const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
+  let listed = { ok: false as boolean, parsed: {} as Record<string, unknown>, error: "" };
+  for (const wabaId of ids) {
+    listed = await graphJson(
+      config,
+      `${wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category&limit=10`
+    );
+    const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter(
+      (row) => row.name === config.templateName
+    );
+    if (rows.length) return { listed, rows };
+  }
   const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter(
     (row) => row.name === config.templateName
   );

@@ -26,6 +26,16 @@ describe("notificationText", () => {
     expect(text).toContain("Close the books");
     expect(text).toContain("https://workspace.admexo.us/tasks");
   });
+
+  it("rewrites preview hosts to the live workspace URL", () => {
+    const text = notificationText({
+      title: "Task",
+      href: "/spaces/1/tasks/2",
+      origin: "https://internal-tools-three-gray.vercel.app/setup",
+    });
+    expect(text).toContain("https://workspace.admexo.us/spaces/1/tasks/2");
+    expect(text).not.toContain("vercel.app");
+  });
 });
 
 describe("templateParamsFromText", () => {

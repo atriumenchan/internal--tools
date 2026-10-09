@@ -41,12 +41,17 @@ export function taskAssignedText(input: {
   return lines.join("\n");
 }
 
+const LIVE_ORIGIN = "https://workspace.admexo.us";
+
 export function appOrigin(requestUrl: string) {
-  const env = (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "");
-  if (env) return env;
+  const env = (process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "").replace(/\/setup$/i, "");
+  if (env && /workspace\.admexo\.us/i.test(env)) return env;
+  if (env && /^https?:\/\//i.test(env) && !/\.vercel\.app/i.test(env) && !/localhost/i.test(env)) return env;
   try {
-    return new URL(requestUrl).origin;
+    const host = new URL(requestUrl).host;
+    if (host && !host.includes("vercel.app") && host !== "localhost") return `https://${host}`;
   } catch {
-    return "";
+    /* fall through */
   }
+  return LIVE_ORIGIN;
 }
