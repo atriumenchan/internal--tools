@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button, Field, Input, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { useWorkspaceCache } from "@/components/app-frame";
@@ -26,6 +26,31 @@ export function TeamPanel() {
   const [err, setErr] = useState<string | null>(cache?.staffError ?? null);
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
+  const [waStatus, setWaStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    void fetch("/api/whatsapp/status")
+      .then(async (res) => {
+        const json = (await res.json()) as {
+          hasToken?: boolean;
+          error?: string;
+          templates?: { status?: string; language?: string }[];
+        };
+        if (!json.hasToken) {
+          setWaStatus(json.error || "WhatsApp token is missing on Vercel.");
+          return;
+        }
+        const langs = (json.templates ?? []).map((row) => `${row.status || "?"} ${row.language || ""}`.trim());
+        setWaStatus(
+          json.error
+            ? json.error
+            : langs.length
+              ? `WhatsApp token is set. Template: ${langs.join(" · ")}.`
+              : "WhatsApp token is set. Template list is empty."
+        );
+      })
+      .catch(() => setWaStatus("Could not check WhatsApp on this deployment."));
+  }, []);
 
   const openCodes = useMemo(
     () => employees.filter((e) => !e.user_id).sort((a, b) => a.employee_code.localeCompare(b.employee_code, undefined, { numeric: true })),
@@ -311,6 +336,7 @@ export function TeamPanel() {
             Send test ping
           </Button>
         </div>
+        {waStatus ? <p className="border-b border-border px-4 py-2 text-[12px] text-muted">{waStatus}</p> : null}
         {loading ? (
           <p className="px-4 py-10 text-center text-sm text-faint">Loading…</p>
         ) : (

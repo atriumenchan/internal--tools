@@ -160,36 +160,79 @@ async function sendWhatsAppTemplate(phone: string, text: string, config: NonNull
     return { ok: false as const, error: "Meta is still reviewing the WhatsApp template." };
   }
   const { heading, detail } = templateParamsFromText(text);
+  const bodies = [
+    [
+      { type: "text", text: heading },
+      { type: "text", text: detail },
+    ],
+    [
+      { type: "text", parameter_name: "1", text: heading },
+      { type: "text", parameter_name: "2", text: detail },
+    ],
+  ];
   let last = { ok: false as boolean, error: "WhatsApp template did not send" };
   for (const code of langs) {
-    const sent = await graphJson(config, `${config.phoneNumberId}/messages`, {
-      messaging_product: "whatsapp",
-      to: phone,
-      type: "template",
-      template: {
-        name: config.templateName,
-        language: { code },
-        components: [
-          {
-            type: "body",
-            parameters: [
-              { type: "text", text: heading },
-              { type: "text", text: detail },
-            ],
-          },
-        ],
-      },
-    });
-    if (sent.ok) return sent;
-    last = sent;
+    for (const parameters of bodies) {
+      const sent = await graphJson(config, `${config.phoneNumberId}/messages`, {
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "template",
+        template: {
+          name: config.templateName,
+          language: { code },
+          components: [{ type: "body", parameters }],
+        },
+      });
+      if (sent.ok) return sent;
+      last = sent;
+    }
   }
   return last;
+}
+
+export async function inspectWhatsApp() {
+  const config = whatsappConfig();
+  if (!config) {
+    return {
+      ok: false as const,
+      hasToken: false,
+      error: "WHATSAPP_ACCESS_TOKEN is not set on Vercel Production. Add it, then Redeploy.",
+    };
+  }
+  const { listed, rows } = await listedTemplates(config);
+  const templates = rows.map((row) => ({
+    name: row.name || config.templateName,
+    status: row.status || "unknown",
+    language: row.language || "",
+  }));
+  const approved = templates.find((row) => row.status.toUpperCase() === "APPROVED");
+  return {
+    ok: Boolean(approved),
+    hasToken: true,
+    phoneNumberId: config.phoneNumberId,
+    wabaId: config.wabaId,
+    templateName: config.templateName,
+    templates,
+    error: listed.ok
+      ? approved
+        ? undefined
+        : templates.length
+          ? `Template status is ${templates.map((row) => row.status).join(", ")}, not Active.`
+          : "No admexo_workspace_alert template on this WABA."
+      : listed.error,
+  };
 }
 
 export async function sendWhatsApp(to: string, text: string) {
   const config = whatsappConfig();
   const phone = normalizeWhatsAppPhone(to);
-  if (!config) return { ok: false as const, skipped: true as const };
+  if (!config) {
+    return {
+      ok: false as const,
+      skipped: true as const,
+      error: "WHATSAPP_ACCESS_TOKEN is not set on Vercel Production. Add it, then Redeploy.",
+    };
+  }
   if (!phone) return { ok: false as const, skipped: true as const, error: "Need a mobile number" };
   if (!text.trim()) return { ok: false as const, skipped: true as const };
 
@@ -205,9 +248,20 @@ export async function sendWhatsApp(to: string, text: string) {
 
 export async function sendWhatsAppToUser(userId: string, text: string) {
   const admin = createAdminClient();
-  const { data } = await admin.from("profiles").select("whatsapp_phone").eq("id", userId).maybeSingle();
+  const { data, error } = await admin.from("profiles").select("whatsapp_phone").eq("id", userId).maybeSingle();
+  if (error) {
+    return {
+      ok: false as const,
+      skipped: true as const,
+      error: error.message.includes("whatsapp_phone")
+        ? "Paste supabase/whatsapp-phones.sql in the Supabase SQL editor, then save the number on Staff."
+        : error.message,
+    };
+  }
   const phone = normalizeWhatsAppPhone((data as { whatsapp_phone?: string | null } | null)?.whatsapp_phone);
-  if (!phone) return { ok: false as const, skipped: true as const };
+  if (!phone) {
+    return { ok: false as const, skipped: true as const, error: "This person has no WhatsApp number on Staff." };
+  }
   return sendWhatsApp(phone, text);
 }
 
