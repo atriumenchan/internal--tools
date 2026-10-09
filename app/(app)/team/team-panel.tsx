@@ -27,6 +27,8 @@ export function TeamPanel() {
   const [resetId, setResetId] = useState<string | null>(null);
   const [resetPassword, setResetPassword] = useState("");
   const [waStatus, setWaStatus] = useState<string | null>(null);
+  const [pingNote, setPingNote] = useState<string | null>(null);
+  const [pingErr, setPingErr] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/whatsapp/status")
@@ -131,8 +133,8 @@ export function TeamPanel() {
 
   async function sendTestPing() {
     setBusy(true);
-    setErr(null);
-    setMsg(null);
+    setPingErr(null);
+    setPingNote(null);
     try {
       const res = await fetch("/api/telegram/notify", {
         method: "POST",
@@ -141,28 +143,33 @@ export function TeamPanel() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not send test");
-      const dms = (json.dms ?? []) as { name: string; ok: boolean; skipped?: boolean }[];
-      const sent = dms.filter((d) => d.ok).length;
-      const skipped = dms.filter((d) => d.skipped).length;
-      const groupOk = Boolean(json.group?.ok);
       if (json.hint) throw new Error(json.hint);
       const wa = (json.whatsapp ?? []) as { name: string; ok: boolean; skipped?: boolean; error?: string }[];
       const waSent = wa.filter((d) => d.ok).length;
+      const waTried = wa.filter((d) => !d.skipped);
       const waError = wa.find((d) => d.error)?.error;
-      const templateNote =
-        json.template?.status === "pending"
-          ? " One-way WhatsApp is waiting on Meta to approve the template; after that nobody has to reply."
-          : json.template?.status === "approved"
-            ? " WhatsApp is one-way (no reply needed)."
-            : json.template?.error
-              ? ` Template: ${json.template.error}`
-              : "";
-      const fail = waSent === 0 && waError ? ` WhatsApp error: ${waError}` : "";
-      setMsg(
-        `${groupOk ? "Group ping sent. " : "Group ping did not send. "}${sent} Telegram message${sent === 1 ? "" : "s"}. ${waSent} WhatsApp message${waSent === 1 ? "" : "s"}. ${skipped} login${skipped === 1 ? "" : "s"} still need a Telegram id.${templateNote}${fail}`
-      );
+      const who = wa
+        .filter((d) => d.ok || d.error)
+        .map((d) => `${d.name}: ${d.ok ? "sent" : d.error}`)
+        .join(" · ");
+      const templateNote = json.template?.error
+        ? ` Template: ${json.template.error}`
+        : json.template?.status === "approved"
+          ? " Template is Active."
+          : json.template?.status === "pending"
+            ? " Template is still in review at Meta."
+            : "";
+      if (waSent === 0) {
+        setPingErr(
+          waTried.length === 0
+            ? "Nobody on Staff has a WhatsApp number. Put 6307276542 on Gaurav Mishra, then ping again."
+            : `${who || "WhatsApp did not send."}${waError ? ` ${waError}` : ""}${templateNote}`
+        );
+      } else {
+        setPingNote(`${waSent} WhatsApp sent. ${who}${templateNote}`);
+      }
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Could not send test");
+      setPingErr(e instanceof Error ? e.message : "Could not send test");
     } finally {
       setBusy(false);
     }
@@ -333,10 +340,12 @@ export function TeamPanel() {
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <p className="text-[13px] font-medium">Logins</p>
           <Button type="button" size="sm" variant="secondary" disabled={busy} onClick={() => void sendTestPing()}>
-            Send test ping
+            {busy ? "Sending…" : "Send test ping"}
           </Button>
         </div>
         {waStatus ? <p className="border-b border-border px-4 py-2 text-[12px] text-muted">{waStatus}</p> : null}
+        {pingNote ? <p className="border-b border-border px-4 py-2 text-[12px] text-sage">{pingNote}</p> : null}
+        {pingErr ? <p className="border-b border-border px-4 py-2 text-[12px] text-coral">{pingErr}</p> : null}
         {loading ? (
           <p className="px-4 py-10 text-center text-sm text-faint">Loading…</p>
         ) : (
