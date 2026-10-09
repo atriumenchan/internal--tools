@@ -79,27 +79,34 @@ async function graphJson(config: NonNullable<ReturnType<typeof whatsappConfig>>,
   return { ok: res.ok, parsed, error: detail };
 }
 
-let templateStatus: "approved" | "pending" | "missing" | null = null;
+type TemplateRow = { name?: string; status?: string; language?: string };
+
+async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappConfig>>) {
+  const listed = await graphJson(
+    config,
+    `${config.wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category&limit=10`
+  );
+  const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter(
+    (row) => row.name === config.templateName
+  );
+  return { listed, rows };
+}
 
 export async function ensureWhatsAppTemplate() {
   const config = whatsappConfig();
   if (!config) return { ok: false as const, status: "missing" as const, error: "WhatsApp is not set on this deployment." };
-  if (templateStatus === "approved") return { ok: true as const, status: "approved" as const };
 
-  const listed = await graphJson(
-    config,
-    `${config.wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&limit=5`
-  );
-  const rows = (listed.parsed.data as { name?: string; status?: string }[] | undefined) ?? [];
-  const mine = rows.find((row) => row.name === config.templateName);
-  const status = String(mine?.status || "").toUpperCase();
-  if (status === "APPROVED") {
-    templateStatus = "approved";
-    return { ok: true as const, status: "approved" as const };
+  const { listed, rows } = await listedTemplates(config);
+  const approved = rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
+  if (approved) {
+    return { ok: true as const, status: "approved" as const, language: approved.language || config.templateLang };
   }
-  if (status === "PENDING" || status === "IN_APPEAL") {
-    templateStatus = "pending";
-    return { ok: false as const, status: "pending" as const, error: "Meta is still approving the one-way WhatsApp template." };
+  const pending = rows.find((row) => {
+    const status = String(row.status || "").toUpperCase();
+    return status === "PENDING" || status === "IN_APPEAL";
+  });
+  if (pending) {
+    return { ok: false as const, status: "pending" as const, error: "Meta is still reviewing the WhatsApp template." };
   }
 
   const payload = {
@@ -124,15 +131,15 @@ export async function ensureWhatsAppTemplate() {
     created = await graphJson(config, `${config.wabaId}/message_templates`, payload);
   }
   if (created.ok) {
-    templateStatus = "pending";
     return { ok: false as const, status: "pending" as const, error: "One-way template submitted to Meta. Alerts go out after they approve it." };
   }
   const already = /already exists|duplicate/i.test(created.error);
   if (already) {
-    templateStatus = "pending";
+    const again = await listedTemplates(config);
+    const live = again.rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
+    if (live) return { ok: true as const, status: "approved" as const, language: live.language || config.templateLang };
     return { ok: false as const, status: "pending" as const, error: created.error };
   }
-  templateStatus = "missing";
   return { ok: false as const, status: "missing" as const, error: created.error || listed.error };
 }
 
@@ -146,27 +153,37 @@ async function sendWhatsAppSession(phone: string, text: string, config: NonNulla
 }
 
 async function sendWhatsAppTemplate(phone: string, text: string, config: NonNullable<ReturnType<typeof whatsappConfig>>) {
-  const ready = await ensureWhatsAppTemplate();
-  if (!ready.ok) return ready;
+  const { rows } = await listedTemplates(config);
+  const approved = rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
+  const langs = [...new Set([approved?.language, config.templateLang, "en_US", "en"].filter(Boolean) as string[])];
+  if (!approved && rows.some((row) => /PENDING|IN_APPEAL/i.test(String(row.status || "")))) {
+    return { ok: false as const, error: "Meta is still reviewing the WhatsApp template." };
+  }
   const { heading, detail } = templateParamsFromText(text);
-  return graphJson(config, `${config.phoneNumberId}/messages`, {
-    messaging_product: "whatsapp",
-    to: phone,
-    type: "template",
-    template: {
-      name: config.templateName,
-      language: { code: config.templateLang },
-      components: [
-        {
-          type: "body",
-          parameters: [
-            { type: "text", text: heading },
-            { type: "text", text: detail },
-          ],
-        },
-      ],
-    },
-  });
+  let last = { ok: false as boolean, error: "WhatsApp template did not send" };
+  for (const code of langs) {
+    const sent = await graphJson(config, `${config.phoneNumberId}/messages`, {
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "template",
+      template: {
+        name: config.templateName,
+        language: { code },
+        components: [
+          {
+            type: "body",
+            parameters: [
+              { type: "text", text: heading },
+              { type: "text", text: detail },
+            ],
+          },
+        ],
+      },
+    });
+    if (sent.ok) return sent;
+    last = sent;
+  }
+  return last;
 }
 
 export async function sendWhatsApp(to: string, text: string) {
