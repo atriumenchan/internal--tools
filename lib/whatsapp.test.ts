@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { normalizeWhatsAppPhone, notificationText, sanitizeTemplateParam, templateParamsFromText } from "./whatsapp";
+import {
+  normalizeWhatsAppPhone,
+  notificationText,
+  overdueTaskHref,
+  sanitizeTemplateParam,
+  templateParamsFromText,
+} from "./whatsapp";
 
 describe("normalizeWhatsAppPhone", () => {
   it("turns Indian mobiles into 91 plus ten digits", () => {
@@ -35,6 +41,12 @@ describe("notificationText", () => {
     });
     expect(text).toContain("https://workspace.admexo.us/spaces/1/tasks/2");
     expect(text).not.toContain("vercel.app");
+  });
+});
+
+describe("overdueTaskHref", () => {
+  it("points at the task page", () => {
+    expect(overdueTaskHref("space-1", "task-9")).toBe("/spaces/space-1/tasks/task-9");
   });
 });
 

@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isIgnoredEmployee } from "@/lib/admin";
+import { isOverdue, kolkataTodayKey } from "@/lib/datetime";
 
 const DEFAULT_PHONE_ID = "1269726706235216";
 const DEFAULT_WABA_ID = "1438727304857568";
@@ -277,6 +279,59 @@ export async function sendWhatsAppToUser(userId: string, text: string) {
   return sendWhatsApp(phone, text);
 }
 
+export function overdueTaskHref(spaceId: string, taskId: string) {
+  return `/spaces/${spaceId}/tasks/${taskId}`;
+}
+
+/** One in-app + WhatsApp alert per overdue task, until it is pinged. */
+export async function queueOverdueTaskNotices(limit = 25) {
+  const admin = createAdminClient();
+  const today = kolkataTodayKey();
+  const { data: tasks, error } = await admin
+    .from("tasks")
+    .select("id, space_id, title, assignee_id, created_by, due_date, status")
+    .not("assignee_id", "is", null);
+  if (error || !tasks?.length) return { queued: 0 };
+
+  const overdue = tasks.filter((task) => isOverdue(task.due_date, task.status, today) && task.assignee_id);
+  if (!overdue.length) return { queued: 0 };
+
+  const hrefs = overdue.map((task) => overdueTaskHref(task.space_id, task.id));
+  const { data: existing } = await admin.from("notifications").select("href").eq("type", "task_overdue").in("href", hrefs);
+  const already = new Set((existing ?? []).map((row) => row.href));
+
+  const assigneeIds = [...new Set(overdue.map((task) => String(task.assignee_id)))];
+  const { data: people } = await admin.from("profiles").select("id, full_name").in("id", assigneeIds);
+  const names = Object.fromEntries((people ?? []).map((row) => [row.id, row.full_name]));
+
+  const rows: {
+    user_id: string;
+    actor_id: string | null;
+    type: string;
+    title: string;
+    body: string;
+    href: string;
+  }[] = [];
+  for (const task of overdue) {
+    const href = overdueTaskHref(task.space_id, task.id);
+    if (already.has(href)) continue;
+    if (isIgnoredEmployee(null, names[String(task.assignee_id)])) continue;
+    rows.push({
+      user_id: String(task.assignee_id),
+      actor_id: task.created_by && task.created_by !== task.assignee_id ? String(task.created_by) : null,
+      type: "task_overdue",
+      title: "This task is overdue",
+      body: String(task.title || "Untitled").trim() || "Untitled",
+      href,
+    });
+    if (rows.length >= limit) break;
+  }
+  if (!rows.length) return { queued: 0 };
+  const { error: insertError } = await admin.from("notifications").insert(rows);
+  if (insertError) return { queued: 0 };
+  return { queued: rows.length };
+}
+
 /** After a live assignment ping, skip draining that same in-app row. */
 export async function markTaskAssignedWhatsAppSent(userId: string) {
   const admin = createAdminClient();
@@ -298,7 +353,10 @@ type PendingNote = {
 
 /** Sends new in-app alerts over WhatsApp, then marks them so they are not sent twice. */
 export async function drainWhatsAppNotifications(limit = 25) {
-  if (!whatsappConfig()) return { ok: false, sent: 0, error: "WhatsApp is not set on this deployment." };
+  const overdue = await queueOverdueTaskNotices(limit).catch(() => ({ queued: 0 }));
+  if (!whatsappConfig()) {
+    return { ok: false, sent: 0, queued: overdue.queued, error: "WhatsApp is not set on this deployment." };
+  }
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("notifications")
@@ -310,6 +368,7 @@ export async function drainWhatsAppNotifications(limit = 25) {
     return {
       ok: false,
       sent: 0,
+      queued: overdue.queued,
       error: error.message.includes("whatsapp_sent_at")
         ? "WhatsApp phones need a SQL patch. Paste supabase/whatsapp-phones.sql in the Supabase SQL editor."
         : error.message,
@@ -325,5 +384,5 @@ export async function drainWhatsAppNotifications(limit = 25) {
       if (result.ok) sent += 1;
     }
   }
-  return { ok: true, sent };
+  return { ok: true, sent, queued: overdue.queued };
 }
