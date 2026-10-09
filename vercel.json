@@ -3,5 +3,5 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "regions": ["bom1"],
-  "crons": [{ "path": "/api/whatsapp/drain", "schedule": "0 * * * *" }]
+  "crons": [{ "path": "/api/whatsapp/drain", "schedule": "0 3 * * *" }]
 }
