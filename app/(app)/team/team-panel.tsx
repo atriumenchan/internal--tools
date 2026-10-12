@@ -33,6 +33,24 @@ export function TeamPanel() {
   const [testBusy, setTestBusy] = useState(false);
   const [testResult, setTestResult] = useState<string | null>(null);
 
+  async function checkAccount() {
+    setTestBusy(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/whatsapp/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "account" }),
+      });
+      const json = (await res.json()) as { lines?: string[]; error?: string };
+      setTestResult((json.lines ?? [json.error || "No answer from Meta"]).join("\n"));
+    } catch (e) {
+      setTestResult(e instanceof Error ? e.message : "Check failed");
+    } finally {
+      setTestBusy(false);
+    }
+  }
+
   async function testOneNumber() {
     setTestBusy(true);
     setTestResult(null);
@@ -402,7 +420,10 @@ export function TeamPanel() {
           <Button type="submit" size="sm" variant="secondary" disabled={testBusy || !testPhone.trim()}>
             {testBusy ? "Testing…" : "Test this number"}
           </Button>
-          {testResult ? <p className="w-full font-mono text-[12px] text-muted">{testResult}</p> : null}
+          <Button type="button" size="sm" variant="secondary" disabled={testBusy} onClick={() => void checkAccount()}>
+            Check Meta account
+          </Button>
+          {testResult ? <p className="w-full whitespace-pre-line font-mono text-[12px] text-muted">{testResult}</p> : null}
         </form>
         {pingNote ? <p className="border-b border-border px-4 py-2 text-[12px] text-sage">{pingNote}</p> : null}
         {pingErr ? <p className="border-b border-border px-4 py-2 text-[12px] text-coral">{pingErr}</p> : null}

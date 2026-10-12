@@ -274,6 +274,67 @@ export async function inspectWhatsApp() {
   };
 }
 
+type HealthEntity = {
+  entity_type?: string;
+  id?: string;
+  can_send_message?: string;
+  errors?: { error_code?: number; error_description?: string; possible_solution?: string }[];
+};
+
+function healthLines(label: string, health: { can_send_message?: string; entities?: HealthEntity[] } | undefined) {
+  if (!health) return [`${label}: Meta gave no health report.`];
+  const lines = [`${label}: can send = ${health.can_send_message || "unknown"}`];
+  for (const entity of health.entities ?? []) {
+    for (const err of entity.errors ?? []) {
+      lines.push(
+        `${entity.entity_type || "item"} problem${err.error_code ? ` ${err.error_code}` : ""}: ${err.error_description || "no detail"}${
+          err.possible_solution ? ` Fix: ${err.possible_solution}` : ""
+        }`
+      );
+    }
+  }
+  return lines;
+}
+
+/** Asks Meta whether the number and account can send, and links the account to this app so delivery reports reach the webhook. */
+export async function checkWhatsAppAccount() {
+  const config = whatsappConfig();
+  if (!config) return { ok: false, lines: ["WHATSAPP_ACCESS_TOKEN is not set on Vercel Production."] };
+  const lines: string[] = [];
+
+  const phone = await graphJson(config, `${config.phoneNumberId}?fields=display_phone_number,verified_name,health_status`);
+  if (!phone.ok) lines.push(`Number check failed: ${phone.error}`);
+  else {
+    const info = phone.parsed as { display_phone_number?: string; verified_name?: string; health_status?: Parameters<typeof healthLines>[1] };
+    lines.push(...healthLines(`Number ${info.display_phone_number || config.phoneNumberId} (${info.verified_name || "no name"})`, info.health_status));
+  }
+
+  const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
+  for (const wabaId of ids) {
+    const account = await graphJson(config, `${wabaId}?fields=name,health_status`);
+    if (!account.ok) {
+      lines.push(`Account ${wabaId}: ${account.error}`);
+      continue;
+    }
+    const info = account.parsed as { name?: string; health_status?: Parameters<typeof healthLines>[1] };
+    lines.push(...healthLines(`Account ${info.name || wabaId}`, info.health_status));
+
+    const before = await graphJson(config, `${wabaId}/subscribed_apps`);
+    const linked = ((before.parsed.data as unknown[] | undefined) ?? []).length > 0;
+    if (linked) {
+      lines.push(`Account ${info.name || wabaId}: delivery reports already linked to the app.`);
+      continue;
+    }
+    const sub = await graphJson(config, `${wabaId}/subscribed_apps`, {});
+    lines.push(
+      sub.ok
+        ? `Account ${info.name || wabaId}: delivery reports were NOT linked. Linked them now.`
+        : `Account ${info.name || wabaId}: could not link delivery reports: ${sub.error}`
+    );
+  }
+  return { ok: true, lines };
+}
+
 function messageInfo(result: object) {
   const parsed = "parsed" in result ? (result.parsed as Record<string, unknown> | undefined) : undefined;
   const messages = parsed?.messages as { id?: string; message_status?: string }[] | undefined;

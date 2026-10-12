@@ -39,6 +39,7 @@ export async function POST(request: Request) {
   for (const entry of body?.entry ?? []) {
     for (const change of entry.changes ?? []) {
       for (const status of change.value?.statuses ?? []) {
+        console.log("[whatsapp] receipt", status.status, status.recipient_id ? `…${status.recipient_id.slice(-4)}` : "");
         if (status.status !== "failed") continue;
         const err = status.errors?.[0];
         const text = [err?.code, err?.title, err?.message, err?.error_data?.details].filter(Boolean).join(" — ");

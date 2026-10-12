@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { isAdminUser } from "@/lib/admin";
-import { inspectWhatsApp, normalizeWhatsAppPhone, sendWhatsApp } from "@/lib/whatsapp";
+import { checkWhatsAppAccount, inspectWhatsApp, normalizeWhatsAppPhone, sendWhatsApp } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,8 @@ async function adminOnly() {
 export async function POST(request: Request) {
   const denied = await adminOnly();
   if (denied) return denied;
-  const body = (await request.json().catch(() => null)) as { phone?: string } | null;
+  const body = (await request.json().catch(() => null)) as { phone?: string; action?: string } | null;
+  if (body?.action === "account") return NextResponse.json(await checkWhatsAppAccount());
   const phone = normalizeWhatsAppPhone(body?.phone);
   if (!phone) return NextResponse.json({ ok: false, error: "Enter a 10-digit mobile number." }, { status: 400 });
   const sent = await sendWhatsApp(phone, "ADMEXO Workspace test\nIf you can read this, WhatsApp pings reach this number.");
