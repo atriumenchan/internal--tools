@@ -319,6 +319,20 @@ export async function checkWhatsAppAccount() {
     const info = account.parsed as { name?: string; health_status?: Parameters<typeof healthLines>[1] };
     lines.push(...healthLines(`Account ${info.name || wabaId}`, info.health_status));
 
+    const owned = await graphJson(config, `${wabaId}/phone_numbers?fields=id,display_phone_number&limit=20`);
+    const numbers = ((owned.parsed.data as { id?: string; display_phone_number?: string }[] | undefined) ?? []);
+    const hasOurNumber = numbers.some((row) => row.id === config.phoneNumberId);
+    lines.push(
+      `Account ${info.name || wabaId}: ${hasOurNumber ? "OWNS the number this app sends from" : "does not own the sending number"}${
+        numbers.length ? ` (numbers: ${numbers.map((row) => row.display_phone_number || row.id).join(", ")})` : ""
+      }.`
+    );
+    const tpl = await graphJson(config, `${wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=status,language,category&limit=5`);
+    const tplRows = ((tpl.parsed.data as { status?: string; language?: string; category?: string }[] | undefined) ?? []);
+    lines.push(
+      `Account ${info.name || wabaId}: template ${tplRows.length ? tplRows.map((row) => `${row.status}/${row.language}/${row.category}`).join(", ") : "not found"}.`
+    );
+
     const before = await graphJson(config, `${wabaId}/subscribed_apps`);
     const linked = ((before.parsed.data as unknown[] | undefined) ?? []).length > 0;
     if (linked) {
