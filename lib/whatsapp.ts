@@ -245,6 +245,8 @@ export async function inspectWhatsApp() {
   return {
     ok: Boolean(approved),
     hasToken: true,
+    tokenLength: config.token.length,
+    phoneIsNumeric: /^\d{10,20}$/.test(config.phoneNumberId),
     phoneNumberId: config.phoneNumberId,
     wabaId: config.wabaId,
     templateName: config.templateName,

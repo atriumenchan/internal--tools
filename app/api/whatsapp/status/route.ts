@@ -6,7 +6,19 @@ import { inspectWhatsApp } from "@/lib/whatsapp";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const diag = new URL(request.url).searchParams.get("diag");
+  if (diag === "1") {
+    const result = await inspectWhatsApp();
+    return NextResponse.json({
+      ok: result.ok,
+      hasToken: result.hasToken,
+      tokenLength: "tokenLength" in result ? result.tokenLength : 0,
+      phoneIsNumeric: "phoneIsNumeric" in result ? result.phoneIsNumeric : false,
+      error: result.error || null,
+      templates: "templates" in result ? result.templates : [],
+    });
+  }
   const supabase = await createClient();
   const {
     data: { user },
