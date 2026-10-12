@@ -66,9 +66,9 @@ export function whatsappTaskText(input: { title: string; byName?: string | null;
   return lines.join("\n");
 }
 
-/** Inbox pings (chat, tasks, comments, mentions, announcements) all go to WhatsApp. */
-export function shouldSendWhatsAppNotification(_type?: string | null) {
-  return true;
+/** Inbox pings (chat, tasks, comments, mentions, announcements) go to WhatsApp; delivery failures stay in-app. */
+export function shouldSendWhatsAppNotification(type?: string | null) {
+  return type !== "whatsapp_delivery";
 }
 
 export function notificationText(input: { title?: string | null; body?: string | null; href?: string | null; origin?: string }) {
@@ -274,9 +274,10 @@ export async function inspectWhatsApp() {
   };
 }
 
-function messageStatus(parsed: Record<string, unknown>) {
-  const messages = parsed.messages as { message_status?: string }[] | undefined;
-  return messages?.[0]?.message_status || "accepted";
+function messageInfo(result: object) {
+  const parsed = "parsed" in result ? (result.parsed as Record<string, unknown> | undefined) : undefined;
+  const messages = parsed?.messages as { id?: string; message_status?: string }[] | undefined;
+  return { status: messages?.[0]?.message_status || "accepted", messageId: messages?.[0]?.id || "" };
 }
 
 export async function sendWhatsApp(to: string, text: string) {
@@ -295,12 +296,11 @@ export async function sendWhatsApp(to: string, text: string) {
 
   const templated = await sendWhatsAppTemplate(phone, message, config);
   if (templated.ok) {
-    const status = messageStatus(templated.parsed);
-    return { ok: true as const, skipped: false as const, via: "template" as const, status };
+    return { ok: true as const, skipped: false as const, via: "template" as const, ...messageInfo(templated) };
   }
 
   const session = await sendWhatsAppSession(phone, message, config);
-  if (session.ok) return { ok: true as const, skipped: false as const, via: "session" as const };
+  if (session.ok) return { ok: true as const, skipped: false as const, via: "session" as const, ...messageInfo(session) };
 
   const error = templated.error || session.error || "WhatsApp did not send";
   return { ok: false as const, skipped: false as const, error };

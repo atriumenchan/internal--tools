@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isAdminUser } from "@/lib/admin";
 import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
@@ -50,18 +51,22 @@ export async function POST(request: Request) {
   if (failed.length) {
     try {
       const admin = createAdminClient();
-      const { data: people } = await admin.from("profiles").select("id, whatsapp_phone");
-      const rows = [];
+      const { data: people } = await admin.from("profiles").select("id, full_name, email, role, whatsapp_phone");
+      const admins = (people ?? []).filter((row) => isAdminUser({ email: row.email, role: row.role }));
+      const rows: { user_id: string; type: string; title: string; body: string; href: string }[] = [];
       for (const item of failed) {
         const person = (people ?? []).find((row) => normalizeWhatsAppPhone(row.whatsapp_phone) === item.phone);
-        if (!person) continue;
-        rows.push({
-          user_id: person.id,
-          type: "whatsapp_delivery",
-          title: "WhatsApp did not deliver",
-          body: item.text.slice(0, 280),
-          href: "/team",
-        });
+        const who = person?.full_name || `…${item.phone.slice(-4)}`;
+        const targets = new Set([...(person ? [person.id] : []), ...admins.map((row) => row.id)]);
+        for (const userId of targets) {
+          rows.push({
+            user_id: userId,
+            type: "whatsapp_delivery",
+            title: `WhatsApp did not deliver to ${who}`,
+            body: item.text.slice(0, 280),
+            href: "/team",
+          });
+        }
       }
       if (rows.length) await admin.from("notifications").insert(rows);
     } catch (e) {

@@ -29,6 +29,38 @@ export function TeamPanel() {
   const [waStatus, setWaStatus] = useState<string | null>(null);
   const [pingNote, setPingNote] = useState<string | null>(null);
   const [pingErr, setPingErr] = useState<string | null>(null);
+  const [testPhone, setTestPhone] = useState("");
+  const [testBusy, setTestBusy] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+
+  async function testOneNumber() {
+    setTestBusy(true);
+    setTestResult(null);
+    try {
+      const res = await fetch("/api/whatsapp/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: testPhone }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        to?: string;
+        via?: string | null;
+        status?: string | null;
+        messageId?: string | null;
+        error?: string | null;
+      };
+      setTestResult(
+        json.ok
+          ? `Meta accepted it for ${json.to} (${json.via}, ${json.status}). Check that phone now. If nothing arrives in a minute, Alerts will show why.`
+          : `Meta refused it: ${json.error || "no reason given"}`
+      );
+    } catch (e) {
+      setTestResult(e instanceof Error ? e.message : "Test failed");
+    } finally {
+      setTestBusy(false);
+    }
+  }
 
   useEffect(() => {
     void fetch("/api/whatsapp/status")
@@ -354,6 +386,24 @@ export function TeamPanel() {
           </Button>
         </div>
         {waStatus ? <p className="border-b border-border px-4 py-2 text-[12px] text-muted">{waStatus}</p> : null}
+        <form
+          className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-2.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void testOneNumber();
+          }}
+        >
+          <Input
+            value={testPhone}
+            onChange={(e) => setTestPhone(e.target.value)}
+            placeholder="Mobile number to test"
+            className="max-w-[16rem] py-1.5 text-[13px]"
+          />
+          <Button type="submit" size="sm" variant="secondary" disabled={testBusy || !testPhone.trim()}>
+            {testBusy ? "Testing…" : "Test this number"}
+          </Button>
+          {testResult ? <p className="w-full font-mono text-[12px] text-muted">{testResult}</p> : null}
+        </form>
         {pingNote ? <p className="border-b border-border px-4 py-2 text-[12px] text-sage">{pingNote}</p> : null}
         {pingErr ? <p className="border-b border-border px-4 py-2 text-[12px] text-coral">{pingErr}</p> : null}
         {loading ? (

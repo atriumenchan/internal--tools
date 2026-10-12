@@ -55,6 +55,10 @@ describe("shouldSendWhatsAppNotification", () => {
     expect(shouldSendWhatsAppNotification("task_comment")).toBe(true);
     expect(shouldSendWhatsAppNotification("announcement")).toBe(true);
   });
+
+  it("keeps delivery-failure alerts in the app", () => {
+    expect(shouldSendWhatsAppNotification("whatsapp_delivery")).toBe(false);
+  });
 });
 
 describe("whatsappTaskText", () => {
