@@ -5,7 +5,6 @@ import { isAdminUser } from "@/lib/admin";
 import { appOrigin, normalizeTelegramId, sendTelegram, taskAssignedText } from "@/lib/telegram";
 import { displayName } from "@/lib/spaces";
 import {
-  drainWhatsAppNotifications,
   ensureWhatsAppTemplate,
   markTaskAssignedWhatsAppSent,
   normalizeWhatsAppPhone,
@@ -164,8 +163,7 @@ export async function POST(request: Request) {
       await markTaskAssignedWhatsAppSent(String(task.assignee_id)).catch(() => {});
     }
     const group = await sendTelegram(text);
-    const drained = await drainWhatsAppNotifications().catch(() => ({ ok: false, sent: 0 }));
-    return NextResponse.json({ ok: dm.ok || wa.ok || group.ok || Boolean(drained.sent), dm, whatsapp: wa, group, drained });
+    return NextResponse.json({ ok: dm.ok || wa.ok || group.ok, dm, whatsapp: wa, group });
   }
 
   if (!body || body.kind !== "task_assigned" || !body.title?.trim() || !body.assigneeName?.trim()) {
@@ -205,6 +203,5 @@ export async function POST(request: Request) {
     await markTaskAssignedWhatsAppSent(body.assigneeId).catch(() => {});
   }
   const group = await sendTelegram(text);
-  const drained = await drainWhatsAppNotifications().catch(() => ({ ok: false, sent: 0 }));
-  return NextResponse.json({ ok: dm.ok || group.ok || wa.ok || Boolean(drained.sent), dm, group, whatsapp: wa, drained });
+  return NextResponse.json({ ok: dm.ok || group.ok || wa.ok, dm, group, whatsapp: wa });
 }

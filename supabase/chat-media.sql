@@ -75,3 +75,16 @@ as $$
 $$;
 
 grant execute on function public.chat_inbox() to authenticated;
+
+drop policy if exists "members insert messages" on public.messages;
+create policy "members insert messages"
+  on public.messages for insert to authenticated
+  with check (
+    public.has_signed_handbook()
+    and author_id = auth.uid()
+    and public.is_conversation_member(conversation_id)
+    and (
+      length(trim(coalesce(body, ''))) > 0
+      or coalesce(file_path, '') <> ''
+    )
+  );

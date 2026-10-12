@@ -318,7 +318,7 @@ export default function TaskPage() {
     }
     setComments((prev) => (prev.some((c) => c.id === (data as TaskComment).id) ? prev : [...prev, data as TaskComment]));
     setBody("");
-    pingWhatsApp();
+    void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
   }
 
   function deleteBlocked(message: string, kind: string) {

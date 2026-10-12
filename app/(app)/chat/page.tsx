@@ -340,7 +340,7 @@ function ChatApp() {
     setMessages((prev) => (prev.some((m) => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage]));
     setBody("");
     setFile(null);
-    const drain = await pingWhatsApp();
+    const drain = await pingWhatsApp(`/chat?c=${selectedId}`);
     const bits = [drain.error, ...drain.errors].filter(Boolean);
     if (!drain.ok || (drain.sent === 0 && bits.length)) {
       setWaError(`WhatsApp did not send. ${bits.slice(0, 2).join(" · ")}`);

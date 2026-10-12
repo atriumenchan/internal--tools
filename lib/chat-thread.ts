@@ -34,7 +34,7 @@ export function chatSendError(
       : [err?.message, err?.details, err?.hint, err?.code ? `code ${err.code}` : ""];
   const raw = parts.filter(Boolean).join(" — ").replace(/\s+/g, " ").trim();
   const needsPatch =
-    /file_path|file_name|file_type|file_size|schema cache|could not find the .*column|column .*does not exist|bucket not found/i.test(
+    /file_path|file_name|file_type|file_size|schema cache|could not find the .*column|column .*does not exist|bucket not found|42501|row-level security/i.test(
       raw
     );
   const action =

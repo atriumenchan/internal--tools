@@ -102,24 +102,29 @@ async function graphJson(config: NonNullable<ReturnType<typeof whatsappConfig>>,
 }
 
 type TemplateRow = { name?: string; status?: string; language?: string; category?: string };
+type ListedTemplates = {
+  listed: { ok: boolean; parsed: Record<string, unknown>; error: string };
+  rows: TemplateRow[];
+};
+
+let templateListCache: { at: number; result: ListedTemplates } | null = null;
 
 async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappConfig>>) {
+  if (templateListCache && Date.now() - templateListCache.at < 120_000) return templateListCache.result;
   const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
   let listed = { ok: false as boolean, parsed: {} as Record<string, unknown>, error: "" };
+  let rows: TemplateRow[] = [];
   for (const wabaId of ids) {
     listed = await graphJson(
       config,
       `${wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category&limit=10`
     );
-    const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter(
-      (row) => row.name === config.templateName
-    );
-    if (rows.length) return { listed, rows };
+    rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter((row) => row.name === config.templateName);
+    if (rows.length) break;
   }
-  const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter(
-    (row) => row.name === config.templateName
-  );
-  return { listed, rows };
+  const result = { listed, rows };
+  templateListCache = { at: Date.now(), result };
+  return result;
 }
 
 export async function ensureWhatsAppTemplate() {
@@ -185,11 +190,11 @@ async function sendWhatsAppSession(phone: string, text: string, config: NonNulla
 async function sendWhatsAppTemplate(phone: string, text: string, config: NonNullable<ReturnType<typeof whatsappConfig>>) {
   const { rows } = await listedTemplates(config);
   const approved = rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
-  const langs = [...new Set([approved?.language, config.templateLang, "en", "en_US"].filter(Boolean) as string[])];
   if (!approved && rows.some((row) => /PENDING|IN_APPEAL/i.test(String(row.status || "")))) {
     return { ok: false as const, error: "Meta is still reviewing the WhatsApp template." };
   }
   const { heading, detail } = templateParamsFromText(text);
+  const langs = [...new Set([approved?.language, "en", config.templateLang, "en_US"].filter(Boolean) as string[])];
   const bodies = [
     [
       { type: "text", text: heading },
@@ -201,7 +206,7 @@ async function sendWhatsAppTemplate(phone: string, text: string, config: NonNull
     ],
   ];
   let last = { ok: false as boolean, error: "WhatsApp template did not send" };
-  for (const code of langs) {
+  for (const code of langs.slice(0, 2)) {
     for (const parameters of bodies) {
       const sent = await graphJson(config, `${config.phoneNumberId}/messages`, {
         messaging_product: "whatsapp",
@@ -372,19 +377,24 @@ type PendingNote = {
   href: string | null;
 };
 
-/** Sends leftover in-app pings over WhatsApp, newest first so a stuck old row cannot block chat. */
-export async function drainWhatsAppNotifications(limit = 40) {
-  const overdue = await queueOverdueTaskNotices(limit).catch(() => ({ queued: 0 }));
+/** Sends leftover in-app pings over WhatsApp. Cron can queue overdue; chat passes href to send that ping now. */
+export async function drainWhatsAppNotifications(options?: { limit?: number; overdue?: boolean; href?: string | null }) {
+  const href = options?.href?.trim() || "";
+  const limit = options?.limit ?? (href ? 20 : 8);
+  const overdue = options?.overdue ? await queueOverdueTaskNotices(limit).catch(() => ({ queued: 0 })) : { queued: 0 };
   if (!whatsappConfig()) {
     return { ok: false, sent: 0, queued: overdue.queued, errors: [] as string[], error: "WhatsApp is not set on this deployment." };
   }
   const admin = createAdminClient();
-  const { data, error } = await admin
+  let query = admin
     .from("notifications")
     .select("id, user_id, type, title, body, href")
-    .is("whatsapp_sent_at", null)
     .order("created_at", { ascending: false })
     .limit(limit);
+  query = href
+    ? query.eq("href", href).gte("created_at", new Date(Date.now() - 3 * 60_000).toISOString())
+    : query.is("whatsapp_sent_at", null);
+  const { data, error } = await query;
   if (error) {
     return {
       ok: false,
@@ -397,21 +407,25 @@ export async function drainWhatsAppNotifications(limit = 40) {
     };
   }
 
+  const seen = new Set<string>();
   let sent = 0;
   const errors: string[] = [];
   for (const row of (data ?? []) as PendingNote[]) {
     if (!shouldSendWhatsAppNotification(row.type)) continue;
+    if (seen.has(row.user_id)) continue;
+    seen.add(row.user_id);
     const text = notificationText(row);
     const result = await sendWhatsAppToUser(row.user_id, text);
-    if (result.ok || result.skipped) {
+    const noPhone = /no WhatsApp number/i.test(result.error || "");
+    if (result.ok || (result.skipped && noPhone)) {
       await admin.from("notifications").update({ whatsapp_sent_at: new Date().toISOString() }).eq("id", row.id);
       if (result.ok) sent += 1;
       else if (result.error) errors.push(result.error);
-    } else {
-      const detail = result.error || "WhatsApp did not send";
-      console.error("[whatsapp] send failed", row.id, row.type, detail);
-      errors.push(detail);
+      continue;
     }
+    const detail = result.error || "WhatsApp did not send";
+    console.error("[whatsapp] send failed", row.type, detail);
+    errors.push(detail);
   }
   return { ok: true, sent, queued: overdue.queued, errors };
 }

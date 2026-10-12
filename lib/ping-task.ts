@@ -1,7 +1,11 @@
 /** Pushes leftover in-app pings to WhatsApp and returns what happened. */
-export async function pingWhatsApp() {
+export async function pingWhatsApp(href?: string) {
   try {
-    const res = await fetch("/api/whatsapp/drain", { method: "POST" });
+    const res = await fetch("/api/whatsapp/drain", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(href ? { href } : {}),
+    });
     const json = (await res.json().catch(() => ({}))) as {
       ok?: boolean;
       sent?: number;

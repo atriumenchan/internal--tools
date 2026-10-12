@@ -12,13 +12,14 @@ function cronAuthorized(request: Request) {
   return header === `Bearer ${secret}`;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
-  const result = await drainWhatsAppNotifications();
+  const body = (await request.json().catch(() => null)) as { href?: string } | null;
+  const result = await drainWhatsAppNotifications({ href: body?.href || null, overdue: false });
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }
 
@@ -30,6 +31,6 @@ export async function GET(request: Request) {
     } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Sign in required" }, { status: 401 });
   }
-  const result = await drainWhatsAppNotifications();
+  const result = await drainWhatsAppNotifications({ overdue: true, limit: 20 });
   return NextResponse.json(result, { status: result.ok ? 200 : 400 });
 }

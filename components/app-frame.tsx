@@ -176,11 +176,6 @@ export function AppFrame({ children }: { children: ReactNode }) {
     }
   }, [state, router, pathname]);
 
-  useEffect(() => {
-    if (!state?.handbookAcknowledged) return;
-    void fetch("/api/whatsapp/drain", { method: "POST" }).catch(() => {});
-  }, [state?.handbookAcknowledged]);
-
   async function refreshStaff() {
     if (!state || !isAdminUser(state.profile)) return;
     const bundle = await loadStaffBundle();
