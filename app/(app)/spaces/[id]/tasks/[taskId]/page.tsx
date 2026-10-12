@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { FileDrop } from "@/components/file-drop";
+import { StoredFilePreview } from "@/components/chat-media";
+import { fileFromClipboard } from "@/lib/chat-thread";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { MentionBody, MentionField } from "@/components/mention-field";
 import { PageFallback } from "@/components/app-nav";
@@ -295,20 +296,6 @@ export default function TaskPage() {
     }
   }
 
-  async function openFile(file: TaskFile) {
-    if (file.storage === "r2") {
-      window.open(`/api/task-files?id=${file.id}`, "_blank");
-      return;
-    }
-    const supabase = createClient();
-    const { data, error: err } = await supabase.storage.from("task-files").createSignedUrl(file.path, 120);
-    if (err || !data?.signedUrl) {
-      setError(err?.message || "Could not open file.");
-      return;
-    }
-    window.open(data.signedUrl, "_blank");
-  }
-
   async function addComment(e: React.FormEvent) {
     e.preventDefault();
     if (!task || !body.trim()) return;
@@ -511,22 +498,15 @@ export default function TaskPage() {
             {canMove ? (
               <FileDrop
                 onFile={(file) => void uploadFile(file)}
-                label={uploading ? "Uploading…" : "Drop a file or click to upload"}
-                hint="Any file up to 50 MB."
+                label={uploading ? "Uploading…" : "Drop, paste, or click to upload"}
+                hint="Photos, PDFs, and other files up to 50 MB. Ctrl+V to paste a screenshot."
               />
             ) : null}
             {files.length > 0 ? (
               <ul className={canMove ? "mt-3 space-y-2" : "space-y-2"}>
                 {files.map((file) => (
                   <li key={file.id} className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-sm transition duration-200 hover:border-border-strong"
-                      onClick={() => void openFile(file)}
-                    >
-                      <FileText size={18} weight="light" className="shrink-0 text-teal" />
-                      <span className="min-w-0 truncate">{file.file_name}</span>
-                    </button>
+                    <StoredFilePreview href={`/api/task-files?id=${file.id}`} name={file.file_name} />
                     {app && (file.uploaded_by === app.userId || !locked) ? (
                       <ConfirmDelete
                         label="Delete file"
@@ -587,8 +567,14 @@ export default function TaskPage() {
                   onChange={setBody}
                   people={Object.values(profiles)}
                   rows={1}
-                  placeholder="Write a comment — type @ to mention someone or @everyone"
+                  placeholder="Write a comment — type @ to mention, or paste a photo"
                   required
+                  onPaste={(e) => {
+                    const pasted = fileFromClipboard(e.clipboardData);
+                    if (!pasted || !canMove) return;
+                    e.preventDefault();
+                    void uploadFile(pasted);
+                  }}
                 />
                 <div className="flex justify-end">
                   <Button type="submit" disabled={busy}>

@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
+import { fileFromClipboard } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 
 export function FileDrop({
   onFile,
   hint = "Optional. Up to 8 MB each.",
   accept,
-  label = "Drop a file or click to upload",
+  label = "Drop, paste, or click to upload",
 }: {
   onFile: (file: File) => void;
   hint?: string;
@@ -21,8 +22,22 @@ export function FileDrop({
     if (file) onFile(file);
   }
 
+  useEffect(() => {
+    function onPaste(e: ClipboardEvent) {
+      const file = fileFromClipboard(e.clipboardData);
+      if (!file) return;
+      const target = e.target as HTMLElement | null;
+      if (target?.closest("textarea, input:not([type=file])")) return;
+      e.preventDefault();
+      take(file);
+    }
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [onFile]);
+
   return (
     <label
+      tabIndex={0}
       className={cn(
         "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-5 text-center transition duration-200",
         over ? "border-amber bg-amber-dim" : "border-border bg-surface hover:border-border-strong"

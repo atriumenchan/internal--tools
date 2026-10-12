@@ -36,13 +36,15 @@ export function TeamPanel() {
         const json = (await res.json()) as {
           hasToken?: boolean;
           error?: string;
-          templates?: { status?: string; language?: string }[];
+          templates?: { status?: string; language?: string; category?: string }[];
         };
         if (!json.hasToken) {
           setWaStatus(json.error || "WhatsApp token is missing on Vercel.");
           return;
         }
-        const langs = (json.templates ?? []).map((row) => `${row.status || "?"} ${row.language || ""}`.trim());
+        const langs = (json.templates ?? []).map((row) =>
+          `${row.status || "?"} ${row.language || ""} ${row.category || ""}`.replace(/\s+/g, " ").trim()
+        );
         setWaStatus(
           json.error
             ? json.error

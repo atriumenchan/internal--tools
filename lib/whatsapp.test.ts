@@ -3,6 +3,7 @@ import {
   normalizeWhatsAppPhone,
   notificationText,
   overdueTaskHref,
+  shouldSendWhatsAppNotification,
   sanitizeTemplateParam,
   stripWhatsAppLinks,
   templateParamsFromText,
@@ -33,6 +34,26 @@ describe("notificationText", () => {
     expect(text).toContain("New task");
     expect(text).toContain("Close the books");
     expect(text).not.toContain("http");
+  });
+
+  it("keeps chat pings as who messaged you plus the text", () => {
+    expect(
+      notificationText({
+        title: "Ryan Ritabrata messaged you",
+        body: "Come to my cabin",
+        href: "/chat?c=1",
+      })
+    ).toBe("Ryan Ritabrata messaged you\nCome to my cabin");
+  });
+});
+
+describe("shouldSendWhatsAppNotification", () => {
+  it("sends every in-app ping, including chat and comments", () => {
+    expect(shouldSendWhatsAppNotification("task_assigned")).toBe(true);
+    expect(shouldSendWhatsAppNotification("task_overdue")).toBe(true);
+    expect(shouldSendWhatsAppNotification("message")).toBe(true);
+    expect(shouldSendWhatsAppNotification("task_comment")).toBe(true);
+    expect(shouldSendWhatsAppNotification("announcement")).toBe(true);
   });
 });
 

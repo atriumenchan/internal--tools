@@ -8,6 +8,45 @@ export function isChatImage(type?: string | null, name?: string | null) {
   return /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(name || "");
 }
 
+export function isPdfFile(type?: string | null, name?: string | null) {
+  return (type || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(name || "");
+}
+
+export function fileFromClipboard(clipboard: DataTransfer | null | undefined) {
+  if (!clipboard) return null;
+  for (const item of clipboard.items) {
+    if (item.kind !== "file") continue;
+    const file = item.getAsFile();
+    if (file) return file;
+  }
+  return clipboard.files?.[0] || null;
+}
+
+type ChatSendStep = "plan" | "upload" | "save";
+
+export function chatSendError(
+  step: ChatSendStep,
+  err?: { message?: string; code?: string; details?: string; hint?: string } | string | null
+) {
+  const parts =
+    typeof err === "string"
+      ? [err]
+      : [err?.message, err?.details, err?.hint, err?.code ? `code ${err.code}` : ""];
+  const raw = parts.filter(Boolean).join(" — ").replace(/\s+/g, " ").trim();
+  const needsPatch =
+    /file_path|file_name|file_type|file_size|schema cache|could not find the .*column|column .*does not exist|bucket not found/i.test(
+      raw
+    );
+  const action =
+    step === "plan"
+      ? "Could not start the photo upload."
+      : step === "upload"
+        ? "Could not upload the photo."
+        : "The photo uploaded, but the message did not save.";
+  const fix = needsPatch ? " Paste supabase/chat-media.sql in the Supabase SQL editor, then try again." : "";
+  return raw ? `${action}${fix} Error: ${raw}` : `${action}${fix}`.trim();
+}
+
 export function chatPreview(message: { body?: string | null; file_name?: string | null; file_type?: string | null } | null) {
   const body = (message?.body || "").trim();
   if (body) return body;

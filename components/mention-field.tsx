@@ -1,6 +1,15 @@
 "use client";
 
-import { useMemo, useRef, useState, type ChangeEvent, type KeyboardEvent, type KeyboardEventHandler, type MouseEvent } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ClipboardEventHandler,
+  type KeyboardEvent,
+  type KeyboardEventHandler,
+  type MouseEvent,
+} from "react";
 import { Textarea } from "@/components/ui";
 import { displayName } from "@/lib/spaces";
 import { applyMention, isEveryone, mentionMatches, mentionQueryAt, splitMentions, type MentionPerson } from "@/lib/mentions";
@@ -31,6 +40,7 @@ export function MentionField({
   rows = 1,
   required,
   onKeyDown,
+  onPaste,
   className,
   plain,
 }: {
@@ -41,6 +51,7 @@ export function MentionField({
   rows?: number;
   required?: boolean;
   onKeyDown?: KeyboardEventHandler<HTMLTextAreaElement>;
+  onPaste?: ClipboardEventHandler<HTMLTextAreaElement>;
   className?: string;
   plain?: boolean;
 }) {
@@ -83,6 +94,7 @@ export function MentionField({
     },
     onKeyUp: (e: KeyboardEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart ?? 0),
     onClick: (e: MouseEvent<HTMLTextAreaElement>) => setCaret(e.currentTarget.selectionStart ?? 0),
+    onPaste,
     className,
   };
 

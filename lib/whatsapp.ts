@@ -7,7 +7,7 @@ const DEFAULT_PHONE_ID = "1269726706235216";
 const DEFAULT_WABA_ID = "1438727304857568";
 const FALLBACK_WABA_IDS = ["1438727304857568", "4130948003709192"];
 const DEFAULT_TEMPLATE = "admexo_workspace_alert";
-const DEFAULT_TEMPLATE_LANG = "en_US";
+const DEFAULT_TEMPLATE_LANG = "en";
 
 export function whatsappConfig() {
   const token = (process.env.WHATSAPP_ACCESS_TOKEN || "").trim();
@@ -66,6 +66,11 @@ export function whatsappTaskText(input: { title: string; byName?: string | null;
   return lines.join("\n");
 }
 
+/** Inbox pings (chat, tasks, comments, mentions, announcements) all go to WhatsApp. */
+export function shouldSendWhatsAppNotification(_type?: string | null) {
+  return true;
+}
+
 export function notificationText(input: { title?: string | null; body?: string | null; href?: string | null; origin?: string }) {
   const lines = [String(input.title || "").trim() || "ADMEXO"].filter(Boolean);
   const body = String(input.body || "").trim();
@@ -96,7 +101,7 @@ async function graphJson(config: NonNullable<ReturnType<typeof whatsappConfig>>,
   return { ok: res.ok, parsed, error: detail };
 }
 
-type TemplateRow = { name?: string; status?: string; language?: string };
+type TemplateRow = { name?: string; status?: string; language?: string; category?: string };
 
 async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappConfig>>) {
   const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
@@ -180,7 +185,7 @@ async function sendWhatsAppSession(phone: string, text: string, config: NonNulla
 async function sendWhatsAppTemplate(phone: string, text: string, config: NonNullable<ReturnType<typeof whatsappConfig>>) {
   const { rows } = await listedTemplates(config);
   const approved = rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
-  const langs = [...new Set([approved?.language, config.templateLang, "en_US", "en"].filter(Boolean) as string[])];
+  const langs = [...new Set([approved?.language, config.templateLang, "en", "en_US"].filter(Boolean) as string[])];
   if (!approved && rows.some((row) => /PENDING|IN_APPEAL/i.test(String(row.status || "")))) {
     return { ok: false as const, error: "Meta is still reviewing the WhatsApp template." };
   }
@@ -229,6 +234,7 @@ export async function inspectWhatsApp() {
     name: row.name || config.templateName,
     status: row.status || "unknown",
     language: row.language || "",
+    category: row.category || "",
   }));
   const approved = templates.find((row) => row.status.toUpperCase() === "APPROVED");
   return {
@@ -360,29 +366,31 @@ export async function markTaskAssignedWhatsAppSent(userId: string) {
 type PendingNote = {
   id: string;
   user_id: string;
+  type?: string | null;
   title: string;
   body: string | null;
   href: string | null;
 };
 
-/** Sends new in-app alerts over WhatsApp, then marks them so they are not sent twice. */
-export async function drainWhatsAppNotifications(limit = 25) {
+/** Sends leftover in-app pings over WhatsApp, newest first so a stuck old row cannot block chat. */
+export async function drainWhatsAppNotifications(limit = 40) {
   const overdue = await queueOverdueTaskNotices(limit).catch(() => ({ queued: 0 }));
   if (!whatsappConfig()) {
-    return { ok: false, sent: 0, queued: overdue.queued, error: "WhatsApp is not set on this deployment." };
+    return { ok: false, sent: 0, queued: overdue.queued, errors: [] as string[], error: "WhatsApp is not set on this deployment." };
   }
   const admin = createAdminClient();
   const { data, error } = await admin
     .from("notifications")
-    .select("id, user_id, title, body, href")
+    .select("id, user_id, type, title, body, href")
     .is("whatsapp_sent_at", null)
-    .order("created_at", { ascending: true })
+    .order("created_at", { ascending: false })
     .limit(limit);
   if (error) {
     return {
       ok: false,
       sent: 0,
       queued: overdue.queued,
+      errors: [] as string[],
       error: error.message.includes("whatsapp_sent_at")
         ? "WhatsApp phones need a SQL patch. Paste supabase/whatsapp-phones.sql in the Supabase SQL editor."
         : error.message,
@@ -390,13 +398,20 @@ export async function drainWhatsAppNotifications(limit = 25) {
   }
 
   let sent = 0;
+  const errors: string[] = [];
   for (const row of (data ?? []) as PendingNote[]) {
+    if (!shouldSendWhatsAppNotification(row.type)) continue;
     const text = notificationText(row);
     const result = await sendWhatsAppToUser(row.user_id, text);
     if (result.ok || result.skipped) {
       await admin.from("notifications").update({ whatsapp_sent_at: new Date().toISOString() }).eq("id", row.id);
       if (result.ok) sent += 1;
+      else if (result.error) errors.push(result.error);
+    } else {
+      const detail = result.error || "WhatsApp did not send";
+      console.error("[whatsapp] send failed", row.id, row.type, detail);
+      errors.push(detail);
     }
   }
-  return { ok: true, sent, queued: overdue.queued };
+  return { ok: true, sent, queued: overdue.queued, errors };
 }

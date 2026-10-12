@@ -1,13 +1,16 @@
 "use client";
 
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { EmptyState, ErrorText, PageHeader } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { PageFallback } from "@/components/app-nav";
+import { Pager } from "@/components/pager";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { formatStamp } from "@/lib/datetime";
+import { paginate } from "@/lib/task-overview";
 import type { NotificationItem } from "@/lib/types";
 
 function deleteBlocked(message: string) {
@@ -16,17 +19,26 @@ function deleteBlocked(message: string) {
     : message;
 }
 
-export default function NotificationsPage() {
+function NotificationsPageInner() {
   const app = useAppState();
   const cache = useWorkspaceCache();
+  const router = useRouter();
+  const search = useSearchParams();
+  const pageParam = Math.max(1, Number(search.get("page") || 1) || 1);
   const [rows, setRows] = useState<NotificationItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const paged = useMemo(() => paginate(rows ?? [], pageParam), [rows, pageParam]);
 
   async function load() {
     const supabase = createClient();
-    const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false }).limit(80);
+    const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false });
     setRows((data ?? []) as NotificationItem[]);
   }
+
+  useEffect(() => {
+    if (!rows) return;
+    if (pageParam > paged.pages) setPage(paged.pages);
+  }, [rows, pageParam, paged.pages]);
 
   useEffect(() => {
     void load();
@@ -41,6 +53,13 @@ export default function NotificationsPage() {
       void supabase.removeChannel(channel);
     };
   }, []);
+
+  function setPage(next: number) {
+    const params = new URLSearchParams();
+    if (next > 1) params.set("page", String(next));
+    const query = params.toString();
+    router.replace(query ? `/notifications?${query}` : "/notifications");
+  }
 
   async function markAll() {
     const supabase = createClient();
@@ -71,6 +90,7 @@ export default function NotificationsPage() {
       return;
     }
     setRows([]);
+    setPage(1);
     await cache?.refreshBadges();
   }
 
@@ -113,42 +133,60 @@ export default function NotificationsPage() {
       {rows.length === 0 ? (
         <EmptyState>Nothing yet</EmptyState>
       ) : (
-        <ul className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
-          {rows.map((row) => (
-            <li
-              key={row.id}
-              className={
-                row.read_at
-                  ? "flex items-stretch border-b border-border last:border-0"
-                  : "flex items-stretch border-b border-border last:border-0 bg-teal-dim"
-              }
-            >
-              <Link
-                href={row.href || "/dashboard"}
-                onClick={() => void openRow(row)}
-                className="min-w-0 flex-1 px-4 py-3.5 transition duration-200 hover:bg-surface-2"
+        <section className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
+          <ul>
+            {paged.rows.map((row) => (
+              <li
+                key={row.id}
+                className={
+                  row.read_at
+                    ? "flex items-stretch border-b border-border last:border-0"
+                    : "flex items-stretch border-b border-border last:border-0 bg-teal-dim"
+                }
               >
-                <div className="flex items-start gap-3">
-                  {!row.read_at ? <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-coral" /> : <span className="mt-1.5 h-[7px] w-[7px] shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <p className={row.read_at ? "font-medium text-muted" : "font-semibold text-ink"}>{row.title}</p>
-                    {row.body ? <p className="mt-0.5 truncate text-sm text-muted">{row.body}</p> : null}
-                    <p className="mt-1 font-mono text-[12px] text-faint">{formatStamp(row.created_at)}</p>
+                <Link
+                  href={row.href || "/dashboard"}
+                  onClick={() => void openRow(row)}
+                  className="min-w-0 flex-1 px-4 py-3.5 transition duration-200 hover:bg-surface-2"
+                >
+                  <div className="flex items-start gap-3">
+                    {!row.read_at ? <span className="mt-1.5 h-[7px] w-[7px] shrink-0 rounded-full bg-coral" /> : <span className="mt-1.5 h-[7px] w-[7px] shrink-0" />}
+                    <div className="min-w-0 flex-1">
+                      <p className={row.read_at ? "font-medium text-muted" : "font-semibold text-ink"}>{row.title}</p>
+                      {row.body ? <p className="mt-0.5 truncate text-sm text-muted">{row.body}</p> : null}
+                      <p className="mt-1 font-mono text-[12px] text-faint">{formatStamp(row.created_at)}</p>
+                    </div>
                   </div>
+                </Link>
+                <div className="flex items-center pr-2">
+                  <ConfirmDelete
+                    label="Delete notification"
+                    title="Delete this notification?"
+                    description="It will be removed from your inbox."
+                    onConfirm={() => deleteRow(row.id)}
+                  />
                 </div>
-              </Link>
-              <div className="flex items-center pr-2">
-                <ConfirmDelete
-                  label="Delete notification"
-                  title="Delete this notification?"
-                  description="It will be removed from your inbox."
-                  onConfirm={() => deleteRow(row.id)}
-                />
-              </div>
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+          <Pager
+            page={paged.page}
+            pages={paged.pages}
+            start={paged.start}
+            end={paged.end}
+            total={rows.length}
+            onChange={setPage}
+          />
+        </section>
       )}
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense fallback={<PageFallback />}>
+      <NotificationsPageInner />
+    </Suspense>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chatPreview, clusterMessages, dayLabel, isChatImage } from "./chat-thread";
+import { chatPreview, chatSendError, clusterMessages, dayLabel, fileFromClipboard, isChatImage } from "./chat-thread";
 import type { ChatMessage } from "./types";
 
 function msg(partial: Partial<ChatMessage> & { id: string; created_at: string }): ChatMessage {
@@ -16,6 +16,32 @@ describe("isChatImage", () => {
     expect(isChatImage("image/jpeg", "shot.jpg")).toBe(true);
     expect(isChatImage("application/pdf", "notes.pdf")).toBe(false);
     expect(isChatImage("", "deck.png")).toBe(true);
+  });
+});
+
+describe("fileFromClipboard", () => {
+  it("returns null when the clipboard has no file", () => {
+    const data = { items: [], files: [] } as unknown as DataTransfer;
+    expect(fileFromClipboard(data)).toBe(null);
+  });
+});
+
+describe("chatSendError", () => {
+  it("keeps the real database error on screen", () => {
+    const text = chatSendError("save", {
+      message: "Could not find the 'file_path' column of 'messages' in the schema cache",
+      code: "PGRST204",
+    });
+    expect(text).toContain("Paste supabase/chat-media.sql");
+    expect(text).toContain("file_path");
+    expect(text).toContain("PGRST204");
+  });
+
+  it("does not blame SQL when the upload itself failed", () => {
+    const text = chatSendError("upload", "Failed to fetch");
+    expect(text).toContain("Could not upload the photo.");
+    expect(text).toContain("Failed to fetch");
+    expect(text).not.toContain("chat-media.sql");
   });
 });
 

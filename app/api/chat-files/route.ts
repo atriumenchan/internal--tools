@@ -46,7 +46,10 @@ export async function POST(request: Request) {
     .eq("conversation_id", conversationId)
     .eq("user_id", me.id)
     .maybeSingle();
-  if (!member) return NextResponse.json({ error: "Not in this chat." }, { status: 403 });
+  if (!member) {
+    console.error("[chat-files] not a member", { conversationId, userId: me.id });
+    return NextResponse.json({ error: "Not in this chat." }, { status: 403 });
+  }
 
   const config = r2Config();
   const limit = config ? R2_MAX : SUPABASE_MAX;
@@ -80,7 +83,10 @@ export async function GET(request: Request) {
     .eq("conversation_id", file.conversation_id)
     .eq("user_id", me.id)
     .maybeSingle();
-  if (!member) return NextResponse.json({ error: "Not in this chat." }, { status: 403 });
+  if (!member) {
+    console.error("[chat-files] open denied", { messageId: id, userId: me.id });
+    return NextResponse.json({ error: "Not in this chat." }, { status: 403 });
+  }
 
   if (file.storage === "r2") {
     const config = r2Config();

@@ -17,7 +17,7 @@ import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { isAdminUser } from "@/lib/admin";
 import { loadChatBootstrap } from "@/lib/chat-bootstrap";
-import { clusterMessages, dayLabel, inboxPreview } from "@/lib/chat-thread";
+import { chatSendError, clusterMessages, dayLabel, inboxPreview } from "@/lib/chat-thread";
 import { pingWhatsApp } from "@/lib/ping-task";
 import { formatClock } from "@/lib/datetime";
 import { displayName, missingSpacesSchema } from "@/lib/spaces";
@@ -95,6 +95,7 @@ function ChatApp() {
   const [memberships, setMemberships] = useState<ConversationMember[]>(cache?.chat?.memberships ?? []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(cache?.chatError ?? null);
+  const [waError, setWaError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [groupName, setGroupName] = useState("");
@@ -283,26 +284,28 @@ function ChatApp() {
       });
       const plan = (await res.json()) as { storage?: string; path?: string; url?: string; error?: string };
       if (!res.ok || !plan.path) {
+        const text = chatSendError("plan", plan.error || `HTTP ${res.status}`);
+        console.error("[chat] plan", text);
         setBusy(false);
-        setError(plan.error || "Could not start the upload.");
+        setError(text);
         return;
       }
       if (plan.storage === "r2") {
         const put = await fetch(plan.url as string, { method: "PUT", body: file });
         if (!put.ok) {
+          const text = chatSendError("upload", `Cloud storage HTTP ${put.status}`);
+          console.error("[chat] upload", text);
           setBusy(false);
-          setError("Could not reach cloud storage. Check the R2 keys on Vercel, then try again.");
+          setError(text);
           return;
         }
       } else {
         const { error: upErr } = await supabase.storage.from("chat-files").upload(plan.path, file);
         if (upErr) {
+          const text = chatSendError("upload", upErr);
+          console.error("[chat] upload", text, upErr);
           setBusy(false);
-          setError(
-            upErr.message.includes("Bucket not found") || upErr.message.includes("not found")
-              ? "Chat photos need a SQL patch. Paste supabase/chat-media.sql in the Supabase SQL editor."
-              : upErr.message
-          );
+          setError(text);
           return;
         }
       }
@@ -329,17 +332,21 @@ function ChatApp() {
           body: JSON.stringify({ path: attachment.file_path, storage: attachment.storage }),
         });
       }
-      setError(
-        err.message.includes("file_path") || err.message.includes("schema cache") || err.message.includes("column")
-          ? "Chat photos need a SQL patch. Paste supabase/chat-media.sql in the Supabase SQL editor."
-          : err.message
-      );
+      const text = chatSendError("save", err);
+      console.error("[chat] save", text, err);
+      setError(text);
       return;
     }
     setMessages((prev) => (prev.some((m) => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage]));
     setBody("");
     setFile(null);
-    pingWhatsApp();
+    const drain = await pingWhatsApp();
+    const bits = [drain.error, ...drain.errors].filter(Boolean);
+    if (!drain.ok || (drain.sent === 0 && bits.length)) {
+      setWaError(`WhatsApp did not send. ${bits.slice(0, 2).join(" · ")}`);
+    } else {
+      setWaError(null);
+    }
   }
 
   async function openDm(userId: string) {
@@ -586,9 +593,9 @@ function ChatApp() {
 
   const composerHint =
     selected?.type === "space"
-      ? "Message the board — @ to mention, or drop a photo"
+      ? "Message the board — @ to mention, or paste a photo"
       : selected?.type === "group"
-        ? "Message the group — @ to mention, or drop a photo"
+        ? "Message the group — @ to mention, or paste a photo"
         : `Message ${selected ? convoLabel(selected, memberships, profiles, myId || "") : ""}`;
 
   return (
@@ -860,12 +867,12 @@ function ChatApp() {
                             <span className="font-medium text-muted">{mine ? "You" : name}</span>
                             <span className="font-mono">{formatClock(cluster.messages[cluster.messages.length - 1].created_at)}</span>
                           </p>
-                          <div className={cn("space-y-1", mine ? "flex flex-col items-end" : "")}>
+                          <div className={cn("flex flex-col gap-1", mine ? "items-end" : "items-start")}>
                             {cluster.messages.map((message) => {
                               const canDelete = mine || admin;
                               const hasText = Boolean(message.body?.trim());
                               return (
-                                <div key={message.id} className={cn("group/msg inline-flex max-w-full items-end gap-1", mine ? "flex-row-reverse" : "")}>
+                                <div key={message.id} className={cn("group/msg flex max-w-full items-end gap-1", mine ? "flex-row-reverse" : "")}>
                                   <div
                                     className={cn(
                                       "max-w-full overflow-hidden rounded-md text-left text-sm",
@@ -900,6 +907,12 @@ function ChatApp() {
                 })}
                 <div ref={bottom} />
               </div>
+              {error || waError ? (
+                <div className="border-t border-border bg-page px-3 py-2">
+                  <ErrorText className="mb-0 whitespace-pre-wrap break-words">{error}</ErrorText>
+                  {waError ? <ErrorText className="mt-1 mb-0 whitespace-pre-wrap break-words">{waError}</ErrorText> : null}
+                </div>
+              ) : null}
               <ChatComposer
                 value={body}
                 onChange={setBody}

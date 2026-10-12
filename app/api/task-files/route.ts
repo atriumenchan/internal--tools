@@ -87,6 +87,13 @@ export async function GET(request: Request) {
   if (!file) return NextResponse.json({ error: "File not found" }, { status: 404 });
 
   const config = r2Config();
+  if (file.storage !== "r2") {
+    const { data, error } = await me.supabase.storage.from("task-files").createSignedUrl(file.path, 120);
+    if (error || !data?.signedUrl) {
+      return NextResponse.json({ error: error?.message || "Could not open file." }, { status: 400 });
+    }
+    return NextResponse.redirect(data.signedUrl, 302);
+  }
   if (!config) return NextResponse.json({ error: "Cloud storage is not set up on this deployment." }, { status: 500 });
 
   const url = presignR2(config, "GET", file.path, 120, {

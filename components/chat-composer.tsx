@@ -5,6 +5,7 @@ import { ImageSquare } from "@phosphor-icons/react/dist/ssr/ImageSquare";
 import { PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
 import { MentionField } from "@/components/mention-field";
 import { PendingPhoto } from "@/components/chat-media";
+import { fileFromClipboard } from "@/lib/chat-thread";
 import type { MentionPerson } from "@/lib/mentions";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +35,13 @@ export function ChatComposer({
     if (next) onFile(next);
   }
 
+  function takePaste(e: { clipboardData: DataTransfer | null; preventDefault: () => void }) {
+    const pasted = fileFromClipboard(e.clipboardData);
+    if (!pasted) return;
+    e.preventDefault();
+    take(pasted);
+  }
+
   return (
     <form
       onSubmit={(e) => {
@@ -48,14 +56,7 @@ export function ChatComposer({
         e.preventDefault();
         take(e.dataTransfer.files?.[0]);
       }}
-      onPaste={(e) => {
-        const item = [...e.clipboardData.items].find((entry) => entry.kind === "file");
-        const pasted = item?.getAsFile();
-        if (pasted) {
-          e.preventDefault();
-          take(pasted);
-        }
-      }}
+      onPaste={takePaste}
     >
       {file ? <PendingPhoto file={file} onClear={() => onFile(null)} /> : null}
       <div className="flex h-11 items-center gap-0.5 rounded-md border border-border bg-page px-0.5">
@@ -85,6 +86,7 @@ export function ChatComposer({
           rows={1}
           placeholder={placeholder}
           className="block h-10 border-0 px-2 py-0 text-[14px] leading-10"
+          onPaste={takePaste}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
               e.preventDefault();
