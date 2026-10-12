@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +26,47 @@ export async function GET(request: Request) {
   return NextResponse.json({ error: "Webhook verification failed" }, { status: 403 });
 }
 
-/** Meta posts incoming messages and delivery receipts here. Always 200 so retries stop. */
-export async function POST() {
+type WaError = { code?: number; title?: string; message?: string; error_data?: { details?: string } };
+type WaStatus = { status?: string; recipient_id?: string; errors?: WaError[] };
+
+/** Meta posts delivery receipts here. A failed receipt is the reason the phone stayed empty. */
+export async function POST(request: Request) {
+  const body = (await request.json().catch(() => null)) as {
+    entry?: { changes?: { value?: { statuses?: WaStatus[] } }[] }[];
+  } | null;
+  const failed: { phone: string; text: string }[] = [];
+  for (const entry of body?.entry ?? []) {
+    for (const change of entry.changes ?? []) {
+      for (const status of change.value?.statuses ?? []) {
+        if (status.status !== "failed") continue;
+        const err = status.errors?.[0];
+        const text = [err?.code, err?.title, err?.message, err?.error_data?.details].filter(Boolean).join(" — ");
+        const phone = normalizeWhatsAppPhone(status.recipient_id);
+        console.error("[whatsapp] not delivered", phone ? `…${phone.slice(-4)}` : "unknown", text);
+        if (phone && text) failed.push({ phone, text });
+      }
+    }
+  }
+  if (failed.length) {
+    try {
+      const admin = createAdminClient();
+      const { data: people } = await admin.from("profiles").select("id, whatsapp_phone");
+      const rows = [];
+      for (const item of failed) {
+        const person = (people ?? []).find((row) => normalizeWhatsAppPhone(row.whatsapp_phone) === item.phone);
+        if (!person) continue;
+        rows.push({
+          user_id: person.id,
+          type: "whatsapp_delivery",
+          title: "WhatsApp did not deliver",
+          body: item.text.slice(0, 280),
+          href: "/team",
+        });
+      }
+      if (rows.length) await admin.from("notifications").insert(rows);
+    } catch (e) {
+      console.error("[whatsapp] could not store delivery error", e instanceof Error ? e.message : e);
+    }
+  }
   return NextResponse.json({ ok: true });
 }

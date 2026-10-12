@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       });
     }
     const dms: { name: string; ok: boolean; skipped?: boolean; error?: string }[] = [];
-    const whatsapp: { name: string; ok: boolean; skipped?: boolean; error?: string }[] = [];
+    const whatsapp: { name: string; ok: boolean; skipped?: boolean; error?: string; status?: string }[] = [];
     for (const row of rows ?? []) {
       const name = String(row.full_name || row.id);
       const id = normalizeTelegramId((row as { telegram_id?: string | null }).telegram_id);
@@ -83,7 +83,14 @@ export async function POST(request: Request) {
       if (!phone) whatsapp.push({ name, ok: false, skipped: true });
       else {
         const sent = await sendWhatsApp(phone, text);
-        whatsapp.push({ name, ok: sent.ok, skipped: sent.skipped, error: "error" in sent ? sent.error : undefined });
+        const held = "status" in sent && sent.status === "held_for_quality_assessment";
+        whatsapp.push({
+          name,
+          ok: sent.ok,
+          skipped: sent.skipped,
+          error: "error" in sent ? sent.error : held ? "accepted, held by Meta — not on the phone yet" : undefined,
+          status: "status" in sent ? sent.status : undefined,
+        });
       }
     }
     return NextResponse.json({

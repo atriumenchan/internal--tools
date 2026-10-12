@@ -36,20 +36,26 @@ export function TeamPanel() {
         const json = (await res.json()) as {
           hasToken?: boolean;
           error?: string;
-          templates?: { status?: string; language?: string; category?: string }[];
+          templates?: { status?: string; language?: string; category?: string; quality?: string }[];
+          phoneQuality?: string;
+          phoneLimit?: string;
+          phoneMode?: string;
         };
         if (!json.hasToken) {
           setWaStatus(json.error || "WhatsApp token is missing on Vercel.");
           return;
         }
         const langs = (json.templates ?? []).map((row) =>
-          `${row.status || "?"} ${row.language || ""} ${row.category || ""}`.replace(/\s+/g, " ").trim()
+          `${row.status || "?"} ${row.language || ""} ${row.category || ""} ${row.quality || ""}`.replace(/\s+/g, " ").trim()
         );
+        const phoneNote = [json.phoneQuality && `number quality ${json.phoneQuality}`, json.phoneLimit, json.phoneMode]
+          .filter(Boolean)
+          .join(", ");
         setWaStatus(
           json.error
             ? json.error
             : langs.length
-              ? `WhatsApp token is set. Template: ${langs.join(" · ")}.`
+              ? `Template: ${langs.join(" · ")}.${phoneNote ? ` ${phoneNote}.` : ""} Accepted by Meta is not the same as delivered to the phone.`
               : "WhatsApp token is set. Template list is empty."
         );
       })
@@ -146,13 +152,13 @@ export function TeamPanel() {
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Could not send test");
       if (json.hint) throw new Error(json.hint);
-      const wa = (json.whatsapp ?? []) as { name: string; ok: boolean; skipped?: boolean; error?: string }[];
+      const wa = (json.whatsapp ?? []) as { name: string; ok: boolean; skipped?: boolean; error?: string; status?: string }[];
       const waSent = wa.filter((d) => d.ok).length;
       const waTried = wa.filter((d) => !d.skipped);
       const waError = wa.find((d) => d.error)?.error;
       const who = wa
         .filter((d) => d.ok || d.error)
-        .map((d) => `${d.name}: ${d.ok ? "sent" : d.error}`)
+        .map((d) => `${d.name}: ${d.status === "held_for_quality_assessment" ? "held" : d.ok ? "accepted" : d.error}`)
         .join(" · ");
       const templateNote = json.template?.error
         ? ` Template: ${json.template.error}`
@@ -168,7 +174,9 @@ export function TeamPanel() {
             : `${who || "WhatsApp did not send."}${waError ? ` ${waError}` : ""}${templateNote}`
         );
       } else {
-        setPingNote(`${waSent} WhatsApp sent. ${who}${templateNote}`);
+        setPingNote(
+          `${waSent} accepted by Meta. ${who}${templateNote} If the phone stays empty, WhatsApp dropped it after accepting. Check Alerts for “WhatsApp did not deliver”.`
+        );
       }
     } catch (e) {
       setPingErr(e instanceof Error ? e.message : "Could not send test");

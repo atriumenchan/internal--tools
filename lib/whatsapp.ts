@@ -101,7 +101,7 @@ async function graphJson(config: NonNullable<ReturnType<typeof whatsappConfig>>,
   return { ok: res.ok, parsed, error: detail };
 }
 
-type TemplateRow = { name?: string; status?: string; language?: string; category?: string };
+type TemplateRow = { name?: string; status?: string; language?: string; category?: string; quality_score?: { score?: string } };
 type ListedTemplates = {
   listed: { ok: boolean; parsed: Record<string, unknown>; error: string };
   rows: TemplateRow[];
@@ -117,7 +117,7 @@ async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappCon
   for (const wabaId of ids) {
     listed = await graphJson(
       config,
-      `${wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category&limit=10`
+      `${wabaId}/message_templates?name=${encodeURIComponent(config.templateName)}&fields=name,status,language,category,quality_score&limit=10`
     );
     rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter((row) => row.name === config.templateName);
     if (rows.length) break;
@@ -240,16 +240,29 @@ export async function inspectWhatsApp() {
     status: row.status || "unknown",
     language: row.language || "",
     category: row.category || "",
+    quality: row.quality_score?.score || "",
   }));
   const approved = templates.find((row) => row.status.toUpperCase() === "APPROVED");
+  const phoneInfo = await graphJson(
+    config,
+    `${config.phoneNumberId}?fields=quality_rating,messaging_limit_tier,code_verification_status,account_mode,status`
+  );
+  const phone = (phoneInfo.parsed || {}) as {
+    quality_rating?: string;
+    messaging_limit_tier?: string;
+    code_verification_status?: string;
+    account_mode?: string;
+    status?: string;
+  };
   return {
     ok: Boolean(approved),
     hasToken: true,
-    tokenLength: config.token.length,
-    phoneIsNumeric: /^\d{10,20}$/.test(config.phoneNumberId),
     phoneNumberId: config.phoneNumberId,
     wabaId: config.wabaId,
     templateName: config.templateName,
+    phoneQuality: phone.quality_rating || "",
+    phoneLimit: phone.messaging_limit_tier || "",
+    phoneMode: phone.account_mode || phone.status || "",
     templates,
     error: listed.ok
       ? approved
@@ -259,6 +272,11 @@ export async function inspectWhatsApp() {
           : "No admexo_workspace_alert template on this WABA."
       : listed.error,
   };
+}
+
+function messageStatus(parsed: Record<string, unknown>) {
+  const messages = parsed.messages as { message_status?: string }[] | undefined;
+  return messages?.[0]?.message_status || "accepted";
 }
 
 export async function sendWhatsApp(to: string, text: string) {
@@ -276,7 +294,10 @@ export async function sendWhatsApp(to: string, text: string) {
   if (!message.trim()) return { ok: false as const, skipped: true as const };
 
   const templated = await sendWhatsAppTemplate(phone, message, config);
-  if (templated.ok) return { ok: true as const, skipped: false as const, via: "template" as const };
+  if (templated.ok) {
+    const status = messageStatus(templated.parsed);
+    return { ok: true as const, skipped: false as const, via: "template" as const, status };
+  }
 
   const session = await sendWhatsAppSession(phone, message, config);
   if (session.ok) return { ok: true as const, skipped: false as const, via: "session" as const };
