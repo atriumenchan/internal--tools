@@ -38,9 +38,9 @@
 }
 
 @theme {
-  --font-sans: var(--font-sans-face), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-display-face), ui-serif, Georgia, serif;
-  --font-mono: var(--font-mono-face), ui-monospace, "Cascadia Code", monospace;
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: Fraunces, ui-serif, Georgia, serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace;
 
   --color-canvas: var(--canvas);
   --color-page: var(--page);
