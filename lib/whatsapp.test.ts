@@ -4,7 +4,9 @@ import {
   notificationText,
   overdueTaskHref,
   sanitizeTemplateParam,
+  stripWhatsAppLinks,
   templateParamsFromText,
+  whatsappTaskText,
 } from "./whatsapp";
 
 describe("normalizeWhatsAppPhone", () => {
@@ -21,7 +23,7 @@ describe("normalizeWhatsAppPhone", () => {
 });
 
 describe("notificationText", () => {
-  it("joins title, body, and an app link", () => {
+  it("joins title and body with no app link", () => {
     const text = notificationText({
       title: "New task",
       body: "Close the books",
@@ -30,17 +32,16 @@ describe("notificationText", () => {
     });
     expect(text).toContain("New task");
     expect(text).toContain("Close the books");
-    expect(text).toContain("https://workspace.admexo.us/tasks");
+    expect(text).not.toContain("http");
   });
+});
 
-  it("rewrites preview hosts to the live workspace URL", () => {
-    const text = notificationText({
-      title: "Task",
-      href: "/spaces/1/tasks/2",
-      origin: "https://internal-tools-three-gray.vercel.app/setup",
-    });
-    expect(text).toContain("https://workspace.admexo.us/spaces/1/tasks/2");
-    expect(text).not.toContain("vercel.app");
+describe("whatsappTaskText", () => {
+  it("is the task and who created it", () => {
+    expect(whatsappTaskText({ title: "Close the books", byName: "Ryan Ritabrata" })).toBe(
+      "Close the books\nFrom Ryan Ritabrata"
+    );
+    expect(stripWhatsAppLinks("Close the books\nhttps://workspace.admexo.us/spaces/1/tasks/2")).toBe("Close the books");
   });
 });
 

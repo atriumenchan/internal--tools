@@ -11,6 +11,7 @@ import {
   normalizeWhatsAppPhone,
   sendWhatsApp,
   sendWhatsAppToUser,
+  whatsappTaskText,
 } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
@@ -154,7 +155,10 @@ export async function POST(request: Request) {
     const dmId = normalizeTelegramId((assignee as { telegram_id?: string | null } | null)?.telegram_id);
     const dm = dmId ? await sendTelegram(text, dmId) : { ok: false as const, skipped: true };
     const wa = task.assignee_id
-      ? await sendWhatsAppToUser(String(task.assignee_id), text)
+      ? await sendWhatsAppToUser(
+          String(task.assignee_id),
+          whatsappTaskText({ title: String(task.title || "Untitled"), byName: displayName(actor) })
+        )
       : { ok: false as const, skipped: true as const };
     if (task.assignee_id && wa.ok) {
       await markTaskAssignedWhatsAppSent(String(task.assignee_id)).catch(() => {});
@@ -191,7 +195,12 @@ export async function POST(request: Request) {
   }
 
   const dm = dmId ? await sendTelegram(text, dmId) : { ok: false as const, skipped: true };
-  const wa = body.assigneeId ? await sendWhatsAppToUser(body.assigneeId, text) : { ok: false as const, skipped: true as const };
+  const wa = body.assigneeId
+    ? await sendWhatsAppToUser(
+        body.assigneeId,
+        whatsappTaskText({ title: body.title, byName: (body.byName || "Someone").trim() })
+      )
+    : { ok: false as const, skipped: true as const };
   if (body.assigneeId && wa.ok) {
     await markTaskAssignedWhatsAppSent(body.assigneeId).catch(() => {});
   }

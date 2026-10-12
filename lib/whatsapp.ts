@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isIgnoredEmployee } from "@/lib/admin";
 import { isOverdue, kolkataTodayKey } from "@/lib/datetime";
+import { displayName } from "@/lib/spaces";
 
 const DEFAULT_PHONE_ID = "1269726706235216";
 const DEFAULT_WABA_ID = "1438727304857568";
@@ -48,18 +49,28 @@ export function normalizeWhatsAppPhone(value: string | null | undefined) {
   return digits;
 }
 
+export function stripWhatsAppLinks(text: string) {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line && !/^https?:\/\//i.test(line) && !/\.vercel\.app/i.test(line) && !/workspace\.admexo\.us/i.test(line))
+    .join("\n");
+}
+
+/** Task title and who created it. No app links. */
+export function whatsappTaskText(input: { title: string; byName?: string | null; overdue?: boolean }) {
+  const title = String(input.title || "").trim() || "Untitled";
+  const from = String(input.byName || "").trim();
+  const lines = input.overdue ? ["This task is overdue", title] : [title];
+  if (from) lines.push(`From ${from}`);
+  return lines.join("\n");
+}
+
 export function notificationText(input: { title?: string | null; body?: string | null; href?: string | null; origin?: string }) {
   const lines = [String(input.title || "").trim() || "ADMEXO"].filter(Boolean);
   const body = String(input.body || "").trim();
   if (body) lines.push(body);
-  const href = String(input.href || "").trim();
-  const origin = (input.origin || process.env.NEXT_PUBLIC_APP_URL || "https://workspace.admexo.us")
-    .replace(/\/$/, "")
-    .replace(/\/setup$/i, "")
-    .replace(/https:\/\/[^/]*\.vercel\.app/i, "https://workspace.admexo.us");
-  if (href.startsWith("http")) lines.push(href);
-  else if (href.startsWith("/") && origin) lines.push(`${origin}${href}`);
-  return lines.join("\n");
+  return stripWhatsAppLinks(lines.join("\n"));
 }
 
 type GraphError = { error?: { message?: string; error_data?: { details?: string } } };
@@ -248,12 +259,13 @@ export async function sendWhatsApp(to: string, text: string) {
     };
   }
   if (!phone) return { ok: false as const, skipped: true as const, error: "Need a mobile number" };
-  if (!text.trim()) return { ok: false as const, skipped: true as const };
+  const message = stripWhatsAppLinks(text);
+  if (!message.trim()) return { ok: false as const, skipped: true as const };
 
-  const templated = await sendWhatsAppTemplate(phone, text, config);
+  const templated = await sendWhatsAppTemplate(phone, message, config);
   if (templated.ok) return { ok: true as const, skipped: false as const, via: "template" as const };
 
-  const session = await sendWhatsAppSession(phone, text, config);
+  const session = await sendWhatsAppSession(phone, message, config);
   if (session.ok) return { ok: true as const, skipped: false as const, via: "session" as const };
 
   const error = templated.error || session.error || "WhatsApp did not send";
@@ -300,9 +312,9 @@ export async function queueOverdueTaskNotices(limit = 25) {
   const { data: existing } = await admin.from("notifications").select("href").eq("type", "task_overdue").in("href", hrefs);
   const already = new Set((existing ?? []).map((row) => row.href));
 
-  const assigneeIds = [...new Set(overdue.map((task) => String(task.assignee_id)))];
-  const { data: people } = await admin.from("profiles").select("id, full_name").in("id", assigneeIds);
-  const names = Object.fromEntries((people ?? []).map((row) => [row.id, row.full_name]));
+  const peopleIds = [...new Set(overdue.flatMap((task) => [task.assignee_id, task.created_by].filter(Boolean).map(String)))];
+  const { data: people } = await admin.from("profiles").select("id, full_name, email, role").in("id", peopleIds);
+  const profiles = Object.fromEntries((people ?? []).map((row) => [row.id, row]));
 
   const rows: {
     user_id: string;
@@ -315,13 +327,15 @@ export async function queueOverdueTaskNotices(limit = 25) {
   for (const task of overdue) {
     const href = overdueTaskHref(task.space_id, task.id);
     if (already.has(href)) continue;
-    if (isIgnoredEmployee(null, names[String(task.assignee_id)])) continue;
+    if (isIgnoredEmployee(null, profiles[String(task.assignee_id)]?.full_name)) continue;
+    const creator = task.created_by ? displayName(profiles[String(task.created_by)]) : "";
+    const taskTitle = String(task.title || "Untitled").trim() || "Untitled";
     rows.push({
       user_id: String(task.assignee_id),
       actor_id: task.created_by && task.created_by !== task.assignee_id ? String(task.created_by) : null,
       type: "task_overdue",
       title: "This task is overdue",
-      body: String(task.title || "Untitled").trim() || "Untitled",
+      body: creator ? `${taskTitle}\nFrom ${creator}` : taskTitle,
       href,
     });
     if (rows.length >= limit) break;
