@@ -221,6 +221,11 @@ export function AttendanceUploader({
           const code =
             person.employee_code ||
             `E${Date.now().toString(36).slice(-6)}${Math.floor(Math.random() * 900 + 100)}`;
+          const { data: alreadyThere } = await supabase.from("employees").select("*").eq("employee_code", code).maybeSingle();
+          if (alreadyThere) {
+            employeeList.push(alreadyThere as Employee);
+            continue;
+          }
           const { data, error: empErr } = await supabase
             .from("employees")
             .insert({
@@ -231,7 +236,16 @@ export function AttendanceUploader({
             })
             .select("*")
             .single();
-          if (empErr) throw empErr;
+          if (empErr) {
+            if (empErr.code === "23505") {
+              const { data: existing } = await supabase.from("employees").select("*").eq("employee_code", code).maybeSingle();
+              if (existing) {
+                employeeList.push(existing as Employee);
+                continue;
+              }
+            }
+            throw new Error(dbMessage(empErr));
+          }
           employeeList.push(data as Employee);
         }
       }
@@ -278,7 +292,7 @@ export function AttendanceUploader({
         })
         .select("id")
         .single();
-      if (upErr) throw upErr;
+      if (upErr) throw new Error(dbMessage(upErr));
 
       const dayChunks = chunk(
         freshDays.map((d) => ({ ...d, upload_id: upload.id })),
@@ -290,7 +304,7 @@ export function AttendanceUploader({
           if (dayErr.code === "23505" || /already saved|duplicate key/i.test(dayErr.message)) {
             throw new Error("Some of these dates are already saved and locked. Upload only new days.");
           }
-          throw dayErr;
+          throw new Error(dbMessage(dayErr));
         }
       }
 
@@ -304,11 +318,12 @@ export function AttendanceUploader({
           .select("*")
           .gte("work_date", monthStart)
           .lte("work_date", monthEnd);
-        await supabase.from("monthly_summaries").delete().eq("period_month", m).eq("period_year", y);
+        const { error: clearErr } = await supabase.from("monthly_summaries").delete().eq("period_month", m).eq("period_year", y);
+        if (clearErr) throw new Error(dbMessage(clearErr));
         const summaries = summarizeDays((monthDays ?? []) as never, m, y, resolvedSettings);
         if (summaries.length) {
           const { error: sumErr } = await supabase.from("monthly_summaries").insert(summaries);
-          if (sumErr) throw sumErr;
+          if (sumErr) throw new Error(dbMessage(sumErr));
         }
       }
 
@@ -480,6 +495,12 @@ export function AttendanceUploader({
       {error ? <p className="text-sm text-coral">{error}</p> : null}
     </div>
   );
+}
+
+function dbMessage(err: unknown) {
+  if (!err || typeof err !== "object") return "Save failed";
+  const row = err as { message?: string; details?: string; hint?: string };
+  return [row.message, row.details, row.hint].filter(Boolean).join(" — ") || "Save failed";
 }
 
 function chunk<T>(items: T[], size: number) {

@@ -33,7 +33,7 @@ export default function AttendancePage() {
     const supabase = createClient();
     void Promise.all([
       supabase.from("company_settings").select("*").eq("id", 1).maybeSingle(),
-      supabase.from("employees").select("*").eq("is_active", true),
+      supabase.from("employees").select("*"),
       supabase.from("holidays").select("*"),
       supabase
         .from("attendance_uploads")
@@ -44,7 +44,7 @@ export default function AttendancePage() {
       setSettings(normalizeSettings(settingsRes.data as CompanySettings | null));
       setEmployees(
         ((employeesRes.data ?? []) as Employee[]).filter(
-          (e) => !e.ignored && !isIgnoredEmployee(e.employee_code, e.full_name)
+          (e) => !isIgnoredEmployee(e.employee_code, e.full_name)
         )
       );
       setHolidays((holidaysRes.data ?? []) as Holiday[]);
