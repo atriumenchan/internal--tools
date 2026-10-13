@@ -12,7 +12,7 @@ import {
 } from "@/lib/excel-rows";
 import { monthPerformanceToAttendance, type MonthPerformanceReport } from "@/lib/month-performance";
 import { periodicToAttendance, rangeLabel, type PeriodicReport } from "@/lib/periodic-attendance";
-import { attendanceLockKey, computeAttendance, summarizeDays, type ComputedSummary } from "@/lib/attendance";
+import { attendanceLockKey, computeAttendance, expectedHours, summarizeDays, type ComputedSummary } from "@/lib/attendance";
 import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { normalizeSettings } from "@/lib/settings";
 import { formatWorkDate, hoursLabel, kolkataTodayKey } from "@/lib/datetime";
@@ -418,13 +418,15 @@ export function AttendanceUploader({
           ) : (
             <p className="mb-3 text-sm text-muted">After Save, these dates stay locked and cannot be overwritten.</p>
           )}
+          <p className="mb-3 text-sm text-muted">Expected is 8:30 for each present day. Worked is the time recorded in the file.</p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-[11px] font-semibold text-faint">
                 <tr>
                   <th className="py-2">Code</th>
                   <th>Name</th>
-                  <th>Hours</th>
+                  <th>Expected</th>
+                  <th>Worked</th>
                   <th>Present</th>
                   <th>Absent</th>
                   <th>Leave</th>
@@ -442,6 +444,7 @@ export function AttendanceUploader({
                       {row.employee_name}
                       {!row.employee_id ? <span className="ml-2 text-xs text-amber">new</span> : null}
                     </td>
+                    <td>{hoursLabel(expectedHours(row.present_days))}</td>
                     <td>{hoursLabel(row.total_hours)}</td>
                     <td>{row.present_days}</td>
                     <td>{row.absent_days}</td>

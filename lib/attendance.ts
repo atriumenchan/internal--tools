@@ -5,6 +5,15 @@ import { isIgnoredEmployee, normalizeEmpCode } from "@/lib/admin";
 import { kolkataTodayKey } from "@/lib/datetime";
 import { fixedHolidayName, resolveHandbookStatus, HANDBOOK_HOLIDAYS_2026 } from "@/lib/handbook-calendar";
 
+/** 8 hours 30 minutes expected for each present day. A half day counts as half. */
+export const EXPECTED_MINUTES_PER_PRESENT_DAY = 8 * 60 + 30;
+
+export function expectedHours(presentDays: number) {
+  const minutes = Math.round(Number(presentDays) * EXPECTED_MINUTES_PER_PRESENT_DAY);
+  if (!Number.isFinite(minutes) || minutes <= 0) return 0;
+  return minutes / 60;
+}
+
 export function attendanceLockKey(
   employee_code: string | null | undefined,
   employee_name: string | null | undefined,

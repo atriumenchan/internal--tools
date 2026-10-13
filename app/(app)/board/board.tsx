@@ -5,6 +5,7 @@ import { Badge, Card, Input, Segmented, Select } from "@/components/ui";
 import { DatePicker } from "@/components/date-picker";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type Employee, type MonthlySummary } from "@/lib/types";
 import { isIgnoredEmployee } from "@/lib/admin";
+import { expectedHours } from "@/lib/attendance";
 import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
 
 const TONE: Record<DayStatus, "neutral" | "warn" | "ok" | "danger" | "info"> = {
@@ -95,7 +96,11 @@ export function AttendanceBoard({
     const leave = filteredDays.filter((d) => d.status === "leave").length;
     const late = filteredDays.filter((d) => d.is_late).length;
     const hours = filteredDays.reduce((sum, d) => sum + Number(d.hours_worked || 0), 0);
-    return { present, absent, leave, late, hours };
+    const presentDays = filteredDays.reduce(
+      (sum, d) => sum + (d.status === "present" ? 1 : d.status === "half_day" ? 0.5 : 0),
+      0
+    );
+    return { present, absent, leave, late, hours, expected: expectedHours(presentDays) };
   }, [filteredDays]);
 
   const daysByDate = useMemo(() => {
@@ -126,12 +131,13 @@ export function AttendanceBoard({
         <p className="text-sm text-ink-soft">No attendance file in Supabase yet. Ryan Ritabrata can upload the weekly month-performance Excel.</p>
       )}
 
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-6">
         <Stat label="Present days" value={totals.present} />
         <Stat label="Absent days" value={totals.absent} />
         <Stat label="Leave days" value={totals.leave} />
         <Stat label="Late marks" value={totals.late} />
-        <Stat label="Hours" value={hoursLabel(totals.hours)} />
+        <Stat label="Expected" value={hoursLabel(totals.expected)} />
+        <Stat label="Worked" value={hoursLabel(totals.hours)} />
       </div>
 
       <div className="flex flex-wrap gap-3 rounded-md border border-border bg-surface p-4 shadow-card">
@@ -191,7 +197,8 @@ export function AttendanceBoard({
                     </p>
                   </div>
                   <dl className="grid grid-cols-3 gap-x-5 text-sm md:grid-cols-6">
-                    <Metric label="Hours" value={hoursLabel(Number(row.total_hours))} />
+                    <Metric label="Expected" value={hoursLabel(expectedHours(Number(row.present_days)))} />
+                    <Metric label="Worked" value={hoursLabel(Number(row.total_hours))} />
                     <Metric label="Present" value={row.present_days} />
                     <Metric label="Absent" value={row.absent_days} />
                     <Metric label="Leave" value={row.leave_days} />

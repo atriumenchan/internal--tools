@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Badge, Button, Card, Input } from "@/components/ui";
+import { expectedHours } from "@/lib/attendance";
 import { formatClock, formatWorkDate, hoursLabel } from "@/lib/datetime";
 import { DAY_STATUS_LABELS, type AttendanceDay, type DayStatus, type MonthlySummary } from "@/lib/types";
 
@@ -61,7 +62,8 @@ export function MonthReport({
         Leave: s.leave_days,
         "Half days": s.half_days,
         Late: s.late_days,
-        Hours: s.total_hours,
+        Expected: expectedHours(s.present_days),
+        Worked: s.total_hours,
         Overtime: s.overtime_hours,
       }))
     );
@@ -96,7 +98,8 @@ export function MonthReport({
                   <p className="text-xs text-ink-soft">{summary.employee_code || "No code"}</p>
                 </div>
                 <dl className="grid grid-cols-3 gap-x-6 gap-y-1 text-sm md:grid-cols-6">
-                  <Metric label="Hours" value={hoursLabel(summary.total_hours)} />
+                  <Metric label="Expected" value={hoursLabel(expectedHours(summary.present_days))} />
+                  <Metric label="Worked" value={hoursLabel(summary.total_hours)} />
                   <Metric label="Present" value={summary.present_days} />
                   <Metric label="Absent" value={summary.absent_days} />
                   <Metric label="Leave" value={summary.leave_days} />
