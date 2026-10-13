@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdminUser } from "@/lib/admin";
-import { normalizeWhatsAppPhone } from "@/lib/whatsapp";
+import { markWhatsAppSession, normalizeWhatsAppPhone, sendWhatsApp } from "@/lib/whatsapp";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,15 +29,30 @@ export async function GET(request: Request) {
 
 type WaError = { code?: number; title?: string; message?: string; error_data?: { details?: string } };
 type WaStatus = { status?: string; recipient_id?: string; errors?: WaError[] };
+type WaInbound = {
+  from?: string;
+  type?: string;
+  button?: { text?: string; payload?: string };
+  interactive?: { button_reply?: { title?: string } };
+};
 
-/** Meta posts delivery receipts here. A failed receipt is the reason the phone stayed empty. */
+/** Meta posts delivery receipts and button taps here. A tap opens 24 hours of normal messages. */
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => null)) as {
-    entry?: { changes?: { value?: { statuses?: WaStatus[] } }[] }[];
+    entry?: { changes?: { value?: { statuses?: WaStatus[]; messages?: WaInbound[] } }[] }[];
   } | null;
   const failed: { phone: string; text: string }[] = [];
+  const tapped: string[] = [];
   for (const entry of body?.entry ?? []) {
     for (const change of entry.changes ?? []) {
+      for (const message of change.value?.messages ?? []) {
+        const phone = normalizeWhatsAppPhone(message.from);
+        if (!phone) continue;
+        const tappedButton = message.type === "button" || Boolean(message.interactive?.button_reply);
+        console.log("[whatsapp] reply", message.type || "message", `…${phone.slice(-4)}`);
+        const opened = await markWhatsAppSession(phone);
+        if (opened && tappedButton) tapped.push(phone);
+      }
       for (const status of change.value?.statuses ?? []) {
         console.log("[whatsapp] receipt", status.status, status.recipient_id ? `…${status.recipient_id.slice(-4)}` : "");
         if (status.status !== "failed") continue;
@@ -73,6 +88,10 @@ export async function POST(request: Request) {
     } catch (e) {
       console.error("[whatsapp] could not store delivery error", e instanceof Error ? e.message : e);
     }
+  }
+  for (const phone of tapped) {
+    const sent = await sendWhatsApp(phone, "Got it. Alerts will come through on this chat for the next 24 hours.");
+    if (!sent.ok) console.error("[whatsapp] could not confirm the tap", "error" in sent ? sent.error : "");
   }
   return NextResponse.json({ ok: true });
 }

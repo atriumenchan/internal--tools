@@ -3,6 +3,7 @@ import {
   normalizeWhatsAppPhone,
   notificationText,
   overdueTaskHref,
+  sessionStillOpen,
   shouldSendWhatsAppNotification,
   sanitizeTemplateParam,
   stripWhatsAppLinks,
@@ -73,6 +74,15 @@ describe("whatsappTaskText", () => {
 describe("overdueTaskHref", () => {
   it("points at the task page", () => {
     expect(overdueTaskHref("space-1", "task-9")).toBe("/spaces/space-1/tasks/task-9");
+  });
+});
+
+describe("sessionStillOpen", () => {
+  it("is open only before the saved time", () => {
+    const now = Date.parse("2026-10-13T08:00:00.000Z");
+    expect(sessionStillOpen("2026-10-13T09:00:00.000Z", now)).toBe(true);
+    expect(sessionStillOpen("2026-10-13T07:00:00.000Z", now)).toBe(false);
+    expect(sessionStillOpen(null, now)).toBe(false);
   });
 });
 

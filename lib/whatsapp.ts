@@ -7,7 +7,16 @@ const DEFAULT_PHONE_ID = "1269726706235216";
 const DEFAULT_WABA_ID = "1438727304857568";
 const FALLBACK_WABA_IDS = ["1438727304857568", "4130948003709192"];
 const DEFAULT_TEMPLATE = "admexo_workspace_alert";
+const REPLY_TEMPLATE = "admexo_workspace_reply";
 const DEFAULT_TEMPLATE_LANG = "en";
+const SESSION_MS = 24 * 60 * 60 * 1000;
+
+/** True while a reply (a tap on Got it, or any message they sent us) is still inside WhatsApp's 24-hour window. */
+export function sessionStillOpen(until: string | null | undefined, now = Date.now()) {
+  if (!until) return false;
+  const time = new Date(until).getTime();
+  return Number.isFinite(time) && time > now;
+}
 
 export function whatsappConfig() {
   const token = (process.env.WHATSAPP_ACCESS_TOKEN || "").trim();
@@ -127,6 +136,106 @@ async function listedTemplates(config: NonNullable<ReturnType<typeof whatsappCon
   return result;
 }
 
+async function templatesNamed(config: NonNullable<ReturnType<typeof whatsappConfig>>, name: string) {
+  const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
+  const rows: TemplateRow[] = [];
+  for (const wabaId of ids) {
+    const listed = await graphJson(
+      config,
+      `${wabaId}/message_templates?name=${encodeURIComponent(name)}&fields=name,status,language,category,quality_score&limit=10`
+    );
+    rows.push(...((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter((row) => row.name === name));
+  }
+  return rows;
+}
+
+let replyEnsureAt = 0;
+
+/** Submits the Got it button template once. Leaves the current template alone while Meta reviews this one. */
+async function ensureReplyTemplate(config: NonNullable<ReturnType<typeof whatsappConfig>>) {
+  if (Date.now() - replyEnsureAt < 120_000) return [] as string[];
+  replyEnsureAt = Date.now();
+  const lines: string[] = [];
+  const payload = {
+    name: REPLY_TEMPLATE,
+    language: config.templateLang || DEFAULT_TEMPLATE_LANG,
+    category: "UTILITY",
+    components: [
+      {
+        type: "BODY",
+        text: "Admexo workspace: {{1}} - {{2}}. Tap Got it to confirm you received this.",
+        example: { body_text: [["Ryan assigned you a task", "Close the books"]] },
+      },
+      { type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "Got it" }] },
+    ],
+  };
+  const ids = [...new Set([config.wabaId, ...FALLBACK_WABA_IDS].filter(Boolean))];
+  for (const wabaId of ids) {
+    const listed = await graphJson(
+      config,
+      `${wabaId}/message_templates?name=${encodeURIComponent(REPLY_TEMPLATE)}&fields=name,status,language&limit=5`
+    );
+    const rows = ((listed.parsed.data as TemplateRow[] | undefined) ?? []).filter((row) => row.name === REPLY_TEMPLATE);
+    if (rows.length) {
+      lines.push(`Got it button on ${wabaId}: ${rows.map((row) => row.status || "unknown").join(", ")}.`);
+      continue;
+    }
+    let created = await graphJson(config, `${wabaId}/message_templates`, { ...payload, parameter_format: "positional" });
+    if (!created.ok && /parameter_format/i.test(created.error)) {
+      created = await graphJson(config, `${wabaId}/message_templates`, payload);
+    }
+    lines.push(
+      created.ok || /already exists|duplicate/i.test(created.error)
+        ? `Got it button submitted on ${wabaId}. WhatsApp has to approve it before the button shows.`
+        : `Got it button was not submitted on ${wabaId}: ${created.error}`
+    );
+  }
+  return lines;
+}
+
+async function sessionWindowOpen(phone: string) {
+  try {
+    const admin = createAdminClient();
+    const { data, error } = await admin.from("profiles").select("whatsapp_phone, whatsapp_session_until");
+    if (error) return false;
+    const row = ((data ?? []) as { whatsapp_phone?: string | null; whatsapp_session_until?: string | null }[]).find(
+      (item) => normalizeWhatsAppPhone(item.whatsapp_phone) === phone
+    );
+    return sessionStillOpen(row?.whatsapp_session_until);
+  } catch {
+    return false;
+  }
+}
+
+/** A tap or a reply opens 24 hours of normal messages, which WhatsApp does not cap. */
+export async function markWhatsAppSession(phone: string) {
+  const normalized = normalizeWhatsAppPhone(phone);
+  if (!normalized) return false;
+  const admin = createAdminClient();
+  const { data, error } = await admin.from("profiles").select("id, whatsapp_phone");
+  if (error) {
+    console.error("[whatsapp] could not open session", error.message);
+    return false;
+  }
+  const person = ((data ?? []) as { id: string; whatsapp_phone?: string | null }[]).find(
+    (item) => normalizeWhatsAppPhone(item.whatsapp_phone) === normalized
+  );
+  if (!person) return false;
+  const until = new Date(Date.now() + SESSION_MS).toISOString();
+  const { error: updateError } = await admin.from("profiles").update({ whatsapp_session_until: until }).eq("id", person.id);
+  if (updateError) {
+    console.error(
+      "[whatsapp] could not open session",
+      updateError.message.includes("whatsapp_session_until")
+        ? "Paste supabase/whatsapp-session.sql in the Supabase SQL editor."
+        : updateError.message
+    );
+    return false;
+  }
+  console.log("[whatsapp] session open", `…${normalized.slice(-4)}`);
+  return true;
+}
+
 export async function ensureWhatsAppTemplate() {
   const config = whatsappConfig();
   if (!config) return { ok: false as const, status: "missing" as const, error: "WhatsApp is not set on this deployment." };
@@ -188,8 +297,11 @@ async function sendWhatsAppSession(phone: string, text: string, config: NonNulla
 }
 
 async function sendWhatsAppTemplate(phone: string, text: string, config: NonNullable<ReturnType<typeof whatsappConfig>>) {
+  await ensureReplyTemplate(config);
+  const replyRows = await templatesNamed(config, REPLY_TEMPLATE);
+  const reply = replyRows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
   const { rows } = await listedTemplates(config);
-  const approved = rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
+  const approved = reply || rows.find((row) => String(row.status || "").toUpperCase() === "APPROVED");
   if (!approved && rows.some((row) => /PENDING|IN_APPEAL/i.test(String(row.status || "")))) {
     return { ok: false as const, error: "Meta is still reviewing the WhatsApp template." };
   }
@@ -213,7 +325,7 @@ async function sendWhatsAppTemplate(phone: string, text: string, config: NonNull
         to: phone,
         type: "template",
         template: {
-          name: config.templateName,
+          name: reply ? REPLY_TEMPLATE : config.templateName,
           language: { code },
           components: [{ type: "body", parameters }],
         },
@@ -234,8 +346,10 @@ export async function inspectWhatsApp() {
       error: "WHATSAPP_ACCESS_TOKEN is not set on Vercel Production. Add it, then Redeploy.",
     };
   }
+  const replyNotes = await ensureReplyTemplate(config);
   const { listed, rows } = await listedTemplates(config);
-  const templates = rows.map((row) => ({
+  const replyRows = await templatesNamed(config, REPLY_TEMPLATE);
+  const templates = [...rows, ...replyRows].map((row) => ({
     name: row.name || config.templateName,
     status: row.status || "unknown",
     language: row.language || "",
@@ -264,6 +378,7 @@ export async function inspectWhatsApp() {
     phoneLimit: phone.messaging_limit_tier || "",
     phoneMode: phone.account_mode || phone.status || "",
     templates,
+    replyNotes,
     error: listed.ok
       ? approved
         ? undefined
@@ -368,6 +483,11 @@ export async function sendWhatsApp(to: string, text: string) {
   if (!phone) return { ok: false as const, skipped: true as const, error: "Need a mobile number" };
   const message = stripWhatsAppLinks(text);
   if (!message.trim()) return { ok: false as const, skipped: true as const };
+
+  if (await sessionWindowOpen(phone)) {
+    const session = await sendWhatsAppSession(phone, message, config);
+    if (session.ok) return { ok: true as const, skipped: false as const, via: "session" as const, ...messageInfo(session) };
+  }
 
   const templated = await sendWhatsAppTemplate(phone, message, config);
   if (templated.ok) {

@@ -86,7 +86,8 @@ export function TeamPanel() {
         const json = (await res.json()) as {
           hasToken?: boolean;
           error?: string;
-          templates?: { status?: string; language?: string; category?: string; quality?: string }[];
+          templates?: { name?: string; status?: string; language?: string; category?: string; quality?: string }[];
+          replyNotes?: string[];
           phoneQuality?: string;
           phoneLimit?: string;
           phoneMode?: string;
@@ -96,7 +97,9 @@ export function TeamPanel() {
           return;
         }
         const langs = (json.templates ?? []).map((row) =>
-          `${row.status || "?"} ${row.language || ""} ${row.category || ""} ${row.quality || ""}`.replace(/\s+/g, " ").trim()
+          `${row.name || "template"} ${row.status || "?"} ${row.language || ""} ${row.category || ""} ${row.quality || ""}`
+            .replace(/\s+/g, " ")
+            .trim()
         );
         const phoneNote = [json.phoneQuality && `number quality ${json.phoneQuality}`, json.phoneLimit, json.phoneMode]
           .filter(Boolean)
@@ -105,7 +108,7 @@ export function TeamPanel() {
           json.error
             ? json.error
             : langs.length
-              ? `Template: ${langs.join(" · ")}.${phoneNote ? ` ${phoneNote}.` : ""} Accepted by Meta is not the same as delivered to the phone.`
+              ? `Template: ${langs.join(" · ")}.${phoneNote ? ` ${phoneNote}.` : ""} ${(json.replyNotes ?? []).join(" ")} Accepted by Meta is not the same as delivered to the phone.`
               : "WhatsApp token is set. Template list is empty."
         );
       })
