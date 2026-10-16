@@ -70,9 +70,10 @@ function SpacesPageInner() {
   useSilentLive(() => void loadTasks(), "spaces");
 
   const counts = useMemo(() => {
-    const map = new Map<string, { open: number; overdue: number }>();
+    const map = new Map<string, { total: number; open: number; overdue: number }>();
     for (const task of tasks) {
-      const row = map.get(task.space_id) ?? { open: 0, overdue: 0 };
+      const row = map.get(task.space_id) ?? { total: 0, open: 0, overdue: 0 };
+      row.total += 1;
       if (task.status !== "done" && task.status !== "cancelled") row.open += 1;
       if (isOverdue(task.due_date, task.status)) row.overdue += 1;
       map.set(task.space_id, row);
@@ -237,7 +238,7 @@ function SpacesPageInner() {
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {[...spaces].sort((a, b) => Number(isReportsSpace(b)) - Number(isReportsSpace(a)) || a.name.localeCompare(b.name)).map((space) => {
-            const c = counts.get(space.id) ?? { open: 0, overdue: 0 };
+            const c = counts.get(space.id) ?? { total: 0, open: 0, overdue: 0 };
             return (
               <li key={space.id}>
                 <div className="flex items-stretch gap-2 rounded-md border border-border bg-surface p-4 shadow-card transition duration-200 hover:bg-surface-2">
@@ -250,7 +251,7 @@ function SpacesPageInner() {
                     <span className="min-w-0 flex-1">
                       <span className="block font-medium">{space.name}</span>
                       <span className="text-xs text-muted">
-                        {c.open} open
+                        {c.total} {c.total === 1 ? "task" : "tasks"} · {c.open} open
                         {c.overdue ? <span className="text-coral"> · {c.overdue} overdue</span> : null}
                       </span>
                     </span>
