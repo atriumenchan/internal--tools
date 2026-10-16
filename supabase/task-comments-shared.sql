@@ -15,7 +15,7 @@ as $$
     from public.tasks t
     where t.id = p_task_id
       and (
-        public.is_manager()
+        public.is_admin()
         or public.is_space_member(t.space_id)
         or t.created_by = auth.uid()
         or t.assignee_id = auth.uid()
