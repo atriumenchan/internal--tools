@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { applyMention, EVERYONE, mentionMatches, mentionQueryAt, splitMentions } from "./mentions";
+import {
+  applyMention,
+  commentMentionsUser,
+  EVERYONE,
+  mentionHit,
+  mentionMatches,
+  mentionQueryAt,
+  splitMentions,
+  unrepliedTaskMentions,
+} from "./mentions";
 
 const people = [
   { id: "1", full_name: "Kartik Dhyani", email: "k@admexo.com" },
@@ -43,5 +52,64 @@ describe("applyMention and splitMentions", () => {
     expect(next.text).toBe("Hi @everyone ");
     const parts = splitMentions(next.text, people);
     expect(parts.some((part) => part.mention && part.value.toLowerCase() === "@everyone")).toBe(true);
+  });
+});
+
+describe("mentionHit and commentMentionsUser", () => {
+  it("needs a word edge around the @name", () => {
+    expect(mentionHit("please see @Kartik Dhyani today", "Kartik Dhyani")).toBe(true);
+    expect(mentionHit("mail kartik@admexo.com", "Kartik")).toBe(false);
+  });
+
+  it("treats @everyone and a unique first name as a tag", () => {
+    expect(commentMentionsUser("looping @everyone", people[0], people)).toBe(true);
+    expect(commentMentionsUser("need @Kartik on this", people[0], people)).toBe(true);
+    expect(commentMentionsUser("need @Gaurav", people[0], people)).toBe(false);
+  });
+});
+
+describe("unrepliedTaskMentions", () => {
+  const me = people[0];
+  const tasks = [{ id: "t1", space_id: "s1", title: "Fix payroll" }];
+
+  it("keeps a tag until that person comments after it", () => {
+    const tagged = {
+      id: "c1",
+      task_id: "t1",
+      author_id: "2",
+      body: "Can you check this @Kartik Dhyani",
+      created_at: "2026-10-19T10:00:00.000Z",
+    };
+    expect(
+      unrepliedTaskMentions({ comments: [tagged], myComments: [], me, people, tasks }).map((row) => row.commentId)
+    ).toEqual(["c1"]);
+    expect(
+      unrepliedTaskMentions({
+        comments: [tagged],
+        myComments: [{ task_id: "t1", created_at: "2026-10-19T11:00:00.000Z" }],
+        me,
+        people,
+        tasks,
+      })
+    ).toEqual([]);
+  });
+
+  it("shows a new tag after an older reply", () => {
+    const tagged = {
+      id: "c2",
+      task_id: "t1",
+      author_id: "2",
+      body: "@Kartik ping",
+      created_at: "2026-10-19T12:00:00.000Z",
+    };
+    const rows = unrepliedTaskMentions({
+      comments: [tagged],
+      myComments: [{ task_id: "t1", created_at: "2026-10-19T11:00:00.000Z" }],
+      me,
+      people,
+      tasks,
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].href).toContain("#comment-c2");
   });
 });

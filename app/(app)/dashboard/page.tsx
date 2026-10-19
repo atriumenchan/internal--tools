@@ -19,14 +19,15 @@ import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { canPostAnnouncements } from "@/lib/roles";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
-import { dueDateKey, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
+import { dueDateKey, formatRelative, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
+import { unrepliedTaskMentions } from "@/lib/mentions";
 import { reportPeriodLabel } from "@/lib/reports";
 import { pingTaskAssigned } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { inboxPreview } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
-import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task } from "@/lib/types";
+import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task, TaskComment } from "@/lib/types";
 
 type InboxRow = {
   conversation_id: string;
@@ -117,12 +118,31 @@ export default function DashboardPage() {
   const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done" | "overdue">("mine");
   const [error, setError] = useState<string | null>(null);
   const [wfhPending, setWfhPending] = useState(0);
+  const [taggedComments, setTaggedComments] = useState<Pick<TaskComment, "id" | "task_id" | "author_id" | "body" | "created_at">[]>([]);
+  const [myComments, setMyComments] = useState<Pick<TaskComment, "task_id" | "created_at">[]>([]);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
     const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
     if (data) setTasks(data as Task[]);
   }, []);
+
+  const loadMentions = useCallback(async () => {
+    if (!app) return;
+    const supabase = createClient();
+    const [taggedRes, mineRes] = await Promise.all([
+      supabase
+        .from("task_comments")
+        .select("id, task_id, author_id, body, created_at")
+        .ilike("body", "%@%")
+        .neq("author_id", app.userId)
+        .order("created_at", { ascending: false })
+        .limit(200),
+      supabase.from("task_comments").select("task_id, created_at").eq("author_id", app.userId),
+    ]);
+    if (taggedRes.data) setTaggedComments(taggedRes.data);
+    if (mineRes.data) setMyComments(mineRes.data);
+  }, [app]);
 
   useEffect(() => {
     if (!app) return;
@@ -131,7 +151,7 @@ export default function DashboardPage() {
     const [year, month] = todayKey.split("-").map(Number);
 
     void (async () => {
-      const [taskRes, spaceRes, peopleRes, inboxRes, convRes, empRes, memberRes] = await Promise.all([
+      const [taskRes, spaceRes, peopleRes, inboxRes, convRes, empRes, memberRes, taggedRes, myCommentRes] = await Promise.all([
         supabase.from("tasks").select("*").order("created_at", { ascending: false }),
         supabase.from("spaces").select("*").order("name"),
         supabase.from("profiles").select("*"),
@@ -139,6 +159,14 @@ export default function DashboardPage() {
         supabase.from("conversations").select("*"),
         supabase.from("employees").select("*").eq("user_id", app.userId).maybeSingle(),
         supabase.from("conversation_members").select("conversation_id, user_id"),
+        supabase
+          .from("task_comments")
+          .select("id, task_id, author_id, body, created_at")
+          .ilike("body", "%@%")
+          .neq("author_id", app.userId)
+          .order("created_at", { ascending: false })
+          .limit(200),
+        supabase.from("task_comments").select("task_id, created_at").eq("author_id", app.userId),
       ]);
       setTasks((taskRes.data ?? []) as Task[]);
       setSpaces((spaceRes.data ?? []) as Space[]);
@@ -146,6 +174,8 @@ export default function DashboardPage() {
       setInbox((inboxRes.data ?? []) as InboxRow[]);
       setConvos((convRes.data ?? []) as Conversation[]);
       setMembers((memberRes.data ?? []) as { conversation_id: string; user_id: string }[]);
+      setTaggedComments(taggedRes.data ?? []);
+      setMyComments(myCommentRes.data ?? []);
       const me = (empRes.data as Employee | null) ?? null;
       setEmployee(me);
       if (admin) {
@@ -169,6 +199,20 @@ export default function DashboardPage() {
   }, [app, operator, admin]);
 
   useSilentLive(() => void loadTasks(), "dashboard");
+
+  useEffect(() => {
+    if (!app) return;
+    const supabase = createClient();
+    const channel = supabase
+      .channel("dashboard-mentions")
+      .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, () => {
+        void loadMentions();
+      })
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [app, loadMentions]);
 
   useEffect(() => {
     const work = new URLSearchParams(window.location.search).get("work");
@@ -228,6 +272,19 @@ export default function DashboardPage() {
     return rows;
   }, [needsReview, overdue, mine, app?.userId]);
   const unreadChats = inbox.filter((row) => row.unread_count > 0);
+  const waitingMentions = useMemo(
+    () =>
+      app
+        ? unrepliedTaskMentions({
+            comments: taggedComments,
+            myComments,
+            me: { ...app.profile, id: app.userId },
+            people,
+            tasks: tasks ?? [],
+          }).slice(0, 8)
+        : [],
+    [app, taggedComments, myComments, people, tasks]
+  );
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
@@ -438,6 +495,37 @@ export default function DashboardPage() {
         </section>
 
         <aside className="space-y-4">
+          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display font-medium">Tagged you</h2>
+              {waitingMentions.length > 0 ? (
+                <span className="tabular rounded-sm bg-amber-dim px-1.5 font-mono text-[10px] font-medium text-amber">
+                  {waitingMentions.length}
+                </span>
+              ) : null}
+            </div>
+            {waitingMentions.length === 0 ? (
+              <p className="mt-3 text-sm text-faint">No tags waiting for a reply.</p>
+            ) : (
+              <ul className="mt-3 space-y-2">
+                {waitingMentions.map((row) => (
+                  <li key={row.commentId}>
+                    <Link href={row.href} className="block rounded-sm py-0.5 hover:text-teal">
+                      <span className="block text-sm font-medium">
+                        {displayName(peopleMap[row.authorId])} tagged you
+                      </span>
+                      <span className="mt-0.5 block truncate text-xs text-muted">{row.taskTitle}</span>
+                      {row.body ? (
+                        <span className="mt-0.5 block truncate text-xs text-muted">{inboxPreview(row.body)}</span>
+                      ) : null}
+                      <span className="mt-0.5 block font-mono text-[11px] text-faint">{formatRelative(row.createdAt)}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
           <section className="rounded-md border border-border bg-surface p-4 shadow-card">
             <div className="flex items-center justify-between">
               <h2 className="font-display font-medium">Boards</h2>

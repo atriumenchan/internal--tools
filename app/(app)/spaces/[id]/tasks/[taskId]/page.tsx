@@ -160,6 +160,11 @@ export default function TaskPage() {
   }, [taskId, loadComments]);
 
   useEffect(() => {
+    const id = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+    if (id.startsWith("comment-")) {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [comments.length]);
 
@@ -535,7 +540,11 @@ export default function TaskPage() {
               ) : (
                 <ul className="space-y-3">
                   {comments.map((comment) => (
-                    <li key={comment.id} className="flex gap-3 rounded-md border border-border bg-page px-4 py-3">
+                    <li
+                      id={`comment-${comment.id}`}
+                      key={comment.id}
+                      className="flex gap-3 rounded-md border border-border bg-page px-4 py-3 scroll-mt-24"
+                    >
                       <Avatar
                         name={displayName(profiles[comment.author_id])}
                         src={avatarSrc(profiles[comment.author_id])}
