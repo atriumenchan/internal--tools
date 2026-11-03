@@ -34,6 +34,15 @@ export function canMoveTask(
   return isManagerUser(actor);
 }
 
+export function canAddTaskFiles(
+  task: Pick<Task, "created_by" | "assignee_id">,
+  actor: Actor | null | undefined,
+  helperIds: readonly string[] = []
+) {
+  if (canMoveTask(task, actor)) return true;
+  return Boolean(actor?.id && helperIds.includes(actor.id));
+}
+
 export function canDeleteTask(
   task: Pick<Task, "created_by" | "assignee_id">,
   actor: Actor | null | undefined

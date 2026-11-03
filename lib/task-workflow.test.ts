@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyTaskStatus, canManageSpace, canManageTask, canDeleteTask, canMoveTask } from "./task-workflow";
+import { applyTaskStatus, canAddTaskFiles, canManageSpace, canManageTask, canDeleteTask, canMoveTask } from "./task-workflow";
 
 const requested = {
   created_by: "a",
@@ -43,6 +43,20 @@ describe("canMoveTask", () => {
 
   it("blocks a stranger", () => {
     expect(canMoveTask(requested, { id: "z", role: "employee" })).toBe(false);
+  });
+});
+
+describe("canAddTaskFiles", () => {
+  it("lets a helper add files", () => {
+    expect(canAddTaskFiles(requested, { id: "c", role: "employee" }, ["c"])).toBe(true);
+  });
+
+  it("still lets the assignee add files", () => {
+    expect(canAddTaskFiles(requested, { id: "b", role: "employee" })).toBe(true);
+  });
+
+  it("blocks someone who is not on the task", () => {
+    expect(canAddTaskFiles(requested, { id: "z", role: "employee" }, ["c"])).toBe(false);
   });
 });
 

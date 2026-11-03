@@ -1,16 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
 import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
 import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
-import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
+import { Handshake } from "@phosphor-icons/react/dist/ssr/Handshake";
 import { JoinMeetButton } from "@/components/join-meet";
 import type { Icon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
-import { EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
+import { Button, EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
@@ -22,12 +22,25 @@ import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatRelative, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { unrepliedTaskMentions } from "@/lib/mentions";
 import { reportPeriodLabel } from "@/lib/reports";
-import { pingTaskAssigned } from "@/lib/ping-task";
+import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
+import { missingHelpersTable, openHelpAsks, TASK_HELPERS_SQL_HINT } from "@/lib/task-helpers";
 import { inboxPreview } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
-import type { AttendanceDay, Conversation, Employee, MonthlySummary, Profile, Space, Task, TaskComment } from "@/lib/types";
+import type {
+  AttendanceDay,
+  Conversation,
+  Employee,
+  MonthlySummary,
+  Profile,
+  Space,
+  Task,
+  TaskComment,
+  TaskHelper,
+} from "@/lib/types";
+
+type WorkFilter = "mine" | "requested" | "helping" | "done" | "overdue";
 
 type InboxRow = {
   conversation_id: string;
@@ -39,12 +52,14 @@ function Stat({
   label,
   value,
   href,
+  onSelect,
   icon: Icon,
   tone = "neutral",
 }: {
   label: string;
   value: number;
   href: string;
+  onSelect?: () => void;
   icon: Icon;
   tone?: "neutral" | "info" | "warn" | "danger";
 }) {
@@ -55,7 +70,8 @@ function Stat({
       href={href}
       onClick={(e) => {
         e.preventDefault();
-        router.push(href);
+        if (onSelect) onSelect();
+        else router.push(href);
       }}
       className={cn(
         "group block rounded-md border border-border border-t-[3px] bg-surface p-5 shadow-card",
@@ -115,7 +131,10 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState<MonthlySummary | null>(null);
   const [today, setToday] = useState<AttendanceDay | null>(null);
   const [teamToday, setTeamToday] = useState<AttendanceDay[]>([]);
-  const [workFilter, setWorkFilter] = useState<"mine" | "requested" | "review" | "done" | "overdue">("mine");
+  const [workFilter, setWorkFilter] = useState<WorkFilter>("mine");
+  const [helpRows, setHelpRows] = useState<TaskHelper[]>([]);
+  const [helpBusy, setHelpBusy] = useState<string | null>(null);
+  const knownTaskIds = useRef<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [wfhPending, setWfhPending] = useState(0);
   const [taggedComments, setTaggedComments] = useState<Pick<TaskComment, "id" | "task_id" | "author_id" | "body" | "created_at">[]>([]);
@@ -126,6 +145,23 @@ export default function DashboardPage() {
     const { data } = await supabase.from("tasks").select("*").order("created_at", { ascending: false });
     if (data) setTasks(data as Task[]);
   }, []);
+
+  const loadHelping = useCallback(async () => {
+    if (!app) return;
+    const { data, error: err } = await createClient().from("task_helpers").select("*").eq("user_id", app.userId);
+    if (err) return;
+    const rows = (data ?? []) as TaskHelper[];
+    setHelpRows(rows);
+    if (knownTaskIds.current && rows.some((h) => !knownTaskIds.current?.has(h.task_id))) void loadTasks();
+  }, [app, loadTasks]);
+
+  useEffect(() => {
+    void loadHelping();
+  }, [loadHelping]);
+
+  useEffect(() => {
+    knownTaskIds.current = tasks ? new Set(tasks.map((t) => t.id)) : null;
+  }, [tasks]);
 
   const loadMentions = useCallback(async () => {
     if (!app) return;
@@ -198,7 +234,10 @@ export default function DashboardPage() {
     })();
   }, [app, operator, admin]);
 
-  useSilentLive(() => void loadTasks(), "dashboard");
+  useSilentLive(() => {
+    void loadTasks();
+    void loadHelping();
+  }, "dashboard");
 
   useEffect(() => {
     if (!app) return;
@@ -207,16 +246,25 @@ export default function DashboardPage() {
       .channel("dashboard-mentions")
       .on("postgres_changes", { event: "*", schema: "public", table: "task_comments" }, () => {
         void loadMentions();
+        void loadHelping();
       })
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_helpers", filter: `user_id=eq.${app.userId}` },
+        () => {
+          void loadHelping();
+          void loadTasks();
+        }
+      )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [app, loadMentions]);
+  }, [app, loadMentions, loadHelping, loadTasks]);
 
   useEffect(() => {
     const work = new URLSearchParams(window.location.search).get("work");
-    if (work === "mine" || work === "requested" || work === "review" || work === "done" || work === "overdue") {
+    if (work === "mine" || work === "requested" || work === "helping" || work === "done" || work === "overdue") {
       setWorkFilter(work);
     }
   }, []);
@@ -239,6 +287,14 @@ export default function DashboardPage() {
     () => (tasks ?? []).filter((t) => t.status === "in_review" && effectiveReviewer(t) === app?.userId),
     [tasks, app?.userId]
   );
+  const helping = useMemo(
+    () => (app ? openHelpAsks(helpRows, tasks ?? [], app.userId) : []),
+    [helpRows, tasks, app]
+  );
+  const mineWithReviews = useMemo(() => {
+    const ids = new Set(mine.map((t) => t.id));
+    return [...mine, ...needsReview.filter((t) => !ids.has(t.id))];
+  }, [mine, needsReview]);
   const completed = useMemo(
     () =>
       (tasks ?? []).filter(
@@ -271,20 +327,25 @@ export default function DashboardPage() {
     }
     return rows;
   }, [needsReview, overdue, mine, app?.userId]);
+  const actionCount = useMemo(() => {
+    const ids = new Set(needsAction.map((t) => t.id));
+    for (const row of helping) ids.add(row.task.id);
+    return ids.size;
+  }, [needsAction, helping]);
   const unreadChats = inbox.filter((row) => row.unread_count > 0);
-  const waitingMentions = useMemo(
-    () =>
-      app
-        ? unrepliedTaskMentions({
-            comments: taggedComments,
-            myComments,
-            me: { ...app.profile, id: app.userId },
-            people,
-            tasks: tasks ?? [],
-          }).slice(0, 8)
-        : [],
-    [app, taggedComments, myComments, people, tasks]
-  );
+  const waitingMentions = useMemo(() => {
+    if (!app) return [];
+    const helpTaskIds = new Set(helping.map((row) => row.task.id));
+    return unrepliedTaskMentions({
+      comments: taggedComments,
+      myComments,
+      me: { ...app.profile, id: app.userId },
+      people,
+      tasks: tasks ?? [],
+    })
+      .filter((row) => !helpTaskIds.has(row.taskId))
+      .slice(0, 8);
+  }, [app, taggedComments, myComments, people, tasks, helping]);
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
@@ -292,15 +353,28 @@ export default function DashboardPage() {
     const rows =
       workFilter === "requested"
         ? requested
-        : workFilter === "review"
-          ? needsReview
-          : workFilter === "done"
-            ? completed
-            : workFilter === "overdue"
-              ? overdue
-              : mine;
+        : workFilter === "done"
+          ? completed
+          : workFilter === "overdue"
+            ? overdue
+            : mineWithReviews;
     return [...rows].sort(compareDueSoon);
-  }, [workFilter, requested, needsReview, completed, overdue, mine]);
+  }, [workFilter, requested, completed, overdue, mineWithReviews]);
+
+  async function finishHelp(task: Task) {
+    setHelpBusy(task.id);
+    const { error: err } = await createClient().rpc("set_task_help_done", { p_task_id: task.id, p_done: true });
+    setHelpBusy(null);
+    if (err) {
+      setError(missingHelpersTable(err.message) ? TASK_HELPERS_SQL_HINT : err.message);
+      return;
+    }
+    const doneAt = new Date().toISOString();
+    setHelpRows((prev) =>
+      prev.map((h) => (h.task_id === task.id && h.user_id === app?.userId ? { ...h, status: "done", done_at: doneAt } : h))
+    );
+    void pingWhatsApp(`/spaces/${task.space_id}/tasks/${task.id}`);
+  }
 
   async function deleteTask(taskId: string) {
     const supabase = createClient();
@@ -370,7 +444,21 @@ export default function DashboardPage() {
 
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} icon={ClipboardText} tone="neutral" />
-        <Stat label="To review" value={needsReview.length} href={firstTaskHref(needsReview, "/tasks?slice=left")} icon={Eye} tone="warn" />
+        <Stat
+          label="Helping"
+          value={helping.length}
+          href={helping.length === 1 ? `/spaces/${helping[0].task.space_id}/tasks/${helping[0].task.id}` : "/dashboard?work=helping"}
+          onSelect={
+            helping.length === 1
+              ? undefined
+              : () => {
+                  setWorkFilter("helping");
+                  document.getElementById("work")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+          }
+          icon={Handshake}
+          tone="warn"
+        />
         <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/tasks?slice=overdue")} icon={Warning} tone="danger" />
         <Stat
           label="Unread chat"
@@ -432,7 +520,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section>
+        <section id="work" className="scroll-mt-24">
           <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
             <h2 className="font-display shrink-0 text-xl font-medium tracking-tight">Work</h2>
             <Segmented
@@ -442,18 +530,18 @@ export default function DashboardPage() {
               options={[
                 { id: "mine", label: "Mine" },
                 { id: "requested", label: "Requested" },
-                { id: "review", label: "Review" },
+                { id: "helping", label: "Helping" },
                 { id: "overdue", label: "Overdue" },
                 { id: "done", label: "Done" },
               ]}
             />
           </div>
-          {workFilter === "mine" && (needsAction.length > 0 || waiting.length > 0) ? (
+          {workFilter === "mine" && (actionCount > 0 || waiting.length > 0) ? (
             <div className="mb-4 grid gap-3 sm:grid-cols-2">
               <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
                 <p className="text-[12px] font-medium text-muted">Needs your action</p>
-                <p className="mt-1 font-display text-2xl font-medium tabular">{needsAction.length}</p>
-                <p className="mt-1 text-xs text-muted">Reviews, overdue, and new assigns.</p>
+                <p className="mt-1 font-display text-2xl font-medium tabular">{actionCount}</p>
+                <p className="mt-1 text-xs text-muted">Reviews, overdue, new assigns, and help asks.</p>
               </div>
               <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
                 <p className="text-[12px] font-medium text-muted">Waiting on others</p>
@@ -462,7 +550,45 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : null}
-          {shown.length === 0 ? (
+          {workFilter === "helping" ? (
+            helping.length === 0 ? (
+              <EmptyState>
+                Nobody needs your help right now. When someone @mentions you on a task, it shows up here.
+              </EmptyState>
+            ) : (
+              <ul className="space-y-2">
+                {helping.map(({ helper, task }) => {
+                  const asker = helper.added_by ? peopleMap[helper.added_by] : undefined;
+                  const href = `/spaces/${task.space_id}/tasks/${task.id}${helper.comment_id ? `#comment-${helper.comment_id}` : ""}`;
+                  return (
+                    <li key={task.id} className="rounded-md border border-border bg-surface px-4 py-3 shadow-card">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <Link href={href} className="group min-w-0 flex-1">
+                          <p className="truncate text-[14px] font-medium group-hover:text-teal">{task.title}</p>
+                          <p className="mt-0.5 text-[12px] text-muted">
+                            {[spaceMap[task.space_id]?.name, `Asked by ${displayName(asker)}`, formatRelative(helper.created_at)]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                          {helper.ask ? (
+                            <p className="mt-1.5 line-clamp-2 text-[13px] text-ink">{inboxPreview(helper.ask)}</p>
+                          ) : null}
+                        </Link>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={helpBusy === task.id}
+                          onClick={() => void finishHelp(task)}
+                        >
+                          {helpBusy === task.id ? "Saving…" : "Mark my part done"}
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )
+          ) : shown.length === 0 ? (
             <EmptyState>
               No tasks yet
             </EmptyState>

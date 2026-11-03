@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Button, Card, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
+import { Badge, Button, Card, ErrorText, Field, Input, PageHeader, Select, Textarea } from "@/components/ui";
 import { FileDrop } from "@/components/file-drop";
 import { StoredFilePreview } from "@/components/chat-media";
 import { fileFromClipboard } from "@/lib/chat-thread";
@@ -25,12 +25,20 @@ import {
 } from "@/lib/spaces";
 import { DatePicker } from "@/components/date-picker";
 import { taskStatusClass } from "@/components/task-card";
-import { dueDateKey, formatStamp } from "@/lib/datetime";
+import { dueDateKey, formatRelative, formatStamp } from "@/lib/datetime";
 import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { useAppState } from "@/components/app-frame";
-import { applyTaskStatus, canManageTask, canDeleteTask, canMoveTask, missingWorkflowColumn } from "@/lib/task-workflow";
-import type { Profile, Space, Task, TaskComment, TaskFile, TaskStatus } from "@/lib/types";
+import {
+  applyTaskStatus,
+  canAddTaskFiles,
+  canManageTask,
+  canDeleteTask,
+  canMoveTask,
+  missingWorkflowColumn,
+} from "@/lib/task-workflow";
+import { missingHelpersTable, TASK_HELPERS_SQL_HINT } from "@/lib/task-helpers";
+import type { Profile, Space, Task, TaskComment, TaskFile, TaskHelper, TaskStatus } from "@/lib/types";
 
 export default function TaskPage() {
   const app = useAppState();
@@ -41,6 +49,9 @@ export default function TaskPage() {
   const [members, setMembers] = useState<Profile[]>([]);
   const [comments, setComments] = useState<TaskComment[]>([]);
   const [files, setFiles] = useState<TaskFile[]>([]);
+  const [helpers, setHelpers] = useState<TaskHelper[]>([]);
+  const [helpersMissing, setHelpersMissing] = useState(false);
+  const [helpBusy, setHelpBusy] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
@@ -116,6 +127,25 @@ export default function TaskPage() {
     if (data && !dirty.current) applyTask(data as Task);
   }, [taskId]);
 
+  const loadHelpers = useCallback(async () => {
+    if (!taskId) return;
+    const { data, error: err } = await createClient()
+      .from("task_helpers")
+      .select("*")
+      .eq("task_id", taskId)
+      .order("created_at");
+    if (err) {
+      setHelpersMissing(missingHelpersTable(err.message));
+      return;
+    }
+    setHelpersMissing(false);
+    setHelpers((data ?? []) as TaskHelper[]);
+  }, [taskId]);
+
+  useEffect(() => {
+    void loadHelpers();
+  }, [loadHelpers]);
+
   const loadComments = useCallback(async () => {
     if (!taskId) return;
     const supabase = createClient();
@@ -139,6 +169,7 @@ export default function TaskPage() {
   useSilentLive(() => {
     void loadTask();
     void loadComments();
+    void loadHelpers();
   }, taskId ? `task-${taskId}` : "task");
 
   useEffect(() => {
@@ -151,13 +182,21 @@ export default function TaskPage() {
         { event: "*", schema: "public", table: "task_comments", filter: `task_id=eq.${taskId}` },
         () => {
           void loadComments();
+          void loadHelpers();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "task_helpers", filter: `task_id=eq.${taskId}` },
+        () => {
+          void loadHelpers();
         }
       )
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [taskId, loadComments]);
+  }, [taskId, loadComments, loadHelpers]);
 
   useEffect(() => {
     const id = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
@@ -239,8 +278,8 @@ export default function TaskPage() {
 
   async function uploadFile(file: File) {
     if (!task || !app) return;
-    if (!canMoveTask(task, { id: app.userId, email: app.profile.email, role: app.profile.role })) {
-      setError("Only the requester, the assignee, or a manager can add files. You can still comment.");
+    if (!canAddTaskFiles(task, { id: app.userId, email: app.profile.email, role: app.profile.role }, helperIds)) {
+      setError("Only the requester, the assignee, a helper, or a manager can add files. You can still comment.");
       return;
     }
     setError(null);
@@ -296,6 +335,7 @@ export default function TaskPage() {
         return;
       }
       setFiles((prev) => [data as TaskFile, ...prev]);
+      void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
     } finally {
       setUploading(false);
     }
@@ -323,7 +363,35 @@ export default function TaskPage() {
     }
     setComments((prev) => (prev.some((c) => c.id === (data as TaskComment).id) ? prev : [...prev, data as TaskComment]));
     setBody("");
+    void loadHelpers();
     void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
+  }
+
+  async function setHelpDone(done: boolean) {
+    if (!task) return;
+    setHelpBusy(true);
+    const { error: err } = await createClient().rpc("set_task_help_done", { p_task_id: task.id, p_done: done });
+    setHelpBusy(false);
+    if (err) {
+      setError(missingHelpersTable(err.message) ? TASK_HELPERS_SQL_HINT : err.message);
+      return;
+    }
+    await loadHelpers();
+    if (done) void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
+  }
+
+  async function removeHelper(userId: string) {
+    if (!task) return;
+    const { error: err } = await createClient()
+      .from("task_helpers")
+      .delete()
+      .eq("task_id", task.id)
+      .eq("user_id", userId);
+    if (err) {
+      setError(missingHelpersTable(err.message) ? TASK_HELPERS_SQL_HINT : err.message);
+      return;
+    }
+    setHelpers((prev) => prev.filter((h) => h.user_id !== userId));
   }
 
   function deleteBlocked(message: string, kind: string) {
@@ -399,6 +467,9 @@ export default function TaskPage() {
   const canMove = Boolean(task && canMoveTask(task, actor));
   const canDelete = Boolean(task && canDeleteTask(task, actor));
   const showSave = Boolean(task && (canMove || !locked));
+  const helperIds = helpers.map((h) => h.user_id);
+  const myHelp = app ? helpers.find((h) => h.user_id === app.userId) ?? null : null;
+  const canAddFiles = Boolean(task && canAddTaskFiles(task, actor, helperIds));
 
   const saveControl = showSave ? (
     <div className="flex items-center gap-3">
@@ -427,7 +498,9 @@ export default function TaskPage() {
           locked
             ? canMove
               ? `${space?.name || "Board"} · You can move status, add files, then Save. Title stays with the requester.`
-              : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
+              : myHelp
+                ? `${space?.name || "Board"} · You're helping on this task. Comment, add files, and mark your part done.`
+                : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
               ? `On ${space.name} · edit the fields below, then Save.`
               : undefined
@@ -500,7 +573,7 @@ export default function TaskPage() {
 
           <Card>
             <p className="mb-2 text-[12px] font-medium text-muted">Files</p>
-            {canMove ? (
+            {canAddFiles ? (
               <FileDrop
                 onFile={(file) => void uploadFile(file)}
                 label={uploading ? "Uploading…" : "Drop, paste, or click to upload"}
@@ -508,7 +581,7 @@ export default function TaskPage() {
               />
             ) : null}
             {files.length > 0 ? (
-              <ul className={canMove ? "mt-3 space-y-2" : "space-y-2"}>
+              <ul className={canAddFiles ? "mt-3 space-y-2" : "space-y-2"}>
                 {files.map((file) => (
                   <li key={file.id} className="flex items-center gap-2">
                     <StoredFilePreview href={`/api/task-files?id=${file.id}`} name={file.file_name} />
@@ -522,7 +595,7 @@ export default function TaskPage() {
                   </li>
                 ))}
               </ul>
-            ) : canMove ? null : (
+            ) : canAddFiles ? null : (
               <p className="text-sm text-faint">No files on this task.</p>
             )}
           </Card>
@@ -530,7 +603,9 @@ export default function TaskPage() {
           <Card className="p-0">
             <div className="border-b border-border px-5 py-4">
               <h2 className="font-display text-xl font-medium tracking-tight">Comments</h2>
-              <p className="mt-1 text-sm text-muted">Type @ to mention someone, or @everyone.</p>
+              <p className="mt-1 text-sm text-muted">
+                Type @ to mention someone, or @everyone. Anyone new you mention joins as a helper.
+              </p>
             </div>
             <div className="space-y-3 px-5 py-4">
               {comments.length === 0 ? (
@@ -580,7 +655,7 @@ export default function TaskPage() {
                   required
                   onPaste={(e) => {
                     const pasted = fileFromClipboard(e.clipboardData);
-                    if (!pasted || !canMove) return;
+                    if (!pasted || !canAddFiles) return;
                     e.preventDefault();
                     void uploadFile(pasted);
                   }}
@@ -663,6 +738,71 @@ export default function TaskPage() {
                   ))}
                 </Select>
               </Field>
+            </div>
+            <div className="px-4 py-4">
+              <p className="mb-2 text-[12px] font-medium text-muted">Helpers</p>
+              {helpers.length === 0 ? (
+                <p className="text-[13px] text-faint">
+                  {helpersMissing ? TASK_HELPERS_SQL_HINT : "Mention someone in a comment to bring them in."}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {helpers.map((helper) => {
+                    const person = profiles[helper.user_id];
+                    const asker = helper.added_by ? profiles[helper.added_by] : undefined;
+                    const mine = helper.user_id === app?.userId;
+                    const done = helper.status === "done";
+                    return (
+                      <li key={helper.user_id} className="flex gap-2.5">
+                        <Avatar name={displayName(person)} src={avatarSrc(person)} size="sm" />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="truncate text-[13px] font-medium">{displayName(person)}</span>
+                            <Badge tone={done ? "ok" : "warn"}>{done ? "Done" : "Working"}</Badge>
+                          </div>
+                          {helper.ask ? (
+                            <p className="mt-1 line-clamp-3 text-[12px] leading-snug text-muted">
+                              <MentionBody text={helper.ask} people={Object.values(profiles)} />
+                            </p>
+                          ) : null}
+                          <p className="mt-1 text-[11px] text-faint">
+                            {helper.comment_id ? (
+                              <a href={`#comment-${helper.comment_id}`} className="hover:text-teal">
+                                Asked by {displayName(asker)}
+                              </a>
+                            ) : (
+                              <>Asked by {displayName(asker)}</>
+                            )}
+                            {" · "}
+                            {formatRelative(done && helper.done_at ? helper.done_at : helper.created_at)}
+                          </p>
+                          {mine || canMove ? (
+                            <div className="mt-2 flex flex-wrap items-center gap-3">
+                              {mine ? (
+                                <Button
+                                  size="sm"
+                                  variant={done ? "ghost" : "secondary"}
+                                  disabled={helpBusy}
+                                  onClick={() => void setHelpDone(!done)}
+                                >
+                                  {done ? "Reopen my part" : "Mark my part done"}
+                                </Button>
+                              ) : null}
+                              <button
+                                type="button"
+                                className="text-[12px] font-medium text-muted transition duration-200 hover:text-coral"
+                                onClick={() => void removeHelper(helper.user_id)}
+                              >
+                                {mine ? "Leave" : "Remove"}
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
             <div className="px-4 py-4">
               <Field label="Reviewer">

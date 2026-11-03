@@ -51,11 +51,20 @@ export async function POST(request: Request) {
     .maybeSingle();
   if (error || !task) return NextResponse.json({ error: "Task not found" }, { status: 404 });
 
-  const allowed =
+  let allowed =
     task.created_by === me.id || task.assignee_id === me.id || isManagerUser({ email: me.email, role: me.role });
   if (!allowed) {
+    const { data: helper } = await me.supabase
+      .from("task_helpers")
+      .select("user_id")
+      .eq("task_id", taskId)
+      .eq("user_id", me.id)
+      .maybeSingle();
+    allowed = Boolean(helper);
+  }
+  if (!allowed) {
     return NextResponse.json(
-      { error: "Only the requester, the assignee, or a manager can add files." },
+      { error: "Only the requester, the assignee, a helper, or a manager can add files." },
       { status: 403 }
     );
   }

@@ -76,6 +76,17 @@ export type TaskComment = {
   created_at: string;
 };
 
+export type TaskHelper = {
+  task_id: string;
+  user_id: string;
+  added_by: string | null;
+  comment_id: string | null;
+  ask: string | null;
+  status: "open" | "done";
+  created_at: string;
+  done_at: string | null;
+};
+
 export type Conversation = {
   id: string;
   type: ConversationType;
