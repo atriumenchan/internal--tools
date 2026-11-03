@@ -1,7 +1,7 @@
 import type { Task, TaskHelper } from "@/lib/types";
 
 export const TASK_HELPERS_SQL_HINT =
-  "Helpers need a SQL patch. Paste supabase/task-helpers.sql in the Supabase SQL editor, then refresh.";
+  "The Involved list needs a SQL patch. Paste supabase/task-helpers.sql in the Supabase SQL editor, then refresh.";
 
 export function missingHelpersTable(message: string | null | undefined) {
   const m = (message || "").toLowerCase();

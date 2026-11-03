@@ -279,7 +279,7 @@ export default function TaskPage() {
   async function uploadFile(file: File) {
     if (!task || !app) return;
     if (!canAddTaskFiles(task, { id: app.userId, email: app.profile.email, role: app.profile.role }, helperIds)) {
-      setError("Only the requester, the assignee, a helper, or a manager can add files. You can still comment.");
+      setError("Only the requester, the assignee, someone involved, or a manager can add files. You can still comment.");
       return;
     }
     setError(null);
@@ -499,7 +499,7 @@ export default function TaskPage() {
             ? canMove
               ? `${space?.name || "Board"} · You can move status, add files, then Save. Title stays with the requester.`
               : myHelp
-                ? `${space?.name || "Board"} · You're helping on this task. Comment, add files, and mark your part done.`
+                ? `${space?.name || "Board"} · You're involved in this task. Comment, add files, and mark your part done.`
                 : `${space?.name || "Board"} · Only the requester or a manager can change this task. You can still comment.`
             : space?.name
               ? `On ${space.name} · edit the fields below, then Save.`
@@ -604,7 +604,7 @@ export default function TaskPage() {
             <div className="border-b border-border px-5 py-4">
               <h2 className="font-display text-xl font-medium tracking-tight">Comments</h2>
               <p className="mt-1 text-sm text-muted">
-                Type @ to mention someone, or @everyone. Anyone new you mention joins as a helper.
+                Type @ to mention someone, or @everyone. Anyone new you mention is added to Involved.
               </p>
             </div>
             <div className="space-y-3 px-5 py-4">
@@ -740,7 +740,7 @@ export default function TaskPage() {
               </Field>
             </div>
             <div className="px-4 py-4">
-              <p className="mb-2 text-[12px] font-medium text-muted">Helpers</p>
+              <p className="mb-2 text-[12px] font-medium text-muted">Involved</p>
               {helpers.length === 0 ? (
                 <p className="text-[13px] text-faint">
                   {helpersMissing ? TASK_HELPERS_SQL_HINT : "Mention someone in a comment to bring them in."}

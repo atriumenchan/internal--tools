@@ -40,7 +40,7 @@ import type {
   TaskHelper,
 } from "@/lib/types";
 
-type WorkFilter = "mine" | "requested" | "helping" | "done" | "overdue";
+type WorkFilter = "mine" | "requested" | "involved" | "done" | "overdue";
 
 type InboxRow = {
   conversation_id: string;
@@ -264,7 +264,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const work = new URLSearchParams(window.location.search).get("work");
-    if (work === "mine" || work === "requested" || work === "helping" || work === "done" || work === "overdue") {
+    if (work === "mine" || work === "requested" || work === "involved" || work === "done" || work === "overdue") {
       setWorkFilter(work);
     }
   }, []);
@@ -445,14 +445,14 @@ export default function DashboardPage() {
       <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} icon={ClipboardText} tone="neutral" />
         <Stat
-          label="Helping"
+          label="Involved"
           value={helping.length}
-          href={helping.length === 1 ? `/spaces/${helping[0].task.space_id}/tasks/${helping[0].task.id}` : "/dashboard?work=helping"}
+          href={helping.length === 1 ? `/spaces/${helping[0].task.space_id}/tasks/${helping[0].task.id}` : "/dashboard?work=involved"}
           onSelect={
             helping.length === 1
               ? undefined
               : () => {
-                  setWorkFilter("helping");
+                  setWorkFilter("involved");
                   document.getElementById("work")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
           }
@@ -530,7 +530,7 @@ export default function DashboardPage() {
               options={[
                 { id: "mine", label: "Mine" },
                 { id: "requested", label: "Requested" },
-                { id: "helping", label: "Helping" },
+                { id: "involved", label: "Involved" },
                 { id: "overdue", label: "Overdue" },
                 { id: "done", label: "Done" },
               ]}
@@ -541,7 +541,7 @@ export default function DashboardPage() {
               <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
                 <p className="text-[12px] font-medium text-muted">Needs your action</p>
                 <p className="mt-1 font-display text-2xl font-medium tabular">{actionCount}</p>
-                <p className="mt-1 text-xs text-muted">Reviews, overdue, new assigns, and help asks.</p>
+                <p className="mt-1 text-xs text-muted">Reviews, overdue, new assigns, and tasks you are involved in.</p>
               </div>
               <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
                 <p className="text-[12px] font-medium text-muted">Waiting on others</p>
@@ -550,10 +550,10 @@ export default function DashboardPage() {
               </div>
             </div>
           ) : null}
-          {workFilter === "helping" ? (
+          {workFilter === "involved" ? (
             helping.length === 0 ? (
               <EmptyState>
-                Nobody needs your help right now. When someone @mentions you on a task, it shows up here.
+                {"You're not involved in anyone else's tasks right now. When someone @mentions you on a task, it shows up here."}
               </EmptyState>
             ) : (
               <ul className="space-y-2">

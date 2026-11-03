@@ -1,9 +1,9 @@
 -- Paste in the Supabase SQL editor. Safe to re-run.
--- Helpers on a task:
+-- People involved in a task (shown as Involved in the app):
 --   * @mention someone in a task comment who is not the requester or assignee,
---     and they join the task as a helper with their own part to finish.
---   * Helpers can open the task, comment, and attach files.
---   * Adding a file now notifies the requester, assignee, and helpers.
+--     and they become involved in the task with their own part to finish.
+--   * Involved people can open the task, comment, and attach files.
+--   * Adding a file now notifies the requester, assignee, and everyone involved.
 -- Includes supabase/manager-own-spaces.sql and supabase/task-comments-shared.sql.
 
 -- -----------------------------------------------------------------------------
@@ -412,7 +412,7 @@ begin
         v_user,
         new.author_id,
         'task_help',
-        v_name || ' asked for your help on ' || t.title,
+        v_name || ' involved you in ' || t.title,
         new.body,
         v_href
       );
@@ -473,7 +473,7 @@ begin
       v_user,
       new.author_id,
       'task_comment',
-      v_name || ' commented on a task you are helping with',
+      v_name || ' commented on a task you are involved in',
       new.body,
       v_href
     );
@@ -571,7 +571,7 @@ begin
   where task_id = p_task_id and user_id = auth.uid()
   returning ask into v_ask;
   if not found then
-    raise exception 'You are not helping on this task.';
+    raise exception 'You are not involved in this task.';
   end if;
   if not p_done then
     return;

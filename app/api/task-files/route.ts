@@ -64,7 +64,7 @@ export async function POST(request: Request) {
   }
   if (!allowed) {
     return NextResponse.json(
-      { error: "Only the requester, the assignee, a helper, or a manager can add files." },
+      { error: "Only the requester, the assignee, someone involved, or a manager can add files." },
       { status: 403 }
     );
   }
