@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertCircle, ClipboardList, MessageCircle, Users } from "lucide-react";
+import { AlertCircle, ClipboardList, MessageCircle, Users, X } from "lucide-react";
 import { JoinMeetButton } from "@/components/join-meet";
 import { createClient } from "@/lib/supabase/client";
 import { Button, EmptyState, ErrorText, Segmented } from "@/components/ui";
@@ -19,6 +19,7 @@ import { canPostAnnouncements } from "@/lib/roles";
 import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatRelative, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { unrepliedTaskMentions } from "@/lib/mentions";
+import { readDismissedMentions, writeDismissedMentions } from "@/lib/dismissed-mentions";
 import { reportPeriodLabel } from "@/lib/reports";
 import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
@@ -125,6 +126,7 @@ export default function DashboardPage() {
   const [wfhPending, setWfhPending] = useState(0);
   const [taggedComments, setTaggedComments] = useState<Pick<TaskComment, "id" | "task_id" | "author_id" | "body" | "created_at">[]>([]);
   const [myComments, setMyComments] = useState<Pick<TaskComment, "task_id" | "created_at">[]>([]);
+  const [dismissedMentions, setDismissedMentions] = useState<string[]>([]);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -144,6 +146,33 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadHelping();
   }, [loadHelping]);
+
+  useEffect(() => {
+    if (!app) return;
+    const local = readDismissedMentions(app.userId);
+    setDismissedMentions(local);
+    void createClient()
+      .from("mention_dismissals")
+      .select("comment_id")
+      .eq("user_id", app.userId)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const next = Array.from(new Set([...local, ...data.map((row) => String(row.comment_id))]));
+        writeDismissedMentions(app.userId, next);
+        setDismissedMentions(next);
+      });
+  }, [app]);
+
+  function dismissMention(commentId: string) {
+    if (!app) return;
+    setDismissedMentions((prev) => {
+      if (prev.includes(commentId)) return prev;
+      const next = [...prev, commentId];
+      writeDismissedMentions(app.userId, next);
+      return next;
+    });
+    void createClient().from("mention_dismissals").insert({ user_id: app.userId, comment_id: commentId });
+  }
 
   useEffect(() => {
     knownTaskIds.current = tasks ? new Set(tasks.map((t) => t.id)) : null;
@@ -329,9 +358,9 @@ export default function DashboardPage() {
       people,
       tasks: tasks ?? [],
     })
-      .filter((row) => !helpTaskIds.has(row.taskId))
+      .filter((row) => !helpTaskIds.has(row.taskId) && !dismissedMentions.includes(row.commentId))
       .slice(0, 8);
-  }, [app, taggedComments, myComments, people, tasks, helping]);
+  }, [app, taggedComments, myComments, people, tasks, helping, dismissedMentions]);
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
@@ -572,8 +601,8 @@ export default function DashboardPage() {
           ) : (
             <ul className="mt-4 divide-y divide-border">
               {waitingMentions.map((row) => (
-                <li key={row.commentId}>
-                  <Link href={row.href} className="flex gap-3 py-3">
+                <li key={row.commentId} className="relative">
+                  <Link href={row.href} className="flex gap-3 py-3 pr-8">
                     <Avatar name={displayName(peopleMap[row.authorId])} src={avatarSrc(peopleMap[row.authorId])} size="sm" />
                     <span className="min-w-0">
                       <span className="block text-[14px] leading-5 font-bold text-ink">{displayName(peopleMap[row.authorId])} tagged you</span>
@@ -582,6 +611,15 @@ export default function DashboardPage() {
                       <span className="mt-1 block text-[12px] leading-4 text-muted">{formatRelative(row.createdAt)}</span>
                     </span>
                   </Link>
+                  <button
+                    type="button"
+                    aria-label="Remove this tag"
+                    title="Remove"
+                    onClick={() => dismissMention(row.commentId)}
+                    className="absolute top-2.5 right-0 grid h-7 w-7 place-items-center rounded-full text-muted transition-colors duration-150 hover:bg-surface-2 hover:text-ink"
+                  >
+                    <X size={14} />
+                  </button>
                 </li>
               ))}
             </ul>

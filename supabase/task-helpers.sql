@@ -680,3 +680,21 @@ begin
     end if;
   end if;
 end $$;
+
+-- Tags you clear from the dashboard stay cleared on every device.
+create table if not exists public.mention_dismissals (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  comment_id uuid not null references public.task_comments (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, comment_id)
+);
+
+alter table public.mention_dismissals enable row level security;
+
+drop policy if exists "own mention dismissals" on public.mention_dismissals;
+create policy "own mention dismissals"
+  on public.mention_dismissals for all to authenticated
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
+
+grant select, insert, delete on public.mention_dismissals to authenticated;
