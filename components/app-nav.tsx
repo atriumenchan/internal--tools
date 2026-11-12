@@ -177,14 +177,14 @@ export function AppNav({
                         prefetch
                         title={label}
                         className={cn(
-                          "relative flex h-10 items-center gap-2 rounded-[8px] px-2.5 text-[13px] leading-5 font-medium transition-colors duration-150",
+                          "relative flex h-10 items-center gap-2 rounded-[8px] px-2.5 text-[14px] leading-5 font-semibold text-white transition-colors duration-150",
                           active
-                            ? "bg-[var(--sidebar-active)] text-white"
-                            : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-white"
+                            ? "bg-[var(--sidebar-active)]"
+                            : "hover:bg-[var(--sidebar-hover)]"
                         )}
                       >
                         {active ? <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-r bg-amber" aria-hidden /> : null}
-                        <Icon size={18} className={cn("shrink-0", active ? "text-amber" : "text-[var(--sidebar-text-muted)]")} />
+                        <Icon size={18} className={cn("shrink-0", active ? "text-amber" : "text-white")} />
                         <span className={cn("truncate", collapsed && "lg:hidden")}>{label}</span>
                         {count > 0 ? (
                           <span className={cn("tabular ml-auto text-[12px] text-amber", collapsed && "lg:hidden")}>{count > 99 ? "99+" : count}</span>
