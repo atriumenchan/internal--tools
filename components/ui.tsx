@@ -16,7 +16,7 @@ const interactive =
   "transition-[background-color,border-color,box-shadow,color,transform,opacity] duration-150 ease-out motion-reduce:transition-none";
 
 const control =
-  "w-full rounded-sm border border-border-strong bg-surface px-3 py-2.5 text-[15px] font-normal text-ink outline-none placeholder:text-faint hover:border-amber-line focus:border-amber focus:shadow-[0_0_0_3px_var(--amber-dim)] focus:ring-0 disabled:cursor-not-allowed disabled:text-faint " +
+  "w-full rounded-sm border border-border-strong bg-surface px-3 py-2 text-[15px] font-normal text-ink outline-none placeholder:text-faint hover:border-ink focus:border-amber focus:ring-0 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-faint " +
   interactive;
 
 export function Button({
@@ -31,18 +31,16 @@ export function Button({
   return (
     <button
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-sm font-medium cursor-pointer",
+        "inline-flex items-center justify-center gap-2 rounded-sm font-medium tracking-[0.01em] cursor-pointer",
         interactive,
-        "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--amber-dim)] focus-visible:border-amber",
-        "active:scale-[0.98] motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
-        size === "sm" ? "px-3 py-1.5 text-[13px]" : "px-4 py-2.5 text-[13px]",
-        variant === "primary" &&
-          "bg-[linear-gradient(135deg,var(--amber-soft),var(--amber))] text-white shadow-cta hover:brightness-[1.03]",
-        variant === "ink" && "bg-surface-2 text-ink ring-1 ring-border-strong hover:bg-page",
-        variant === "secondary" &&
-          "border border-border-strong bg-surface-2 text-ink hover:border-amber-line",
-        variant === "ghost" && "text-muted hover:bg-surface-2 hover:text-ink",
-        variant === "danger" && "bg-coral text-white hover:brightness-[1.03]",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber focus-visible:shadow-none",
+        "active:translate-y-px motion-reduce:active:translate-y-0 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0",
+        size === "sm" ? "h-8 px-2.5 text-[13px]" : "h-9 px-3.5 text-[14px]",
+        variant === "primary" && "border border-amber bg-amber text-[#faf6ee] hover:bg-[#732f1d] hover:border-[#732f1d]",
+        variant === "ink" && "border border-ink bg-ink text-[#faf6ee] hover:bg-[#3a332c]",
+        variant === "secondary" && "border border-ink bg-transparent text-ink hover:bg-ink hover:text-[#faf6ee]",
+        variant === "ghost" && "text-muted underline decoration-transparent underline-offset-4 hover:text-ink hover:decoration-ink",
+        variant === "danger" && "border border-coral bg-transparent text-coral hover:bg-coral hover:text-[#faf6ee]",
         className
       )}
       {...props}
@@ -102,7 +100,7 @@ export function Select({ className, children, ...props }: SelectHTMLAttributes<H
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={cn("mb-1.5 block text-[12px] font-medium text-muted", className)} {...props} />
+    <label className={cn("mb-1.5 block text-[13px] text-muted", className)} {...props} />
   );
 }
 
@@ -128,7 +126,7 @@ export function Field({
 export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("rounded-md border border-border bg-surface p-5 shadow-card", className)}
+      className={cn("rounded-sm border border-border bg-surface p-5", className)}
       {...props}
     />
   );
@@ -138,7 +136,6 @@ export function Badge({
   children,
   tone = "neutral",
   variant = "soft",
-  dot,
 }: {
   children: React.ReactNode;
   tone?: "neutral" | "warn" | "ok" | "danger" | "info" | "accent" | "review";
@@ -148,31 +145,31 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-sm px-2 py-0.5 text-[12px] font-medium leading-none",
-        variant === "count" && "tabular min-w-[1.25rem] justify-center px-1.5",
-        tone === "neutral" && "bg-surface-2 text-muted",
-        tone === "warn" && "bg-amber-dim text-amber",
-        tone === "ok" && "bg-teal-dim text-teal",
-        tone === "danger" && "bg-coral-dim text-coral",
-        tone === "info" && "bg-teal-dim text-teal",
-        tone === "accent" && "bg-amber-dim text-amber",
-        tone === "review" && "bg-violet-dim text-violet"
+        "inline-flex items-center gap-1.5 text-[12px] font-medium leading-none",
+        variant === "count" && "tabular min-w-[1.25rem] justify-center",
+        tone === "neutral" && "text-muted",
+        tone === "warn" && "text-amber",
+        tone === "ok" && "text-teal",
+        tone === "danger" && "text-coral",
+        tone === "info" && "text-teal",
+        tone === "accent" && "text-amber",
+        tone === "review" && "text-violet"
       )}
     >
-      {dot ? (
-        <span
-          className={cn(
-            "h-1.5 w-1.5 rounded-full",
-            tone === "warn" && "bg-amber",
-            tone === "ok" && "bg-teal",
-            tone === "danger" && "bg-coral",
-            tone === "info" && "bg-teal",
-            tone === "accent" && "bg-amber",
-            tone === "review" && "bg-violet",
-            tone === "neutral" && "bg-faint"
-          )}
-        />
-      ) : null}
+      <span
+        className={cn(
+          "inline-block h-[7px] w-[7px] shrink-0",
+          tone === "warn" && "bg-amber",
+          tone === "ok" && "bg-teal",
+          tone === "danger" && "bg-coral",
+          tone === "info" && "bg-teal",
+          tone === "accent" && "bg-amber",
+          tone === "review" && "bg-violet",
+          tone === "neutral" && "bg-faint",
+          variant === "count" && "hidden"
+        )}
+        aria-hidden
+      />
       {children}
     </span>
   );
@@ -228,11 +225,11 @@ export function PageHeader({
     <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0 flex-1">
         {typeof title === "string" ? (
-          <h1 className="font-display text-[32px] font-medium leading-[1.15] tracking-tight text-ink">{title}</h1>
+          <h1 className="font-display text-[2rem] font-medium leading-[1.12] text-ink">{title}</h1>
         ) : (
           <div className="max-w-3xl">{title}</div>
         )}
-        {description ? <p className="mt-2 max-w-2xl text-[15px] text-muted">{description}</p> : null}
+        {description ? <p className="mt-1.5 max-w-[38rem] text-[15px] leading-relaxed text-muted">{description}</p> : null}
       </div>
       {actions}
     </div>
@@ -241,7 +238,7 @@ export function PageHeader({
 
 export function TextLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className={cn("font-medium text-teal hover:text-teal-soft", interactive)}>
+    <Link href={href} className={cn("text-amber underline decoration-amber/40 underline-offset-[3px] hover:decoration-amber", interactive)}>
       {children}
     </Link>
   );
@@ -254,7 +251,7 @@ export function ErrorText({ children, className }: { children?: React.ReactNode;
 
 export function EmptyState({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cn("rounded-md border border-dashed border-border bg-surface px-4 py-10 text-center text-[13px] text-faint", className)}>
+    <div className={cn("border-t border-ink px-1 py-8 text-[15px] text-muted", className)}>
       {children}
     </div>
   );

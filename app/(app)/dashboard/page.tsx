@@ -3,12 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Warning } from "@phosphor-icons/react/dist/ssr/Warning";
-import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
-import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
-import { Handshake } from "@phosphor-icons/react/dist/ssr/Handshake";
 import { JoinMeetButton } from "@/components/join-meet";
-import type { Icon } from "@phosphor-icons/react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
@@ -53,14 +48,12 @@ function Stat({
   value,
   href,
   onSelect,
-  icon: Icon,
   tone = "neutral",
 }: {
   label: string;
   value: number;
   href: string;
   onSelect?: () => void;
-  icon: Icon;
   tone?: "neutral" | "info" | "warn" | "danger";
 }) {
   const router = useRouter();
@@ -73,37 +66,15 @@ function Stat({
         if (onSelect) onSelect();
         else router.push(href);
       }}
-      className={cn(
-        "group block rounded-md border border-border border-t-[3px] bg-surface p-5 shadow-card",
-        "transition duration-150 ease-out hover:-translate-y-0.5 motion-reduce:hover:translate-y-0",
-        "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--amber-dim)]",
-        tone === "danger" && "border-t-coral",
-        tone === "warn" && "border-t-violet",
-        tone === "info" && "border-t-teal",
-        tone === "neutral" && "border-t-amber"
-      )}
+      className="group block px-4 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
     >
-      <div className="flex items-center gap-2.5">
-        <span
-          className={cn(
-            "grid h-8 w-8 place-items-center rounded-sm",
-            tone === "danger" && "bg-coral-dim text-coral",
-            tone === "warn" && "bg-violet-dim text-violet",
-            tone === "info" && "bg-teal-dim text-teal",
-            tone === "neutral" && "bg-amber-dim text-amber"
-          )}
-        >
-          <Icon size={18} weight="light" />
-        </span>
-        <p className="text-[12px] font-medium text-muted">{label}</p>
-      </div>
+      <p className="text-[13px] text-muted">{label}</p>
       <p
         className={cn(
-          "tabular mt-3 text-[32px] font-semibold leading-none",
+          "tabular mt-2 text-[1.75rem] leading-none",
           zero && "text-faint",
           !zero && tone === "danger" && "text-coral",
-          !zero && tone === "warn" && "text-violet",
-          !zero && tone !== "danger" && tone !== "warn" && "text-ink"
+          !zero && tone !== "danger" && "text-ink group-hover:text-amber"
         )}
       >
         {value}
@@ -442,8 +413,8 @@ export default function DashboardPage() {
       />
       <ErrorText className="mb-4">{error}</ErrorText>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} icon={ClipboardText} tone="neutral" />
+      <div className="mb-8 grid grid-cols-2 divide-x divide-y divide-ink border border-ink lg:grid-cols-4 lg:divide-y-0">
+        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} />
         <Stat
           label="Involved"
           value={helping.length}
@@ -456,16 +427,12 @@ export default function DashboardPage() {
                   document.getElementById("work")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
           }
-          icon={Handshake}
-          tone="warn"
         />
-        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/tasks?slice=overdue")} icon={Warning} tone="danger" />
+        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/tasks?slice=overdue")} tone="danger" />
         <Stat
           label="Unread chat"
           value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}
           href="/chat"
-          icon={ChatCircleDots}
-          tone="info"
         />
       </div>
 
@@ -502,20 +469,14 @@ export default function DashboardPage() {
         <Announcements operator={canPostAnnouncements(app.profile) || operator} userId={app.userId} />
       </div>
 
-      <div className="mb-6 grid gap-3 sm:grid-cols-2">
-        <Link
-          href="/reports?kind=weekly"
-          className="rounded-md border border-border bg-surface px-4 py-3 hover:border-border-strong"
-        >
-          <p className="text-[13px] font-semibold">Weekly report</p>
-          <p className="mt-1 text-[12px] text-muted">This week · {reportPeriodLabel("weekly")}</p>
+      <div className="mb-8 flex flex-wrap gap-x-8 gap-y-2 border-b border-border pb-4 text-[15px]">
+        <Link href="/reports?kind=weekly" className="text-ink underline decoration-border underline-offset-4 hover:decoration-amber">
+          Weekly report
+          <span className="ml-2 text-muted">{reportPeriodLabel("weekly")}</span>
         </Link>
-        <Link
-          href="/reports?kind=monthly"
-          className="rounded-md border border-border bg-surface px-4 py-3 hover:border-border-strong"
-        >
-          <p className="text-[13px] font-semibold">Monthly report</p>
-          <p className="mt-1 text-[12px] text-muted">This month · {reportPeriodLabel("monthly")}</p>
+        <Link href="/reports?kind=monthly" className="text-ink underline decoration-border underline-offset-4 hover:decoration-amber">
+          Monthly report
+          <span className="ml-2 text-muted">{reportPeriodLabel("monthly")}</span>
         </Link>
       </div>
 
@@ -537,16 +498,16 @@ export default function DashboardPage() {
             />
           </div>
           {workFilter === "mine" && (actionCount > 0 || waiting.length > 0) ? (
-            <div className="mb-4 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
-                <p className="text-[12px] font-medium text-muted">Needs your action</p>
-                <p className="mt-1 font-display text-2xl font-medium tabular">{actionCount}</p>
-                <p className="mt-1 text-xs text-muted">Reviews, overdue, new assigns, and tasks you are involved in.</p>
+            <div className="mb-5 grid border border-ink sm:grid-cols-2 sm:divide-x sm:divide-ink">
+              <div className="px-4 py-3">
+                <p className="text-[13px] text-muted">Needs your action</p>
+                <p className="tabular mt-1 text-[1.5rem] leading-none">{actionCount}</p>
+                <p className="mt-2 text-[13px] leading-snug text-muted">Reviews, overdue, new assigns, and tasks you are involved in.</p>
               </div>
-              <div className="rounded-md border border-border bg-surface px-3 py-3 shadow-card">
-                <p className="text-[12px] font-medium text-muted">Waiting on others</p>
-                <p className="mt-1 font-display text-2xl font-medium tabular">{waiting.length}</p>
-                <p className="mt-1 text-xs text-muted">Work you asked someone else for.</p>
+              <div className="border-t border-ink px-4 py-3 sm:border-t-0">
+                <p className="text-[13px] text-muted">Waiting on others</p>
+                <p className="tabular mt-1 text-[1.5rem] leading-none">{waiting.length}</p>
+                <p className="mt-2 text-[13px] leading-snug text-muted">Work you asked someone else for.</p>
               </div>
             </div>
           ) : null}

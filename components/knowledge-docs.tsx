@@ -181,7 +181,7 @@ export function KnowledgeDocs() {
                     </div>
                   ) : null}
                 </div>
-                {row.body ? <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted">{row.body}</p> : null}
+                {row.body ? <p className="prose-register mt-4 max-w-[40rem] whitespace-pre-wrap text-ink">{row.body}</p> : null}
                 <p className="mt-3 text-[12px] text-muted">
                   Last edited by {displayName(people[row.updated_by || ""] || people[row.created_by || ""])} ·{" "}
                   {formatStamp(row.updated_at || row.created_at)}

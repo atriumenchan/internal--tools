@@ -333,7 +333,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
           ) : (
             <SidebarFallback />
           )}
-          <main className="min-w-0 bg-page px-4 py-6 md:px-8 md:py-8">
+          <main className="min-w-0 bg-page px-5 py-7 md:px-10 md:py-9">
             <Suspense fallback={null}>
               <HistoryBar />
             </Suspense>

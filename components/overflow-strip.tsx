@@ -172,8 +172,8 @@ export function Segmented<T extends string>({
         type="button"
         onClick={() => pick(option.id)}
         className={cn(
-          "cursor-pointer rounded-sm px-3 py-1.5 text-[13px] font-medium whitespace-nowrap",
-          selected ? "bg-surface text-ink shadow-card" : "text-muted hover:bg-surface/70 hover:text-ink"
+          "cursor-pointer border-b-2 border-transparent px-2.5 py-1.5 text-[13.5px] whitespace-nowrap",
+          selected ? "border-amber text-ink" : "text-muted hover:text-ink"
         )}
       >
         {option.label}
@@ -185,12 +185,12 @@ export function Segmented<T extends string>({
     <div ref={parent} className={cn("relative min-w-0 max-w-full", className)}>
       <div
         ref={measure}
-        className="pointer-events-none invisible absolute flex items-center rounded-sm bg-surface-2 p-1"
+        className="pointer-events-none invisible absolute flex items-center"
         aria-hidden
       >
         {buttons}
       </div>
-      <div className="inline-flex max-w-full min-w-0 items-center overflow-hidden rounded-sm bg-surface-2 p-1">
+      <div className="inline-flex max-w-full min-w-0 items-end overflow-hidden border-b border-border">
         {fits ? (
           buttons
         ) : (
@@ -198,7 +198,7 @@ export function Segmented<T extends string>({
             <button
               type="button"
               onClick={() => setOpen((v) => !v)}
-              className="min-w-0 truncate rounded-sm bg-surface px-3 py-1.5 text-[13px] font-medium text-ink shadow-card"
+              className="min-w-0 truncate border-b-2 border-amber px-2.5 py-1.5 text-[13.5px] text-ink"
             >
               {active?.label}
             </button>
@@ -223,7 +223,7 @@ export function Segmented<T extends string>({
               onClick={() => pick(option.id)}
               className={cn(
                 "flex w-full rounded-sm px-3 py-2 text-left text-[13px] font-medium",
-                option.id === value ? "bg-amber-dim text-amber" : "text-ink hover:bg-surface-2"
+                option.id === value ? "text-ink" : "text-muted hover:text-ink"
               )}
             >
               {option.label}

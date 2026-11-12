@@ -550,8 +550,8 @@ function ChatApp() {
                 type="button"
                 onClick={() => router.push(`/chat?c=${convo.id}`)}
                 className={cn(
-                  "flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-2.5 py-2 text-left transition duration-200",
-                  active ? "bg-amber-dim text-ink" : convo.unread > 0 ? "bg-teal-dim text-ink" : "text-muted hover:bg-surface-2 hover:text-ink"
+                  "flex min-w-0 flex-1 items-center gap-2.5 border-l-2 border-transparent px-2.5 py-2 text-left",
+                  active ? "border-amber bg-surface text-ink" : "text-muted hover:bg-surface hover:text-ink"
                 )}
               >
                 {convo.type === "dm" ? (
@@ -564,9 +564,7 @@ function ChatApp() {
                     <span className="truncate text-sm font-medium">{label}</span>
                     {convo.type === "group" ? <span className="shrink-0 font-mono text-[10px] text-faint">{count}</span> : null}
                     {convo.unread > 0 ? (
-                      <span className={`rounded-sm px-1.5 font-mono text-[10px] font-medium ${active ? "bg-amber-dim text-amber" : "bg-teal-dim text-teal"}`}>
-                        {convo.unread}
-                      </span>
+                      <span className="tabular text-[12px] text-amber">{convo.unread}</span>
                     ) : null}
                   </span>
                   {preview ? <span className="mt-0.5 block truncate text-[11px] opacity-70">{preview}</span> : null}

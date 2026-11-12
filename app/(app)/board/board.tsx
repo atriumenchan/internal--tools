@@ -131,7 +131,7 @@ export function AttendanceBoard({
         <p className="text-sm text-ink-soft">No attendance file in Supabase yet. Ryan Ritabrata can upload the weekly month-performance Excel.</p>
       )}
 
-      <div className="grid gap-3 md:grid-cols-6">
+      <div className="grid grid-cols-2 divide-x divide-y divide-ink border border-ink sm:grid-cols-3 lg:grid-cols-6 lg:divide-y-0">
         <Stat label="Present days" value={totals.present} />
         <Stat label="Absent days" value={totals.absent} />
         <Stat label="Leave days" value={totals.leave} />
@@ -288,9 +288,9 @@ export function AttendanceBoard({
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-md border border-border bg-surface p-4 shadow-card">
-      <p className="text-[12px] font-medium text-muted">{label}</p>
-      <p className="tabular mt-2 text-[28px] font-semibold leading-none">{value}</p>
+    <div className="px-3 py-3">
+      <p className="text-[12px] text-muted">{label}</p>
+      <p className="tabular mt-1.5 text-[1.35rem] leading-none text-ink">{value}</p>
     </div>
   );
 }

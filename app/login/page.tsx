@@ -9,23 +9,23 @@ export default async function LoginPage() {
   void ensureAdminFromEnv();
 
   return (
-    <div className="grid min-h-screen bg-canvas md:grid-cols-2">
-      <section className="relative hidden overflow-hidden bg-page p-10 text-ink md:flex md:flex-col md:rounded-r-lg">
-        <p className="font-display text-2xl font-medium tracking-tight">ADMEXO</p>
-        <div className="flex flex-1 flex-col justify-center py-16">
-          <h1 className="font-display max-w-md text-4xl font-medium leading-[1.12] tracking-tight">
-            Tasks, chat, and attendance in one place.
-          </h1>
-          <p className="mt-4 max-w-md text-[15px] text-muted">
-            Sign in with the login from Staff. You will see the handbook first if you have not signed it yet.
+    <div className="grid min-h-screen bg-page md:grid-cols-[minmax(0,1.1fr)_minmax(20rem,0.9fr)]">
+      <section className="relative hidden flex-col border-r border-ink bg-canvas px-12 py-12 md:flex">
+        <p className="font-display text-[15px] italic text-amber">For the office</p>
+        <div className="mt-16">
+          <h1 className="font-display text-[4.5rem] font-medium leading-[0.9] tracking-[-0.03em]">ADMEXO</h1>
+          <p className="font-display mt-3 text-[1.75rem] italic leading-none text-amber">Workspace</p>
+          <p className="mt-8 max-w-[28ch] text-[15px] leading-relaxed text-muted">
+            Tasks, chat, attendance, and the handbook. Sign in with the login from Staff.
           </p>
         </div>
-        <p className="text-sm text-faint">Internal · not a public site</p>
       </section>
-      <section className="flex items-center justify-center bg-page px-6 py-16">
-        <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-8 shadow-card">
-          <h2 className="font-display text-[32px] font-medium tracking-tight">Sign in</h2>
-          <p className="mt-2 mb-8 text-sm text-muted">Use your work email and the password from Staff.</p>
+      <section className="flex items-center justify-center px-6 py-16">
+        <div className="w-full max-w-[22rem]">
+          <h2 className="font-display text-[2.5rem] font-medium leading-none">Sign in</h2>
+          <p className="mt-3 mb-8 text-[15px] leading-relaxed text-muted">
+            Use the work email and password from Staff. The handbook comes first if you have not signed it.
+          </p>
           <Suspense>
             <LoginForm />
           </Suspense>

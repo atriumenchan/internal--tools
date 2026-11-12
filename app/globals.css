@@ -2,44 +2,48 @@
 @config "../tailwind.config.js";
 
 :root {
-  --canvas: #eef3f0;
-  --page: #f6f9f7;
-  --surface: #ffffff;
-  --surface-2: #f0f4f1;
-  --border: rgba(28, 46, 38, 0.09);
-  --border-strong: rgba(28, 46, 38, 0.16);
+  /* Desk and open sheet. Structure comes from the rule, not from a shadow. */
+  --canvas: #e6dece;
+  --page: #f4efe4;
+  --surface: #faf6ee;
+  --surface-2: #ebe4d4;
+  --border: #d5ccbb;
+  --border-strong: #b7ad9b;
 
-  --text: #1e2823;
-  --text-muted: #5e6e65;
-  --text-faint: #93a29a;
+  --text: #241f1a;
+  --text-muted: #5c5348;
+  --text-faint: #8a7f70;
 
-  --amber: #b4690c;
-  --amber-soft: #e8a34c;
-  --amber-dim: rgba(180, 105, 12, 0.12);
-  --amber-line: rgba(180, 105, 12, 0.28);
+  /* Iron oxide. The only brand mark: buttons, the active rule, links. */
+  --amber: #8c3a24;
+  --amber-soft: #a34b33;
+  --amber-dim: rgba(140, 58, 36, 0.1);
+  --amber-line: rgba(140, 58, 36, 0.4);
 
-  --teal: #0c7e71;
-  --teal-soft: #3fae9f;
-  --teal-dim: rgba(12, 126, 113, 0.12);
+  /* Forest, for done and present. A working color, not a second brand. */
+  --teal: #2a5648;
+  --teal-soft: #3d6d5c;
+  --teal-dim: rgba(42, 86, 72, 0.1);
 
-  --violet: #6c5fc4;
-  --violet-dim: rgba(108, 95, 196, 0.12);
+  /* Umber stands in for the old review purple. */
+  --violet: #6d4c32;
+  --violet-dim: rgba(109, 76, 50, 0.12);
 
-  --coral: #be4b3b;
-  --coral-dim: rgba(190, 75, 59, 0.12);
+  --coral: #8e2e2e;
+  --coral-dim: rgba(142, 46, 46, 0.1);
 
-  --radius-lg: 20px;
-  --radius-md: 14px;
-  --radius-sm: 9px;
+  --radius-lg: 2px;
+  --radius-md: 2px;
+  --radius-sm: 2px;
 
-  --shadow-card: 0 1px 2px rgba(20, 40, 32, 0.04);
-  --shadow-cta: 0 10px 22px -10px var(--amber-line);
-  --shadow-float: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
+  --shadow-card: none;
+  --shadow-cta: none;
+  --shadow-float: 0 16px 36px -20px rgba(36, 31, 26, 0.45);
 }
 
 @theme {
-  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-display: Fraunces, ui-serif, Georgia, serif;
+  --font-sans: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+  --font-display: Newsreader, "Iowan Old Style", Palatino, serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Code", monospace;
 
   --color-canvas: var(--canvas);
@@ -87,17 +91,17 @@
   --color-sky: var(--teal);
   --color-sky-soft: var(--teal-dim);
 
-  --radius-sm: 9px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
-  --radius-control: 9px;
-  --radius-card: 14px;
+  --radius-sm: 2px;
+  --radius-md: 2px;
+  --radius-lg: 2px;
+  --radius-control: 2px;
+  --radius-card: 2px;
 
-  --shadow-card: 0 1px 2px rgba(20, 40, 32, 0.04);
-  --shadow-elevated: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
-  --shadow-lift: 0 10px 22px -10px var(--amber-line);
-  --shadow-cta: 0 10px 22px -10px var(--amber-line);
-  --shadow-float: 0 20px 45px -20px rgba(20, 40, 32, 0.18);
+  --shadow-card: none;
+  --shadow-elevated: 0 16px 36px -20px rgba(36, 31, 26, 0.45);
+  --shadow-lift: none;
+  --shadow-cta: none;
+  --shadow-float: 0 16px 36px -20px rgba(36, 31, 26, 0.45);
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -117,12 +121,19 @@ body {
   min-height: 100vh;
   font-size: 15px;
   line-height: 1.5;
-  letter-spacing: -0.011em;
+  letter-spacing: 0.004em;
+  font-feature-settings: "kern" 1, "calt" 1;
+}
+
+.font-display {
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
 }
 
 .tabular {
   font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.03em;
 }
 
 .sr-only {
@@ -138,13 +149,21 @@ body {
 }
 
 ::selection {
-  background: var(--amber-dim);
+  background: #e4c7b8;
   color: var(--text);
 }
 
 :focus-visible {
   outline: 2px solid var(--amber);
   outline-offset: 2px;
+}
+
+/* Long reading: handbook notes, offer letters, anything that is a document. */
+.prose-register {
+  font-family: var(--font-display);
+  font-size: 1.125rem;
+  line-height: 1.65;
+  letter-spacing: -0.011em;
 }
 
 ::-webkit-scrollbar {

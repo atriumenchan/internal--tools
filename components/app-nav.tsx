@@ -3,27 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import type { Icon } from "@phosphor-icons/react";
-import { Bell } from "@phosphor-icons/react/dist/ssr/Bell";
-import { BookOpen } from "@phosphor-icons/react/dist/ssr/BookOpen";
-import { Cards } from "@phosphor-icons/react/dist/ssr/Cards";
-import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
-import { ChartDonut } from "@phosphor-icons/react/dist/ssr/ChartDonut";
-import { ChatCircleDots } from "@phosphor-icons/react/dist/ssr/ChatCircleDots";
-import { ClipboardText } from "@phosphor-icons/react/dist/ssr/ClipboardText";
-import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
-import { House } from "@phosphor-icons/react/dist/ssr/House";
-import { Newspaper } from "@phosphor-icons/react/dist/ssr/Newspaper";
-import { Notebook } from "@phosphor-icons/react/dist/ssr/Notebook";
-import { GearSix } from "@phosphor-icons/react/dist/ssr/GearSix";
-import { Kanban } from "@phosphor-icons/react/dist/ssr/Kanban";
-import { Key } from "@phosphor-icons/react/dist/ssr/Key";
-import { ShieldCheck } from "@phosphor-icons/react/dist/ssr/ShieldCheck";
-import { SignOut } from "@phosphor-icons/react/dist/ssr/SignOut";
-import { SquaresFour } from "@phosphor-icons/react/dist/ssr/SquaresFour";
-import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
-import { UserCircle } from "@phosphor-icons/react/dist/ssr/UserCircle";
-import { UsersThree } from "@phosphor-icons/react/dist/ssr/UsersThree";
 import { Avatar } from "@/components/avatar";
 import { avatarSrc } from "@/lib/avatar";
 import { JoinMeetButton } from "@/components/join-meet";
@@ -37,7 +16,6 @@ import { WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
 type NavItem = {
   href: string;
   label: string;
-  icon: Icon;
   adminOnly?: boolean;
   operatorOnly?: boolean;
 };
@@ -46,36 +24,36 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
   {
     label: "Work",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: SquaresFour },
-      { href: "/tasks", label: "Tasks", icon: ClipboardText },
-      { href: "/spaces", label: "Spaces", icon: Cards },
-      { href: "/reports", label: "Reports", icon: Newspaper },
-      { href: "/chat", label: "Chat", icon: ChatCircleDots },
-      { href: "/notifications", label: "Alerts", icon: Bell },
+      { href: "/dashboard", label: "Dashboard" },
+      { href: "/tasks", label: "Tasks" },
+      { href: "/spaces", label: "Spaces" },
+      { href: "/reports", label: "Reports" },
+      { href: "/chat", label: "Chat" },
+      { href: "/notifications", label: "Alerts" },
     ],
   },
   {
     label: "You",
     items: [
-      { href: "/my-attendance", label: "My attendance", icon: CalendarBlank },
-      { href: "/wfh", label: "WFH", icon: House },
-      { href: "/metrics", label: "Metrics", icon: ChartDonut },
-      { href: "/notes", label: "Daily notes", icon: Notebook },
-      { href: "/vault", label: "Logins", icon: Key },
-      { href: "/profile", label: "Profile", icon: UserCircle },
-      { href: "/handbook", label: "Handbook", icon: BookOpen },
+      { href: "/my-attendance", label: "My attendance" },
+      { href: "/wfh", label: "WFH" },
+      { href: "/metrics", label: "Metrics" },
+      { href: "/notes", label: "Daily notes" },
+      { href: "/vault", label: "Logins" },
+      { href: "/profile", label: "Profile" },
+      { href: "/handbook", label: "Handbook" },
     ],
   },
   {
     label: "Office",
     operatorOnly: true,
     items: [
-      { href: "/board", label: "Board", icon: Kanban, operatorOnly: true },
-      { href: "/attendance", label: "Upload", icon: UploadSimple, operatorOnly: true },
-      { href: "/offers", label: "Offers", icon: FileText, operatorOnly: true },
-      { href: "/employees", label: "People", icon: UsersThree, operatorOnly: true },
-      { href: "/team", label: "Staff", icon: ShieldCheck, adminOnly: true, operatorOnly: true },
-      { href: "/settings", label: "Settings", icon: GearSix, operatorOnly: true },
+      { href: "/board", label: "Board", operatorOnly: true },
+      { href: "/attendance", label: "Upload", operatorOnly: true },
+      { href: "/offers", label: "Offers", operatorOnly: true },
+      { href: "/employees", label: "People", operatorOnly: true },
+      { href: "/team", label: "Staff", adminOnly: true, operatorOnly: true },
+      { href: "/settings", label: "Settings", operatorOnly: true },
     ],
   },
 ];
@@ -99,15 +77,15 @@ function NoidaClock() {
   }, []);
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-border bg-surface px-3 py-2 shadow-card">
-      <span className="flex items-center gap-2 text-[12px] text-muted">
-        <span className="h-[7px] w-[7px] shrink-0 rounded-full bg-teal" aria-hidden />
-        Noida · IST
+    <p className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
+      <span className="inline-flex items-center gap-2 text-[13px] text-muted">
+        <span className="inline-block h-1.5 w-1.5 bg-amber" aria-hidden />
+        Noida
       </span>
-      <time className="font-mono text-[13px] font-medium text-ink tabular-nums" dateTime={time || undefined}>
+      <time className="tabular text-[13px] text-ink" dateTime={time || undefined}>
         {time || "--:--"}
       </time>
-    </div>
+    </p>
   );
 }
 
@@ -148,32 +126,31 @@ export function AppNav({
   }
 
   return (
-    <aside className="no-print flex flex-col border-b border-border bg-page text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
-      <div className="flex items-center justify-between px-4 py-6 lg:block">
+    <aside className="no-print flex flex-col border-b border-ink bg-canvas text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
+      <div className="flex items-end justify-between px-5 pt-6 pb-5 lg:block">
         <div>
-          <p className="font-display text-[20px] font-medium tracking-tight">{companyName || "ADMEXO"}</p>
-          <p className="mt-1 text-[11px] font-medium text-faint">Workspace</p>
+          <p className="font-display text-[22px] font-medium leading-none tracking-[-0.02em]">
+            {companyName || "ADMEXO"}
+          </p>
+          <p className="mt-1 font-display text-[15px] italic leading-none text-amber">Workspace</p>
         </div>
         <button
           onClick={signOut}
-          className="rounded-sm p-2 text-muted transition duration-150 hover:bg-surface-2 hover:text-ink lg:hidden"
-          aria-label="Sign out"
+          className="text-[13px] text-muted underline decoration-transparent underline-offset-4 hover:text-ink hover:decoration-ink lg:hidden"
         >
-          <SignOut size={18} weight="light" />
+          Sign out
         </button>
       </div>
-      <div className="px-4 pb-3 lg:hidden">
+      <div className="px-5 pb-3 lg:hidden">
         <JoinMeetButton className="w-full" />
       </div>
-      <nav className="flex gap-1 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
+      <nav className="flex gap-4 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
         {GROUPS.filter((group) => !group.operatorOnly || operator).map((group) => {
           const items = group.items.filter(visible);
           if (items.length === 0) return null;
           return (
             <div key={group.label} className="flex shrink-0 items-center gap-1 lg:block">
-              <p className="hidden px-3 pb-2 text-[11px] font-medium tracking-[0.07em] text-faint uppercase lg:block">
-                {group.label}
-              </p>
+              <p className="hidden px-2.5 pb-1 font-display text-[15px] italic text-amber lg:block">{group.label}</p>
               {items.map((item) => {
                 const active =
                   item.href === "/tasks"
@@ -181,7 +158,6 @@ export function AppNav({
                     : item.href === "/spaces"
                       ? pathname === "/spaces" || (pathname.startsWith("/spaces/") && !pathname.includes("/tasks/"))
                       : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                const Icon = item.icon;
                 const count = item.href === "/chat" ? chatUnread : item.href === "/notifications" ? notifUnread : 0;
                 return (
                   <Link
@@ -189,18 +165,15 @@ export function AppNav({
                     href={item.href}
                     prefetch
                     className={cn(
-                      "relative flex h-9 items-center gap-2.5 rounded-[10px] px-3 text-[13px] font-medium whitespace-nowrap",
-                      "transition-[background-color,color] duration-150 ease-out motion-reduce:transition-none",
-                      "focus-visible:outline-none focus-visible:shadow-[0_0_0_3px_var(--amber-dim)]",
-                      active ? "bg-amber-dim text-amber" : "text-muted hover:bg-surface-2 hover:text-ink"
+                      "relative flex h-8 items-center gap-3 border-b-2 border-transparent px-2.5 text-[14.5px] whitespace-nowrap lg:border-b-0 lg:border-l-2",
+                      "transition-colors duration-150 motion-reduce:transition-none",
+                      active ? "border-amber text-ink" : "text-muted hover:text-ink"
                     )}
                   >
-                    <Icon size={18} weight={active ? "regular" : "light"} className="text-current" />
                     {item.href === "/my-attendance" && operator ? "Reports" : item.label}
                     {count > 0 ? (
-                      <span className="ml-auto flex items-center gap-1.5" title={`${count} unread`}>
-                        <span className="h-[7px] w-[7px] rounded-full bg-coral" aria-hidden />
-                        <span className="font-mono text-[11px] text-muted tabular-nums">{count > 99 ? "99+" : count}</span>
+                      <span className="tabular ml-auto text-[12px] text-amber" title={`${count} unread`}>
+                        {count > 99 ? "99+" : count}
                       </span>
                     ) : null}
                   </Link>
@@ -210,22 +183,22 @@ export function AppNav({
           );
         })}
       </nav>
-      <div className="mt-auto hidden space-y-4 border-t border-border px-4 py-5 lg:block">
+      <div className="mt-auto hidden space-y-4 px-5 py-5 lg:block">
         <JoinMeetButton className="w-full" />
         <NoidaClock />
-        <div>
+        <div className="border-t border-border pt-3">
           <Link href="/profile" className="flex items-center gap-2.5">
             <Avatar name={displayName(profile)} src={avatarSrc(profile)} />
             <span className="min-w-0">
-              <span className="block truncate text-[13px] font-medium text-ink">{displayName(profile)}</span>
+              <span className="block truncate text-[14px] text-ink">{displayName(profile)}</span>
               <span className="mt-0.5 block text-[12px] text-muted">{roleLabel}</span>
             </span>
           </Link>
           <button
             onClick={signOut}
-            className="mt-3 flex items-center gap-2 text-[12px] text-muted transition duration-150 hover:text-ink"
+            className="mt-3 text-[13px] text-muted underline decoration-transparent underline-offset-4 hover:text-ink hover:decoration-ink"
           >
-            <SignOut size={18} weight="light" /> Sign out
+            Sign out
           </button>
         </div>
       </div>
@@ -235,16 +208,16 @@ export function AppNav({
 
 export function SidebarFallback() {
   return (
-    <aside className="no-print min-h-[4.5rem] border-b border-border bg-page lg:min-h-screen lg:border-b-0 lg:border-r" />
+    <aside className="no-print min-h-[4.5rem] border-b border-ink bg-canvas lg:min-h-screen lg:border-b-0 lg:border-r" />
   );
 }
 
 export function PageFallback() {
   return (
-    <div className="animate-pulse space-y-4 motion-reduce:animate-none">
-      <div className="h-8 w-64 rounded-sm bg-surface-2" />
-      <div className="h-4 w-full max-w-xl rounded-sm bg-surface-2" />
-      <div className="mt-8 h-48 rounded-md bg-surface shadow-card" />
+    <div className="space-y-4">
+      <div className="h-8 w-64 bg-surface-2" />
+      <div className="h-4 w-full max-w-xl bg-surface-2" />
+      <div className="mt-8 h-48 border border-border bg-surface" />
     </div>
   );
 }
