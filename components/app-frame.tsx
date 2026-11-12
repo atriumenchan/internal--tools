@@ -360,7 +360,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
                 onMenu={() => setMobileOpen(true)}
               />
             ) : null}
-            <main className="mx-auto w-full max-w-[1600px] px-4 pt-5 pb-8 md:px-8 md:pt-7 md:pb-10">
+            <main className="page-enter mx-auto w-full max-w-[1600px] px-4 pt-5 pb-8 md:px-8 md:pt-7 md:pb-10">
               {children}
             </main>
           </div>

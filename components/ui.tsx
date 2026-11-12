@@ -16,7 +16,7 @@ const interactive =
   "transition-[background-color,border-color,box-shadow,color,transform,opacity] duration-150 ease-out motion-reduce:transition-none";
 
 const control =
-  "w-full rounded-[8px] border border-border bg-surface px-3 text-[13px] leading-5 font-normal text-ink outline-none placeholder:text-faint hover:border-border-strong focus:border-amber focus:shadow-[0_0_0_3px_var(--brand-soft)] focus:ring-0 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-faint " +
+  "w-full rounded-[8px] border border-border bg-surface px-3 text-[14px] leading-5 font-normal text-ink outline-none placeholder:text-faint hover:border-border-strong focus:border-amber focus:shadow-[0_0_0_3px_var(--brand-soft)] focus:ring-0 disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-faint " +
   interactive;
 
 export function Button({
@@ -35,7 +35,7 @@ export function Button({
         interactive,
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber",
         "active:scale-[0.98] motion-reduce:active:scale-100 disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100",
-        size === "sm" ? "h-9 px-3 text-[13px]" : "h-[42px] px-4 text-[13px]",
+        size === "sm" ? "h-9 px-3 text-[13px]" : "h-[42px] px-4 text-[14px]",
         variant === "primary" && "border border-[var(--graphite)] bg-[var(--graphite)] text-[var(--text-inverse)] shadow-card hover:bg-[var(--graphite-hover)]",
         variant === "ink" && "border border-amber bg-amber text-white shadow-card hover:bg-[var(--brand-hover)]",
         variant === "secondary" && "border border-border-strong bg-surface text-ink shadow-card hover:bg-surface-2",
@@ -145,7 +145,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-[6px] px-1.5 py-0.5 text-[12px] leading-[18px] font-medium",
+        "inline-flex h-6 items-center gap-1.5 rounded-[6px] px-2 text-[12px] leading-none font-semibold",
         variant === "count" && "tabular min-w-[1.25rem] justify-center",
         tone === "neutral" && "bg-surface-2 text-muted",
         tone === "warn" && "bg-[var(--warning-soft)] text-[var(--warning)]",
@@ -153,10 +153,45 @@ export function Badge({
         tone === "danger" && "bg-coral-dim text-coral",
         tone === "info" && "bg-[var(--info-soft)] text-[var(--info)]",
         tone === "accent" && "bg-amber-dim text-amber",
-        tone === "review" && "bg-[var(--info-soft)] text-[var(--info)]"
+        tone === "review" && "bg-[var(--mention-soft)] text-[var(--mention-ink)]"
       )}
     >
       {children}
+    </span>
+  );
+}
+
+const PRIORITY_FACE: Record<string, string> = {
+  urgent: "bg-[var(--prio-urgent-bg)] text-[var(--prio-urgent-fg)]",
+  high: "bg-[var(--prio-high-bg)] text-[var(--prio-high-fg)]",
+  medium: "bg-[var(--prio-medium-bg)] text-[var(--prio-medium-fg)]",
+  low: "bg-[var(--prio-low-bg)] text-[var(--prio-low-fg)]",
+};
+
+export function PriorityMark({ priority }: { priority: string }) {
+  const key = priority === "urgent" || priority === "high" || priority === "low" ? priority : "medium";
+  const label = key === "urgent" ? "Urgent" : key === "high" ? "High" : key === "low" ? "Low" : "Medium";
+  return (
+    <span className={cn("inline-flex h-6 items-center rounded-[6px] px-2 text-[12px] leading-none font-semibold", PRIORITY_FACE[key])}>
+      {label}
+    </span>
+  );
+}
+
+const STATUS_FACE: Record<string, string> = {
+  open: "bg-surface-2 text-ink",
+  in_progress: "bg-[var(--info-soft)] text-[var(--info-ink)]",
+  in_review: "bg-[var(--mention-soft)] text-[var(--mention-ink)]",
+  done: "bg-teal-dim text-teal",
+  cancelled: "bg-surface-2 text-muted",
+  blocked: "bg-coral-dim text-coral",
+};
+
+export function StatusMark({ status, label }: { status: string; label: string }) {
+  return (
+    <span className={cn("inline-flex h-6 items-center gap-1.5 rounded-full px-2.5 text-[12px] leading-none font-semibold", STATUS_FACE[status] ?? STATUS_FACE.open)}>
+      <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
+      {label}
     </span>
   );
 }
@@ -215,7 +250,7 @@ export function PageHeader({
         ) : (
           <div className="max-w-3xl">{title}</div>
         )}
-        {description ? <p className="mt-1 max-w-[40rem] text-[13px] leading-5 text-muted">{description}</p> : null}
+        {description ? <p className="mt-1.5 max-w-[40rem] text-[14px] leading-[22px] text-muted">{description}</p> : null}
       </div>
       {actions}
     </div>

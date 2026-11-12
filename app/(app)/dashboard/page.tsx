@@ -64,9 +64,15 @@ function Stat({
   const router = useRouter();
   const wash = {
     brand: "bg-[var(--brand-soft)] text-amber",
-    info: "bg-[var(--info-soft)] text-[var(--info)]",
+    info: "bg-[var(--info-soft)] text-[var(--info-ink)]",
     danger: "bg-coral-dim text-coral",
     success: "bg-teal-dim text-teal",
+  }[accent];
+  const edge = {
+    brand: "border-t-amber",
+    info: "border-t-[var(--info)]",
+    danger: "border-t-coral",
+    success: "border-t-teal",
   }[accent];
   return (
     <Link
@@ -76,13 +82,16 @@ function Stat({
         if (onSelect) onSelect();
         else router.push(href);
       }}
-      className="group flex h-[112px] flex-col justify-between rounded-[12px] border border-border bg-surface p-5 shadow-card transition duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-elevated motion-reduce:hover:translate-y-0"
+      className={cn(
+        "group flex h-[120px] flex-col justify-between rounded-[12px] border border-border border-t-2 bg-surface p-5 shadow-card transition duration-200 hover:-translate-y-0.5 hover:shadow-elevated motion-reduce:hover:translate-y-0",
+        edge
+      )}
     >
       <span className="flex items-center gap-2.5">
         <span className={cn("grid h-8 w-8 place-items-center rounded-[8px]", wash)}>
           <Icon size={18} />
         </span>
-        <span className="text-[13px] leading-5 font-medium text-muted">{label}</span>
+        <span className="text-[13px] leading-5 font-semibold text-muted">{label}</span>
       </span>
       <span className="tabular text-[32px] leading-[38px] font-semibold text-ink">{value}</span>
     </Link>
@@ -464,7 +473,7 @@ export default function DashboardPage() {
         <section id="work" className="scroll-mt-24 rounded-[14px] border border-border bg-surface p-5 shadow-elevated lg:col-span-8">
           <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h2 className="text-[18px] leading-[26px] font-bold text-ink">Your work</h2>
+              <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Your work</h2>
               <p className="text-[13px] leading-5 text-muted">Everything that needs your attention.</p>
             </div>
             <Segmented
@@ -553,7 +562,7 @@ export default function DashboardPage() {
         <aside className="space-y-4 lg:col-span-4">
           <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated">
           <div className="flex items-center justify-between">
-            <h2 className="text-[18px] leading-[26px] font-bold text-ink">Tagged you</h2>
+            <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Tagged you</h2>
             <Link href="/notifications" className="text-[12px] font-semibold text-amber">
               View all
             </Link>
@@ -567,10 +576,10 @@ export default function DashboardPage() {
                   <Link href={row.href} className="flex gap-3 py-3">
                     <Avatar name={displayName(peopleMap[row.authorId])} src={avatarSrc(peopleMap[row.authorId])} size="sm" />
                     <span className="min-w-0">
-                      <span className="block text-[13px] leading-5 font-semibold text-ink">{displayName(peopleMap[row.authorId])} tagged you</span>
-                      <span className="mt-0.5 block truncate text-[12px] leading-[18px] text-muted">{row.taskTitle}</span>
-                      {row.body ? <span className="mt-0.5 block truncate text-[12px] leading-[18px] text-muted">{inboxPreview(row.body)}</span> : null}
-                      <span className="mt-1 block text-[11px] leading-4 text-faint">{formatRelative(row.createdAt)}</span>
+                      <span className="block text-[14px] leading-5 font-bold text-ink">{displayName(peopleMap[row.authorId])} tagged you</span>
+                      <span className="mt-0.5 block truncate text-[13px] leading-5 font-semibold text-ink">{row.taskTitle}</span>
+                      {row.body ? <span className="mt-0.5 line-clamp-2 text-[13px] leading-5 font-normal text-muted">{row.body}</span> : null}
+                      <span className="mt-1 block text-[12px] leading-4 text-muted">{formatRelative(row.createdAt)}</span>
                     </span>
                   </Link>
                 </li>
@@ -580,7 +589,7 @@ export default function DashboardPage() {
           </section>
 
           <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated">
-            <h2 className="text-[18px] leading-[26px] font-bold text-ink">Coming up</h2>
+            <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Coming up</h2>
             {dueSoon.length === 0 ? (
               <p className="mt-4 text-[13px] leading-5 text-muted">Nothing is due on your tasks.</p>
             ) : (
@@ -607,7 +616,7 @@ export default function DashboardPage() {
 
           <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated">
             <div className="flex items-center justify-between">
-              <h2 className="text-[18px] leading-[26px] font-bold text-ink">Boards</h2>
+              <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Boards</h2>
               <Link href="/spaces" className="text-[12px] font-semibold text-amber">All</Link>
             </div>
             {spaces.length === 0 ? (
@@ -628,7 +637,7 @@ export default function DashboardPage() {
 
           <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated">
             <div className="flex items-center justify-between">
-              <h2 className="text-[18px] leading-[26px] font-bold text-ink">{operator ? "Attendance" : "Your day"}</h2>
+              <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">{operator ? "Attendance" : "Your day"}</h2>
               <Link href={operator ? "/board" : "/my-attendance"} className="text-[12px] font-semibold text-amber">
                 {operator ? "Full board" : "Last week"}
               </Link>
@@ -661,7 +670,7 @@ export default function DashboardPage() {
 
           <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated">
             <div className="flex items-center justify-between">
-              <h2 className="text-[18px] leading-[26px] font-bold text-ink">Chat</h2>
+              <h2 className="text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Chat</h2>
               <Link href="/chat" className="text-[12px] font-semibold text-amber">Open</Link>
             </div>
             {unreadChats.length === 0 ? (
@@ -694,13 +703,13 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Link href="/reports?kind=weekly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
           <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
-          <h2 className="mt-2 text-[18px] leading-[26px] font-bold text-ink">Weekly report</h2>
+          <h2 className="mt-2 text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Weekly report</h2>
           <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("weekly")}</p>
           <p className="mt-4 text-[13px] font-semibold text-amber">Open the week</p>
         </Link>
         <Link href="/reports?kind=monthly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
           <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
-          <h2 className="mt-2 text-[18px] leading-[26px] font-bold text-ink">Monthly report</h2>
+          <h2 className="mt-2 text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Monthly report</h2>
           <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("monthly")}</p>
           <p className="mt-4 text-[13px] font-semibold text-amber">Open the month</p>
         </Link>

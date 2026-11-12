@@ -5,7 +5,7 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 import { GripVertical as DotsSixVertical } from "lucide-react";
 import { Pencil as PencilSimple } from "lucide-react";
-import { Badge } from "@/components/ui";
+import { PriorityMark, StatusMark } from "@/components/ui";
 import { OverflowStrip } from "@/components/overflow-strip";
 import { ConfirmDelete } from "@/components/confirm-delete";
 import { Avatar } from "@/components/avatar";
@@ -14,7 +14,6 @@ import { TaskForm, draftFromTask, type TaskDraft } from "@/components/task-form"
 import {
   displayName,
   TASK_COLUMNS,
-  TASK_PRIORITY_LABELS,
   TASK_STATUS_LABELS,
   taskPriority,
 } from "@/lib/spaces";
@@ -36,10 +35,10 @@ export function taskStatusClass(status: TaskStatus, active = false) {
     return active ? "bg-teal-dim text-teal" : "text-muted hover:text-teal hover:bg-teal-dim";
   }
   if (status === "in_review") {
-    return active ? "bg-violet-dim text-violet" : "text-muted hover:text-violet hover:bg-violet-dim";
+    return active ? "bg-[var(--mention-soft)] text-[var(--mention-ink)]" : "text-muted hover:bg-[var(--mention-soft)] hover:text-[var(--mention-ink)]";
   }
   if (status === "in_progress") {
-    return active ? "bg-amber-dim text-amber" : "text-muted hover:text-amber hover:bg-amber-dim";
+    return active ? "bg-[var(--info-soft)] text-[var(--info-ink)]" : "text-muted hover:bg-[var(--info-soft)] hover:text-[var(--info-ink)]";
   }
   if (status === "cancelled") {
     return active ? "bg-surface text-muted" : "text-muted hover:text-ink hover:bg-surface";
@@ -301,9 +300,7 @@ export function TaskCard({
             </div>
           </div>
           <OverflowStrip className="pointer-events-auto mt-2" moreLabel="More">
-            <Badge tone={priorityTone(priority)} dot>
-              {TASK_PRIORITY_LABELS[priority]}
-            </Badge>
+            <PriorityMark priority={priority} />
             {spaceName ? <span className="shrink-0 text-muted">{spaceName}</span> : null}
             <PersonChip label="Created by" person={requester} empty="Unknown" />
             <PersonChip label="Assignee" person={assignee} empty="Unassigned" />
@@ -320,9 +317,7 @@ export function TaskCard({
             </div>
           ) : (
             <div className="mt-2.5">
-              <Badge tone={taskBadgeTone(task)} dot>
-                {TASK_STATUS_LABELS[task.status]}
-              </Badge>
+              <StatusMark status={task.status} label={TASK_STATUS_LABELS[task.status]} />
             </div>
           )}
         </div>
@@ -334,9 +329,9 @@ export function TaskCard({
 function PersonCell({ person, empty }: { person?: Profile | null; empty: string }) {
   const name = person ? displayName(person) : empty;
   return (
-    <span title={name} className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-1.5 text-[12px] text-muted md:inline-flex">
-      <Avatar name={name} src={avatarSrc(person)} size="sm" className="h-5 w-5 shrink-0 text-[9px]" />
-      <span className="truncate">{person ? displayName(person) : "—"}</span>
+    <span title={name} className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-2 text-[13px] text-ink md:inline-flex">
+      <Avatar name={name} src={avatarSrc(person)} size="sm" />
+      <span className="truncate font-medium">{person ? displayName(person) : "—"}</span>
     </span>
   );
 }
@@ -389,7 +384,7 @@ export function TaskListRow({
   return (
     <div
       className={cn(
-        "relative grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-2.5 transition duration-150 hover:bg-surface-2",
+        "relative grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-3 transition duration-150 hover:bg-surface-2",
         spaceName
           ? "md:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(9rem,12rem)_8rem_8.5rem_2.25rem]"
           : "md:grid-cols-[minmax(0,1.4fr)_8rem_8rem_7rem_8.5rem_2.25rem]"
@@ -397,9 +392,12 @@ export function TaskListRow({
     >
       <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
       <div className="pointer-events-none relative z-[1] min-w-0">
-        <p title={task.title} className="truncate text-[14px] font-medium tracking-tight text-ink">
+        <p title={task.title} className="truncate text-[14px] leading-5 font-semibold tracking-[-0.01em] text-ink">
           {task.title}
         </p>
+        <span className="mt-1.5 inline-flex">
+          <PriorityMark priority={taskPriority(task.priority)} />
+        </span>
         <p className="mt-0.5 truncate text-[12px] text-muted md:hidden">
           {requester ? displayName(requester) : "Unknown"} → {assignee ? displayName(assignee) : "Unassigned"}
         </p>
@@ -425,9 +423,7 @@ export function TaskListRow({
             <StatusMoveControl status={task.status} onMove={onMove} className="mt-0" />
           </div>
         ) : (
-          <Badge tone={taskBadgeTone(task)} dot>
-            {TASK_STATUS_LABELS[task.status]}
-          </Badge>
+          <StatusMark status={task.status} label={TASK_STATUS_LABELS[task.status]} />
         )}
       </div>
       <div className="pointer-events-auto relative z-[2] flex justify-end">

@@ -133,7 +133,7 @@ export function CommandSearch({
         <div
           role="listbox"
           aria-label="Search results"
-          className="absolute top-[calc(100%+6px)] right-0 left-0 z-50 overflow-hidden rounded-[12px] border border-border bg-surface shadow-float"
+          className="menu-enter absolute top-[calc(100%+6px)] right-0 left-0 z-50 overflow-hidden rounded-[12px] border border-border bg-surface shadow-float"
         >
           <ul className="max-h-[320px] overflow-auto p-1.5">
             {hits.length === 0 ? (

@@ -16,9 +16,28 @@
   --sidebar-hover: #252a31;
 
   --text-primary: #20242b;
-  --text-secondary: #68717c;
-  --text-muted: #939aa3;
+  --text-secondary: #5c6570;
+  --text-muted: #6a7380;
   --text-inverse: #ffffff;
+
+  --mention: #6d4b96;
+  --mention-soft: #efe8f6;
+  --mention-ink: #4c3270;
+
+  --prio-urgent-bg: #f6d9d6;
+  --prio-urgent-fg: #8d2f2f;
+  --prio-high-bg: #f8e4d6;
+  --prio-high-fg: #9a4518;
+  --prio-medium-bg: #f4ead4;
+  --prio-medium-fg: #7a5618;
+  --prio-low-bg: #e4ebf4;
+  --prio-low-fg: #2c4d73;
+
+  --motion-fast: 120ms;
+  --motion-standard: 180ms;
+  --motion-emphasis: 240ms;
+  --motion-panel: 280ms;
+  --ease-atelier: cubic-bezier(0.16, 1, 0.3, 1);
 
   --brand-primary: #d66b38;
   --brand-hover: #bc5528;
@@ -32,6 +51,7 @@
   --danger: #c34f4f;
   --danger-soft: #f8e8e6;
   --info: #5479a4;
+  --info-ink: #2a4a70;
   --info-soft: #e9eff7;
 
   --border-default: #e6e4de;
@@ -59,8 +79,8 @@
   --teal-soft: #1d655b;
   --teal-dim: var(--success-soft);
 
-  --violet: var(--info);
-  --violet-dim: var(--info-soft);
+  --violet: var(--mention);
+  --violet-dim: var(--mention-soft);
 
   --coral: var(--danger);
   --coral-dim: var(--danger-soft);
@@ -91,6 +111,18 @@ html.dark {
   --warning-soft: rgba(185, 130, 50, 0.18);
   --danger-soft: rgba(195, 79, 79, 0.18);
   --info-soft: rgba(84, 121, 164, 0.18);
+  --info-ink: #d5e2f2;
+  --mention: #cbb6e6;
+  --mention-soft: rgba(109, 75, 150, 0.22);
+  --mention-ink: #efe8f6;
+  --prio-urgent-bg: rgba(195, 79, 79, 0.22);
+  --prio-urgent-fg: #f3c2c0;
+  --prio-high-bg: rgba(214, 107, 56, 0.22);
+  --prio-high-fg: #f3c7ad;
+  --prio-medium-bg: rgba(185, 130, 50, 0.22);
+  --prio-medium-fg: #edd4a4;
+  --prio-low-bg: rgba(84, 121, 164, 0.22);
+  --prio-low-fg: #c5d4e8;
   --graphite: #f3f4f6;
   --graphite-hover: #ffffff;
   --text-inverse: #191c21;
@@ -120,6 +152,8 @@ html.dark {
   --color-teal-dim: var(--teal-dim);
   --color-violet: var(--violet);
   --color-violet-dim: var(--violet-dim);
+  --color-mention: var(--mention);
+  --color-info: var(--info);
   --color-coral: var(--coral);
   --color-coral-dim: var(--coral-dim);
 
@@ -175,10 +209,30 @@ body {
 body {
   font-family: var(--font-sans);
   min-height: 100vh;
-  font-size: 13px;
-  line-height: 20px;
+  font-size: 14.5px;
+  line-height: 22px;
   font-weight: 450;
-  letter-spacing: -0.006em;
+  letter-spacing: -0.011em;
+}
+
+@keyframes atelier-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.page-enter {
+  animation: atelier-in var(--motion-emphasis) var(--ease-atelier);
+}
+
+.menu-enter {
+  transform-origin: top center;
+  animation: atelier-in var(--motion-standard) var(--ease-atelier);
 }
 
 .font-editorial {
