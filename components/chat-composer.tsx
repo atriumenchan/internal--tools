@@ -1,8 +1,8 @@
 "use client";
 
 import { useRef } from "react";
-import { ImageSquare } from "@phosphor-icons/react/dist/ssr/ImageSquare";
-import { PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
+import { Image as ImageSquare } from "lucide-react";
+import { Send as PaperPlaneTilt } from "lucide-react";
 import { MentionField } from "@/components/mention-field";
 import { PendingPhoto } from "@/components/chat-media";
 import { fileFromClipboard } from "@/lib/chat-thread";
@@ -66,7 +66,7 @@ export function ChatComposer({
           onClick={() => input.current?.click()}
           className="grid h-10 w-10 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface hover:text-ink"
         >
-          <ImageSquare size={18} weight="light" />
+          <ImageSquare size={18} />
         </button>
         <input
           ref={input}
@@ -103,7 +103,7 @@ export function ChatComposer({
             "bg-[linear-gradient(135deg,var(--amber-soft),var(--amber))] disabled:opacity-40"
           )}
         >
-          <PaperPlaneTilt size={16} weight="fill" />
+          <PaperPlaneTilt size={16} />
         </button>
       </div>
     </form>

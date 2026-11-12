@@ -1,6 +1,28 @@
 import type { Metadata, Viewport } from "next";
+import { IBM_Plex_Mono, Instrument_Serif, Plus_Jakarta_Sans } from "next/font/google";
 import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
+
+const sans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans-face",
+  display: "swap",
+});
+
+const editorial = Instrument_Serif({
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+  variable: "--font-editorial-face",
+  display: "swap",
+});
+
+const mono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  variable: "--font-mono-face",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "ADMEXO — Internal",
@@ -23,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#f4efe4",
+  themeColor: "#F5F4F0",
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -31,13 +53,12 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${sans.variable} ${editorial.variable} ${mono.variable}`}>
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("admexo-theme")==="dark")document.documentElement.classList.add("dark")}catch(e){}`,
+          }}
         />
       </head>
       <body className="antialiased">

@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: true,
   serverExternalPackages: ["xlsx", "exceljs"],
   experimental: {
-    optimizePackageImports: ["@phosphor-icons/react", "date-fns"],
+    optimizePackageImports: ["lucide-react", "date-fns"],
   },
   async headers() {
     return [

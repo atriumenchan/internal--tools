@@ -3,9 +3,30 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { LucideIcon } from "lucide-react";
+import {
+  Bell,
+  BookOpen,
+  CalendarDays,
+  ChartNoAxesCombined,
+  House,
+  KeyRound,
+  LayoutDashboard,
+  ListTodo,
+  Megaphone,
+  MessageCircle,
+  NotebookPen,
+  PanelLeft,
+  Settings,
+  Shield,
+  SquareKanban,
+  Upload,
+  UserRound,
+  Users,
+  FileText,
+} from "lucide-react";
 import { Avatar } from "@/components/avatar";
 import { avatarSrc } from "@/lib/avatar";
-import { JoinMeetButton } from "@/components/join-meet";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import type { Profile } from "@/lib/types";
@@ -16,6 +37,7 @@ import { WORKSPACE_ROLE_LABELS, workspaceRole } from "@/lib/roles";
 type NavItem = {
   href: string;
   label: string;
+  icon: LucideIcon;
   adminOnly?: boolean;
   operatorOnly?: boolean;
 };
@@ -24,70 +46,39 @@ const GROUPS: { label: string; operatorOnly?: boolean; items: NavItem[] }[] = [
   {
     label: "Work",
     items: [
-      { href: "/dashboard", label: "Dashboard" },
-      { href: "/tasks", label: "Tasks" },
-      { href: "/spaces", label: "Spaces" },
-      { href: "/reports", label: "Reports" },
-      { href: "/chat", label: "Chat" },
-      { href: "/notifications", label: "Alerts" },
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/tasks", label: "Tasks", icon: ListTodo },
+      { href: "/spaces", label: "Spaces", icon: SquareKanban },
+      { href: "/reports", label: "Reports", icon: Megaphone },
+      { href: "/chat", label: "Chat", icon: MessageCircle },
+      { href: "/notifications", label: "Alerts", icon: Bell },
     ],
   },
   {
     label: "You",
     items: [
-      { href: "/my-attendance", label: "My attendance" },
-      { href: "/wfh", label: "WFH" },
-      { href: "/metrics", label: "Metrics" },
-      { href: "/notes", label: "Daily notes" },
-      { href: "/vault", label: "Logins" },
-      { href: "/profile", label: "Profile" },
-      { href: "/handbook", label: "Handbook" },
+      { href: "/my-attendance", label: "My attendance", icon: CalendarDays },
+      { href: "/wfh", label: "WFH", icon: House },
+      { href: "/metrics", label: "Metrics", icon: ChartNoAxesCombined },
+      { href: "/notes", label: "Daily notes", icon: NotebookPen },
+      { href: "/vault", label: "Logins", icon: KeyRound },
+      { href: "/profile", label: "Profile", icon: UserRound },
+      { href: "/handbook", label: "Handbook", icon: BookOpen },
     ],
   },
   {
     label: "Office",
     operatorOnly: true,
     items: [
-      { href: "/board", label: "Board", operatorOnly: true },
-      { href: "/attendance", label: "Upload", operatorOnly: true },
-      { href: "/offers", label: "Offers", operatorOnly: true },
-      { href: "/employees", label: "People", operatorOnly: true },
-      { href: "/team", label: "Staff", adminOnly: true, operatorOnly: true },
-      { href: "/settings", label: "Settings", operatorOnly: true },
+      { href: "/board", label: "Board", icon: SquareKanban, operatorOnly: true },
+      { href: "/attendance", label: "Upload", icon: Upload, operatorOnly: true },
+      { href: "/offers", label: "Offers", icon: FileText, operatorOnly: true },
+      { href: "/employees", label: "People", icon: Users, operatorOnly: true },
+      { href: "/team", label: "Staff", icon: Shield, adminOnly: true, operatorOnly: true },
+      { href: "/settings", label: "Settings", icon: Settings, operatorOnly: true },
     ],
   },
 ];
-
-function NoidaClock() {
-  const [time, setTime] = useState("");
-
-  useEffect(() => {
-    const tick = () => {
-      setTime(
-        new Date().toLocaleTimeString("en-IN", {
-          timeZone: "Asia/Kolkata",
-          hour: "2-digit",
-          minute: "2-digit",
-        })
-      );
-    };
-    tick();
-    const id = window.setInterval(tick, 30_000);
-    return () => window.clearInterval(id);
-  }, []);
-
-  return (
-    <p className="flex items-baseline justify-between gap-3 border-t border-border pt-3">
-      <span className="inline-flex items-center gap-2 text-[13px] text-muted">
-        <span className="inline-block h-1.5 w-1.5 bg-amber" aria-hidden />
-        Noida
-      </span>
-      <time className="tabular text-[13px] text-ink" dateTime={time || undefined}>
-        {time || "--:--"}
-      </time>
-    </p>
-  );
-}
 
 export function AppNav({
   profile,
@@ -95,26 +86,35 @@ export function AppNav({
   operator,
   chatUnread = 0,
   notifUnread = 0,
+  collapsed = false,
+  mobileOpen = false,
+  onToggle,
+  onCloseMobile,
 }: {
   profile: Profile;
   companyName: string;
   operator: boolean;
   chatUnread?: number;
   notifUnread?: number;
+  collapsed?: boolean;
+  mobileOpen?: boolean;
+  onToggle?: () => void;
+  onCloseMobile?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const roleLabel = WORKSPACE_ROLE_LABELS[workspaceRole(profile)];
+  const [accountOpen, setAccountOpen] = useState(false);
+
+  useEffect(() => {
+    onCloseMobile?.();
+    // Close the drawer after a navigation, not on every callback identity change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
 
   async function signOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
-    sessionStorage.removeItem("it-shell-v1");
-    sessionStorage.removeItem("it-shell-v2");
-    sessionStorage.removeItem("it-shell-v3");
-    sessionStorage.removeItem("it-shell-v4");
-    sessionStorage.removeItem("it-shell-v5");
-    sessionStorage.removeItem("it-workspace-v1");
     router.push("/login");
     router.refresh();
   }
@@ -126,98 +126,118 @@ export function AppNav({
   }
 
   return (
-    <aside className="no-print flex flex-col border-b border-ink bg-canvas text-ink lg:min-h-screen lg:border-b-0 lg:border-r">
-      <div className="flex items-end justify-between px-5 pt-6 pb-5 lg:block">
-        <div>
-          <p className="font-display text-[22px] font-medium leading-none tracking-[-0.02em]">
-            {companyName || "ADMEXO"}
-          </p>
-          <p className="mt-1 font-display text-[15px] italic leading-none text-amber">Workspace</p>
-        </div>
-        <button
-          onClick={signOut}
-          className="text-[13px] text-muted underline decoration-transparent underline-offset-4 hover:text-ink hover:decoration-ink lg:hidden"
-        >
-          Sign out
-        </button>
-      </div>
-      <div className="px-5 pb-3 lg:hidden">
-        <JoinMeetButton className="w-full" />
-      </div>
-      <nav className="flex gap-4 overflow-x-auto px-3 pb-3 lg:block lg:space-y-6 lg:overflow-visible lg:px-3">
-        {GROUPS.filter((group) => !group.operatorOnly || operator).map((group) => {
-          const items = group.items.filter(visible);
-          if (items.length === 0) return null;
-          return (
-            <div key={group.label} className="flex shrink-0 items-center gap-1 lg:block">
-              <p className="hidden px-2.5 pb-1 font-display text-[15px] italic text-amber lg:block">{group.label}</p>
-              {items.map((item) => {
-                const active =
-                  item.href === "/tasks"
-                    ? pathname === "/tasks" || pathname.includes("/tasks/")
-                    : item.href === "/spaces"
-                      ? pathname === "/spaces" || (pathname.startsWith("/spaces/") && !pathname.includes("/tasks/"))
-                      : pathname === item.href || pathname.startsWith(`${item.href}/`);
-                const count = item.href === "/chat" ? chatUnread : item.href === "/notifications" ? notifUnread : 0;
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    prefetch
-                    className={cn(
-                      "relative flex h-8 items-center gap-3 border-b-2 border-transparent px-2.5 text-[14.5px] whitespace-nowrap lg:border-b-0 lg:border-l-2",
-                      "transition-colors duration-150 motion-reduce:transition-none",
-                      active ? "border-amber text-ink" : "text-muted hover:text-ink"
-                    )}
-                  >
-                    {item.href === "/my-attendance" && operator ? "Reports" : item.label}
-                    {count > 0 ? (
-                      <span className="tabular ml-auto text-[12px] text-amber" title={`${count} unread`}>
-                        {count > 99 ? "99+" : count}
-                      </span>
-                    ) : null}
-                  </Link>
-                );
-              })}
-            </div>
-          );
-        })}
-      </nav>
-      <div className="mt-auto hidden space-y-4 px-5 py-5 lg:block">
-        <JoinMeetButton className="w-full" />
-        <NoidaClock />
-        <div className="border-t border-border pt-3">
-          <Link href="/profile" className="flex items-center gap-2.5">
-            <Avatar name={displayName(profile)} src={avatarSrc(profile)} />
-            <span className="min-w-0">
-              <span className="block truncate text-[14px] text-ink">{displayName(profile)}</span>
-              <span className="mt-0.5 block text-[12px] text-muted">{roleLabel}</span>
-            </span>
-          </Link>
+    <>
+      {mobileOpen ? <button type="button" aria-label="Close navigation" className="fixed inset-0 z-40 bg-ink/40 lg:hidden" onClick={onCloseMobile} /> : null}
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-50 flex w-[238px] flex-col bg-[var(--sidebar-background)] text-[var(--sidebar-text)] transition-transform duration-200 lg:translate-x-0",
+          collapsed && "lg:w-[72px]",
+          mobileOpen ? "translate-x-0" : "-translate-x-full"
+        )}
+      >
+        <div className="flex h-[76px] items-center gap-2.5 border-b border-[var(--sidebar-border)] px-4">
+          <img src="/icons/icon-192.png" alt="" className="h-8 w-8 shrink-0 rounded-[8px]" />
+          <div className={cn("min-w-0", collapsed && "lg:hidden")}>
+            <p className="truncate text-[14px] leading-5 font-bold tracking-[-0.02em] text-white">{companyName || "ADMEXO"}</p>
+            <p className="text-[10px] leading-4 font-semibold tracking-[1.2px] text-[var(--sidebar-text-muted)] uppercase">Workspace</p>
+          </div>
           <button
-            onClick={signOut}
-            className="mt-3 text-[13px] text-muted underline decoration-transparent underline-offset-4 hover:text-ink hover:decoration-ink"
+            type="button"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            onClick={onToggle}
+            className="ml-auto hidden h-8 w-8 place-items-center rounded-[8px] text-[var(--sidebar-text-muted)] hover:bg-[var(--sidebar-hover)] hover:text-white lg:grid"
           >
-            Sign out
+            <PanelLeft size={18} />
           </button>
         </div>
-      </div>
-    </aside>
+        <nav className="flex-1 space-y-5 overflow-y-auto px-2.5 py-4">
+          {GROUPS.filter((group) => !group.operatorOnly || operator).map((group) => {
+            const items = group.items.filter(visible);
+            if (!items.length) return null;
+            return (
+              <div key={group.label}>
+                <p className={cn("px-2.5 pb-2 text-[10px] leading-4 font-semibold tracking-[1.2px] text-[var(--sidebar-text-muted)] uppercase", collapsed && "lg:sr-only")}>
+                  {group.label}
+                </p>
+                <div className="space-y-0.5">
+                  {items.map((item) => {
+                    const active =
+                      item.href === "/tasks"
+                        ? pathname === "/tasks" || pathname.includes("/tasks/")
+                        : item.href === "/spaces"
+                          ? pathname === "/spaces" || (pathname.startsWith("/spaces/") && !pathname.includes("/tasks/"))
+                          : pathname === item.href || pathname.startsWith(`${item.href}/`);
+                    const Icon = item.icon;
+                    const count = item.href === "/chat" ? chatUnread : item.href === "/notifications" ? notifUnread : 0;
+                    const label = item.href === "/my-attendance" && operator ? "Reports" : item.label;
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        prefetch
+                        title={label}
+                        className={cn(
+                          "relative flex h-10 items-center gap-2 rounded-[8px] px-2.5 text-[13px] leading-5 font-medium transition-colors duration-150",
+                          active
+                            ? "bg-[var(--sidebar-active)] text-white"
+                            : "text-[var(--sidebar-text)] hover:bg-[var(--sidebar-hover)] hover:text-white"
+                        )}
+                      >
+                        {active ? <span className="absolute top-2 bottom-2 left-0 w-[3px] rounded-r bg-amber" aria-hidden /> : null}
+                        <Icon size={18} className={cn("shrink-0", active ? "text-amber" : "text-[var(--sidebar-text-muted)]")} />
+                        <span className={cn("truncate", collapsed && "lg:hidden")}>{label}</span>
+                        {count > 0 ? (
+                          <span className={cn("tabular ml-auto text-[12px] text-amber", collapsed && "lg:hidden")}>{count > 99 ? "99+" : count}</span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </nav>
+        <div className="border-t border-[var(--sidebar-border)] p-3">
+          <p className={cn("px-1 pb-3 text-[11px] leading-4 text-[var(--sidebar-text-muted)]", collapsed && "lg:hidden")}>
+            The internal workspace for the ADMEXO team.
+          </p>
+          <button
+            type="button"
+            onClick={() => setAccountOpen((v) => !v)}
+            className="flex w-full items-center gap-2.5 rounded-[10px] px-1.5 py-1.5 text-left hover:bg-[var(--sidebar-hover)]"
+          >
+            <Avatar name={displayName(profile)} src={avatarSrc(profile)} size="sm" />
+            <span className={cn("min-w-0", collapsed && "lg:hidden")}>
+              <span className="block truncate text-[13px] font-semibold text-white">{displayName(profile)}</span>
+              <span className="block truncate text-[12px] text-[var(--sidebar-text-muted)]">{roleLabel}</span>
+            </span>
+          </button>
+          {accountOpen ? (
+            <div className="mt-1 rounded-[10px] bg-[var(--sidebar-surface)] p-1">
+              <Link href="/profile" className="block rounded-[8px] px-2.5 py-2 text-[13px] text-white hover:bg-[var(--sidebar-hover)]">
+                Profile
+              </Link>
+              <button type="button" onClick={() => void signOut()} className="block w-full rounded-[8px] px-2.5 py-2 text-left text-[13px] text-[#f0b4b4] hover:bg-[var(--sidebar-hover)]">
+                Sign out
+              </button>
+            </div>
+          ) : null}
+        </div>
+      </aside>
+    </>
   );
 }
 
 export function SidebarFallback() {
-  return (
-    <aside className="no-print min-h-[4.5rem] border-b border-ink bg-canvas lg:min-h-screen lg:border-b-0 lg:border-r" />
-  );
+  return <aside className="fixed inset-y-0 left-0 hidden w-[238px] bg-[var(--sidebar-background)] lg:block" />;
 }
 
 export function PageFallback() {
   return (
     <div className="space-y-4">
-      <div className="h-8 w-64 bg-surface-2" />
-      <div className="h-4 w-full max-w-xl bg-surface-2" />
-      <div className="mt-8 h-48 border border-border bg-surface" />
+      <div className="h-8 w-64 rounded-[8px] bg-surface-2" />
+      <div className="h-4 w-full max-w-xl rounded-[8px] bg-surface-2" />
+      <div className="mt-8 h-48 rounded-[12px] border border-border bg-surface shadow-card" />
     </div>
   );
 }

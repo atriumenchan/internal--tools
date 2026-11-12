@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, type ReactNode, Suspense } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { AppNav, SidebarFallback } from "@/components/app-nav";
-import { HistoryBar } from "@/components/history-bar";
+import { TopBar } from "@/components/top-bar";
 import { mustSignHandbook } from "@/lib/handbook";
 import { loadChatBootstrap, loadEmployees, loadStaffBundle } from "@/lib/chat-bootstrap";
 import { missingSpacesSchema } from "@/lib/spaces";
@@ -77,6 +78,8 @@ export function AppFrame({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
   const [chatUnread, setChatUnread] = useState(0);
   const [notifUnread, setNotifUnread] = useState(0);
+  const [collapsed, setCollapsed] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
@@ -297,6 +300,10 @@ export function AppFrame({ children }: { children: ReactNode }) {
     };
   }, [state?.handbookAcknowledged]);
 
+  useEffect(() => {
+    setCollapsed(localStorage.getItem("admexo-sidebar") === "collapsed");
+  }, []);
+
   const inApp = Boolean(state && (state.handbookAcknowledged || isAdminUser(state.profile)));
   if (!inApp) {
     return (
@@ -304,6 +311,13 @@ export function AppFrame({ children }: { children: ReactNode }) {
         {state && !state.handbookAcknowledged ? "Opening the handbook…" : "Loading…"}
       </div>
     );
+  }
+
+  function toggleSidebar() {
+    setCollapsed((value) => {
+      localStorage.setItem("admexo-sidebar", value ? "open" : "collapsed");
+      return !value;
+    });
   }
 
   const workspace: WorkspaceCache = {
@@ -321,7 +335,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
   return (
     <AppStateContext.Provider value={state}>
       <WorkspaceContext.Provider value={workspace}>
-        <div className="min-h-screen bg-canvas lg:grid lg:grid-cols-[256px_1fr]">
+        <div className="min-h-screen bg-canvas">
           {state ? (
             <AppNav
               profile={state.profile}
@@ -329,16 +343,27 @@ export function AppFrame({ children }: { children: ReactNode }) {
               operator={state.operator}
               chatUnread={chatUnread}
               notifUnread={notifUnread}
+              collapsed={collapsed}
+              mobileOpen={mobileOpen}
+              onToggle={toggleSidebar}
+              onCloseMobile={() => setMobileOpen(false)}
             />
           ) : (
             <SidebarFallback />
           )}
-          <main className="min-w-0 bg-page px-5 py-7 md:px-10 md:py-9">
-            <Suspense fallback={null}>
-              <HistoryBar />
-            </Suspense>
-            {children}
-          </main>
+          <div className={cn("min-h-screen transition-[margin] duration-200", collapsed ? "lg:ml-[72px]" : "lg:ml-[238px]")}>
+            {state ? (
+              <TopBar
+                profile={state.profile}
+                operator={state.operator}
+                notifUnread={notifUnread}
+                onMenu={() => setMobileOpen(true)}
+              />
+            ) : null}
+            <main className="mx-auto w-full max-w-[1600px] px-4 pt-5 pb-8 md:px-8 md:pt-7 md:pb-10">
+              {children}
+            </main>
+          </div>
         </div>
       </WorkspaceContext.Provider>
     </AppStateContext.Provider>

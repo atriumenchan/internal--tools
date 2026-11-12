@@ -3,8 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { DotsSixVertical } from "@phosphor-icons/react/dist/ssr/DotsSixVertical";
-import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
+import { GripVertical as DotsSixVertical } from "lucide-react";
+import { Pencil as PencilSimple } from "lucide-react";
 import { Badge } from "@/components/ui";
 import { OverflowStrip } from "@/components/overflow-strip";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -269,7 +269,7 @@ export function TaskCard({
       <div className="pointer-events-none relative z-[1] flex items-start gap-2">
         {onMove ? (
           <span className="mt-1 shrink-0 text-muted" title="Drag to move" aria-label="Drag to move">
-            <DotsSixVertical size={18} weight="light" />
+            <DotsSixVertical size={18} />
           </span>
         ) : null}
         <div className="min-w-0 flex-1">
@@ -290,7 +290,7 @@ export function TaskCard({
                       ? [
                           {
                             label: "Edit task",
-                            icon: <PencilSimple size={18} weight="light" />,
+                            icon: <PencilSimple size={18} />,
                             onSelect: () => setEditing(true),
                           },
                         ]
@@ -443,7 +443,7 @@ export function TaskListRow({
                 ? [
                     {
                       label: "Edit task",
-                      icon: <PencilSimple size={18} weight="light" />,
+                      icon: <PencilSimple size={18} />,
                       onSelect: () => setEditing(true),
                     },
                   ]

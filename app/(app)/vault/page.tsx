@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check } from "@phosphor-icons/react/dist/ssr/Check";
-import { Copy } from "@phosphor-icons/react/dist/ssr/Copy";
-import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
-import { EyeSlash } from "@phosphor-icons/react/dist/ssr/EyeSlash";
+import { Check } from "lucide-react";
+import { Copy } from "lucide-react";
+import { Eye } from "lucide-react";
+import { EyeOff as EyeSlash } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, EmptyState, ErrorText, Field, Input, PageHeader, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -182,7 +182,7 @@ export default function VaultPage() {
                       aria-label={shown[row.id] ? "Hide password" : "Show password"}
                       onClick={() => setShown((s) => ({ ...s, [row.id]: !s[row.id] }))}
                     >
-                      {shown[row.id] ? <EyeSlash size={18} weight="light" /> : <Eye size={18} weight="light" />}
+                      {shown[row.id] ? <EyeSlash size={18} /> : <Eye size={18} />}
                     </button>
                     <button
                       type="button"
@@ -190,7 +190,7 @@ export default function VaultPage() {
                       aria-label="Copy password"
                       onClick={() => void copySecret(row.id, row.secret || "")}
                     >
-                      {copied === row.id ? <Check size={18} weight="light" className="text-teal" /> : <Copy size={18} weight="light" />}
+                      {copied === row.id ? <Check size={18} className="text-teal" /> : <Copy size={18} />}
                     </button>
                     {copied === row.id ? <span className="text-[12px] font-sans text-teal">Copied</span> : null}
                   </div>

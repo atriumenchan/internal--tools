@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { ChevronLeft } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const KEY = "it-history-v1";
@@ -127,12 +127,12 @@ export function HistoryBar() {
   });
 
   return (
-    <div className="mb-4 flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5">
       <NavBtn label="Back" disabled={!canBack} onClick={() => go(-1)}>
-        <CaretLeft size={18} weight="bold" />
+        <ChevronLeft size={18} />
       </NavBtn>
       <NavBtn label="Forward" disabled={!canForward} onClick={() => go(1)}>
-        <CaretRight size={18} weight="bold" />
+        <ChevronRight size={18} />
       </NavBtn>
     </div>
   );

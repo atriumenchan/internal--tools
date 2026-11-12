@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarBlank } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { Calendar as CalendarBlank } from "lucide-react";
+import { ChevronLeft as CaretLeft } from "lucide-react";
+import { ChevronRight as CaretRight } from "lucide-react";
 import { formatWorkDate, kolkataTodayKey } from "@/lib/datetime";
 import { cn } from "@/lib/utils";
 
@@ -132,17 +132,17 @@ export function DatePicker({
         <span className={selectedKey ? "text-ink" : "text-muted"}>
           {selectedKey ? formatWorkDate(selectedKey, "long") : placeholder}
         </span>
-        <CalendarBlank size={18} weight="light" className="shrink-0 text-muted" />
+        <CalendarBlank size={18} className="shrink-0 text-muted" />
       </button>
       {open ? (
         <div className="absolute z-50 mt-2 w-[17.5rem] max-w-[calc(100vw-2rem)] rounded-md border border-border bg-surface p-3 shadow-float">
           <div className="mb-2 flex items-center justify-between">
             <button type="button" aria-label="Previous month" className="rounded-sm p-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => shiftMonth(-1)}>
-              <CaretLeft size={18} weight="light" />
+              <CaretLeft size={18} />
             </button>
             <p className="text-sm font-medium capitalize">{heading}</p>
             <button type="button" aria-label="Next month" className="rounded-sm p-1 text-muted hover:bg-surface-2 hover:text-ink" onClick={() => shiftMonth(1)}>
-              <CaretRight size={18} weight="light" />
+              <CaretRight size={18} />
             </button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-faint">

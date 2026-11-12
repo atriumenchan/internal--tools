@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { CaretDown } from "@phosphor-icons/react/dist/ssr/CaretDown";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 function AnchoredPanel({
@@ -172,8 +172,8 @@ export function Segmented<T extends string>({
         type="button"
         onClick={() => pick(option.id)}
         className={cn(
-          "cursor-pointer border-b-2 border-transparent px-2.5 py-1.5 text-[13.5px] whitespace-nowrap",
-          selected ? "border-amber text-ink" : "text-muted hover:text-ink"
+          "cursor-pointer rounded-[8px] px-3 py-1.5 text-[13px] leading-5 font-medium whitespace-nowrap",
+          selected ? "bg-[var(--brand-soft)] text-ink" : "text-muted hover:text-ink"
         )}
       >
         {option.label}
@@ -190,7 +190,7 @@ export function Segmented<T extends string>({
       >
         {buttons}
       </div>
-      <div className="inline-flex max-w-full min-w-0 items-end overflow-hidden border-b border-border">
+      <div className="inline-flex max-w-full min-w-0 items-center overflow-hidden rounded-[10px] bg-surface-2 p-1">
         {fits ? (
           buttons
         ) : (
@@ -209,7 +209,7 @@ export function Segmented<T extends string>({
               className="grid h-8 w-8 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface hover:text-ink"
               onClick={() => setOpen((v) => !v)}
             >
-              <CaretDown size={14} weight="light" />
+              <ChevronDown size={14} />
             </button>
           </>
         )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PushPin } from "@phosphor-icons/react/dist/ssr/PushPin";
+import { Pin } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Badge, Button, Card, Checkbox, ErrorText, Field, Input, Textarea } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -84,7 +84,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
   return (
     <Card className="p-6">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="font-display text-[18px] font-medium tracking-tight">Announcements</h2>
+        <h2 className="text-[18px] leading-[26px] font-bold text-ink">Announcements</h2>
         {operator ? (
           <Button type="button" size="sm" variant={compose ? "secondary" : "primary"} onClick={() => setCompose((v) => !v)}>
             {compose ? "Cancel" : "Post"}
@@ -125,7 +125,7 @@ export function Announcements({ operator, userId }: { operator: boolean; userId:
                 <div className="min-w-0">
                   {row.pinned ? (
                     <Badge tone="accent">
-                      <PushPin size={12} weight="light" />
+                      <Pin size={12} />
                       Pinned
                     </Badge>
                   ) : null}

@@ -36,9 +36,10 @@ module.exports = {
         lg: "var(--radius-lg)",
       },
       boxShadow: {
-        card: "0 1px 2px rgba(20, 40, 32, 0.04)",
-        cta: "0 10px 22px -10px var(--amber-line)",
-        float: "0 20px 45px -20px rgba(20, 40, 32, 0.18)",
+        card: "var(--shadow-card)",
+        cta: "var(--shadow-cta)",
+        float: "var(--shadow-float)",
+        elevated: "var(--shadow-elevated)",
       },
     },
   },

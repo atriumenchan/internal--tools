@@ -3,8 +3,8 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
-import { DotsThree } from "@phosphor-icons/react/dist/ssr/DotsThree";
-import { Trash } from "@phosphor-icons/react/dist/ssr/Trash";
+import { MoreHorizontal as DotsThree } from "lucide-react";
+import { Trash2 as Trash } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
 
@@ -126,7 +126,7 @@ export function ConfirmDelete({
                     onClick={() => setMode("confirm")}
                     className="flex w-full items-center gap-2 rounded-[7px] px-2 py-1.5 text-left text-[13px] font-medium text-coral transition duration-150 hover:bg-coral-dim"
                   >
-                    <Trash size={15} weight="light" className="shrink-0" />
+                    <Trash size={15} className="shrink-0" />
                     <span className="truncate">{label}</span>
                   </button>
                 ) : null}
@@ -171,7 +171,7 @@ export function ConfirmDelete({
           open && "bg-surface-2 text-ink"
         )}
       >
-        <DotsThree size={18} weight="light" />
+        <DotsThree size={18} />
       </button>
       {panel}
     </div>

@@ -9,8 +9,8 @@ import { ConfirmDelete } from "@/components/confirm-delete";
 import { ChatIconPicker } from "@/components/chat-icon-picker";
 import { ConversationMark } from "@/components/conversation-mark";
 import { PageFallback } from "@/components/app-nav";
-import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
-import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
+import { Pencil as PencilSimple } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { TaskCard, TaskListRow } from "@/components/task-card";
 import { TaskForm, type TaskDraft } from "@/components/task-form";
 import { Avatar } from "@/components/avatar";
@@ -543,7 +543,7 @@ export default function SpaceDetailPage() {
               extra={[
                 {
                   label: "People",
-                  icon: <UserPlus size={15} weight="light" className="shrink-0" />,
+                  icon: <UserPlus size={15} className="shrink-0" />,
                   onSelect: () => setPeopleOpen(true),
                 },
               ]}

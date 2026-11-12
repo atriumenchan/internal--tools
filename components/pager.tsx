@@ -1,7 +1,7 @@
 "use client";
 
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { ChevronLeft as CaretLeft } from "lucide-react";
+import { ChevronRight as CaretRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function Pager({
@@ -37,7 +37,7 @@ export function Pager({
             onClick={() => onChange(page - 1)}
             className="grid h-8 w-8 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-40"
           >
-            <CaretLeft size={16} weight="light" />
+            <CaretLeft size={16} />
           </button>
           {windowed.map((n, i) => {
             const gap = i > 0 && n - windowed[i - 1] > 1;
@@ -64,7 +64,7 @@ export function Pager({
             onClick={() => onChange(page + 1)}
             className="grid h-8 w-8 place-items-center rounded-sm text-muted hover:bg-surface-2 hover:text-ink disabled:opacity-40"
           >
-            <CaretRight size={16} weight="light" />
+            <CaretRight size={16} />
           </button>
         </div>
       ) : null}

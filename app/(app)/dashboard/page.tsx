@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertCircle, BookOpen, ClipboardList, MessageCircle, Users } from "lucide-react";
 import { JoinMeetButton } from "@/components/join-meet";
 import { createClient } from "@/lib/supabase/client";
-import { Button, EmptyState, ErrorText, PageHeader, Segmented } from "@/components/ui";
+import { Button, EmptyState, ErrorText, Segmented } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
-import { TaskCard } from "@/components/task-card";
+import { Avatar } from "@/components/avatar";
+import { avatarSrc } from "@/lib/avatar";
+import { TaskListRow } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { canPostAnnouncements } from "@/lib/roles";
@@ -48,16 +51,23 @@ function Stat({
   value,
   href,
   onSelect,
-  tone = "neutral",
+  icon: Icon,
+  accent,
 }: {
   label: string;
   value: number;
   href: string;
   onSelect?: () => void;
-  tone?: "neutral" | "info" | "warn" | "danger";
+  icon: typeof ClipboardList;
+  accent: "brand" | "info" | "danger" | "success";
 }) {
   const router = useRouter();
-  const zero = value === 0;
+  const wash = {
+    brand: "bg-[var(--brand-soft)] text-amber",
+    info: "bg-[var(--info-soft)] text-[var(--info)]",
+    danger: "bg-coral-dim text-coral",
+    success: "bg-teal-dim text-teal",
+  }[accent];
   return (
     <Link
       href={href}
@@ -66,19 +76,15 @@ function Stat({
         if (onSelect) onSelect();
         else router.push(href);
       }}
-      className="group block px-4 py-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-amber"
+      className="group flex h-[112px] flex-col justify-between rounded-[12px] border border-border bg-surface p-5 shadow-card transition duration-150 hover:-translate-y-0.5 hover:border-border-strong hover:shadow-elevated motion-reduce:hover:translate-y-0"
     >
-      <p className="text-[13px] text-muted">{label}</p>
-      <p
-        className={cn(
-          "tabular mt-2 text-[1.75rem] leading-none",
-          zero && "text-faint",
-          !zero && tone === "danger" && "text-coral",
-          !zero && tone !== "danger" && "text-ink group-hover:text-amber"
-        )}
-      >
-        {value}
-      </p>
+      <span className="flex items-center gap-2.5">
+        <span className={cn("grid h-8 w-8 place-items-center rounded-[8px]", wash)}>
+          <Icon size={18} />
+        </span>
+        <span className="text-[13px] leading-5 font-medium text-muted">{label}</span>
+      </span>
+      <span className="tabular text-[32px] leading-[38px] font-semibold text-ink">{value}</span>
     </Link>
   );
 }
@@ -405,16 +411,21 @@ export default function DashboardPage() {
   if (!app || tasks === null) return <PageFallback />;
 
   return (
-    <div>
-      <PageHeader
-        title="Dashboard"
-        description={formatWorkDate(kolkataTodayKey(), "long")}
-        actions={<JoinMeetButton />}
-      />
-      <ErrorText className="mb-4">{error}</ErrorText>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-[32px] leading-[38px] font-bold tracking-[-0.03em] text-ink">Dashboard</h1>
+          <p className="mt-1 text-[13px] leading-5 text-muted">Your workspace at a glance.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <p className="text-[13px] leading-5 text-muted">{formatWorkDate(kolkataTodayKey(), "long")}</p>
+          <JoinMeetButton />
+        </div>
+      </div>
+      <ErrorText>{error}</ErrorText>
 
-      <div className="mb-8 grid grid-cols-2 divide-x divide-y divide-ink border border-ink lg:grid-cols-4 lg:divide-y-0">
-        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} />
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} icon={ClipboardList} accent="brand" />
         <Stat
           label="Involved"
           value={helping.length}
@@ -427,63 +438,20 @@ export default function DashboardPage() {
                   document.getElementById("work")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }
           }
+          icon={Users}
+          accent="info"
         />
-        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/tasks?slice=overdue")} tone="danger" />
-        <Stat
-          label="Unread chat"
-          value={unreadChats.reduce((n, r) => n + r.unread_count, 0)}
-          href="/chat"
-        />
+        <Stat label="Overdue" value={overdue.length} href={firstTaskHref(overdue, "/tasks?slice=overdue")} icon={AlertCircle} accent="danger" />
+        <Stat label="Unread chat" value={unreadChats.reduce((n, r) => n + r.unread_count, 0)} href="/chat" icon={MessageCircle} accent="success" />
       </div>
 
-      {dueSoon.length > 0 ? (
-        <section className="mb-6 rounded-md border border-border bg-surface px-4 py-3 shadow-card">
-          <div className="mb-1 flex items-baseline justify-between gap-3">
-            <h2 className="text-[13px] font-semibold tracking-tight">Coming due</h2>
-            <span className="tabular text-[12px] text-muted">{dueSoon.length}</span>
-          </div>
-          <ul>
-            {dueSoon.slice(0, 6).map((task) => {
-              const when = dueWhenLabel(task.due_date, task.status);
-              const due = formatWorkDate(task.due_date);
-              const late = isOverdue(task.due_date, task.status);
-              return (
-                <li key={task.id} className="border-t border-border first:border-t-0">
-                  <Link
-                    href={`/spaces/${task.space_id}/tasks/${task.id}`}
-                    className="flex min-w-0 items-center justify-between gap-3 py-1.5 text-[13px] hover:text-teal"
-                  >
-                    <span className="truncate font-medium">{task.title}</span>
-                    <span className={cn("shrink-0 text-[12px] font-medium", late ? "text-coral" : "text-teal")}>
-                      {when && due && due !== "—" ? `${when} · ${due}` : when || due}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      ) : null}
-
-      <div className="mb-6">
-        <Announcements operator={canPostAnnouncements(app.profile) || operator} userId={app.userId} />
-      </div>
-
-      <div className="mb-8 flex flex-wrap gap-x-8 gap-y-2 border-b border-border pb-4 text-[15px]">
-        <Link href="/reports?kind=weekly" className="text-ink underline decoration-border underline-offset-4 hover:decoration-amber">
-          Weekly report
-          <span className="ml-2 text-muted">{reportPeriodLabel("weekly")}</span>
-        </Link>
-        <Link href="/reports?kind=monthly" className="text-ink underline decoration-border underline-offset-4 hover:decoration-amber">
-          Monthly report
-          <span className="ml-2 text-muted">{reportPeriodLabel("monthly")}</span>
-        </Link>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_280px]">
-        <section id="work" className="scroll-mt-24">
-          <div className="mb-3 flex min-w-0 items-center justify-between gap-2">
-            <h2 className="font-display shrink-0 text-xl font-medium tracking-tight">Work</h2>
+      <div className="grid items-start gap-6 xl:grid-cols-12">
+        <section id="work" className="scroll-mt-24 rounded-[14px] border border-border bg-surface p-5 shadow-elevated xl:col-span-8">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-[18px] leading-[26px] font-bold text-ink">Your work</h2>
+              <p className="text-[13px] leading-5 text-muted">Everything that needs your attention.</p>
+            </div>
             <Segmented
               className="min-w-0"
               value={workFilter}
@@ -497,20 +465,6 @@ export default function DashboardPage() {
               ]}
             />
           </div>
-          {workFilter === "mine" && (actionCount > 0 || waiting.length > 0) ? (
-            <div className="mb-5 grid border border-ink sm:grid-cols-2 sm:divide-x sm:divide-ink">
-              <div className="px-4 py-3">
-                <p className="text-[13px] text-muted">Needs your action</p>
-                <p className="tabular mt-1 text-[1.5rem] leading-none">{actionCount}</p>
-                <p className="mt-2 text-[13px] leading-snug text-muted">Reviews, overdue, new assigns, and tasks you are involved in.</p>
-              </div>
-              <div className="border-t border-ink px-4 py-3 sm:border-t-0">
-                <p className="text-[13px] text-muted">Waiting on others</p>
-                <p className="tabular mt-1 text-[1.5rem] leading-none">{waiting.length}</p>
-                <p className="mt-2 text-[13px] leading-snug text-muted">Work you asked someone else for.</p>
-              </div>
-            </div>
-          ) : null}
           {workFilter === "involved" ? (
             helping.length === 0 ? (
               <EmptyState>
@@ -554,10 +508,10 @@ export default function DashboardPage() {
               No tasks yet
             </EmptyState>
           ) : (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-border overflow-hidden rounded-[12px] border border-border">
               {shown.map((task) => (
                 <li key={task.id}>
-                  <TaskCard
+                  <TaskListRow
                     task={task}
                     href={`/spaces/${task.space_id}/tasks/${task.id}`}
                     spaceName={spaceMap[task.space_id]?.name}
@@ -581,139 +535,111 @@ export default function DashboardPage() {
           )}
         </section>
 
-        <aside className="space-y-4">
-          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-medium">Tagged you</h2>
-              {waitingMentions.length > 0 ? (
-                <span className="tabular rounded-sm bg-amber-dim px-1.5 font-mono text-[10px] font-medium text-amber">
-                  {waitingMentions.length}
-                </span>
-              ) : null}
-            </div>
-            {waitingMentions.length === 0 ? (
-              <p className="mt-3 text-sm text-faint">No tags waiting for a reply.</p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {waitingMentions.map((row) => (
-                  <li key={row.commentId}>
-                    <Link href={row.href} className="block rounded-sm py-0.5 hover:text-teal">
-                      <span className="block text-sm font-medium">
-                        {displayName(peopleMap[row.authorId])} tagged you
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-muted">{row.taskTitle}</span>
-                      {row.body ? (
-                        <span className="mt-0.5 block truncate text-xs text-muted">{inboxPreview(row.body)}</span>
-                      ) : null}
-                      <span className="mt-0.5 block font-mono text-[11px] text-faint">{formatRelative(row.createdAt)}</span>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-medium">Boards</h2>
-              <Link href="/spaces" className="text-xs font-medium text-teal hover:text-teal-soft">
-                All
-              </Link>
-            </div>
-            {spaces.length === 0 ? (
-              <p className="mt-3 text-sm text-faint">No task boards yet.</p>
-            ) : (
-              <ul className="mt-3 space-y-2">
-                {spaces.map((space) => (
-                  <li key={space.id}>
-                    <Link href={`/spaces/${space.id}`} className="flex items-center gap-2 text-sm transition duration-200 hover:text-teal">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: space.color || "var(--amber)" }} />
-                      {space.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-medium">{operator ? "Attendance" : "Your day"}</h2>
-              {operator ? (
-                <Link href="/board" className="text-xs font-medium text-teal hover:text-teal-soft">
-                  Full board
-                </Link>
-              ) : (
-                <Link href="/my-attendance" className="text-xs font-medium text-teal hover:text-teal-soft">
-                  Last week
-                </Link>
-              )}
-            </div>
-            {operator ? (
-              <p className="mt-3 text-sm text-muted">
-                Present {present} · Absent {absent}
-              </p>
-            ) : employee ? (
-              <div className="mt-3 space-y-1 text-sm">
-                <p>
-                  {today ? today.status.replace("_", " ") : "No punch yet"}
-                  {today?.hours_worked ? ` · ${hoursLabel(today.hours_worked)}` : ""}
-                </p>
-                {summary ? (
-                  <p className="text-muted">
-                    This month · present {summary.present_days} · absent {summary.absent_days} · late {summary.late_days}
-                  </p>
-                ) : (
-                  <p className="text-muted">Month totals appear after the next Excel upload.</p>
-                )}
-              </div>
-            ) : (
-              <p className="mt-3 text-sm text-muted">Ask Ryan Ritabrata to link your login on Staff.</p>
-            )}
-            {admin && wfhPending > 0 ? (
-              <Link href="/wfh" className="mt-3 block text-[13px] font-medium text-amber">
-                {wfhPending} WFH {wfhPending === 1 ? "request" : "requests"} waiting
-              </Link>
-            ) : (
-              <Link href="/wfh" className="mt-3 block text-[13px] font-medium text-teal">
-                WFH
-              </Link>
-            )}
-          </section>
-
-          <section className="rounded-md border border-border bg-surface p-4 shadow-card">
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-medium">Chat</h2>
-              <Link href="/chat" className="text-xs font-medium text-teal hover:text-teal-soft">
-                Open
-              </Link>
-            </div>
-            {unreadChats.length === 0 ? (
-              <p className="mt-3 text-sm text-faint">No unread messages.</p>
-            ) : (
-              <ul className="mt-3 space-y-2 text-sm">
-                {unreadChats.map((row) => {
-                  const convo = convos.find((c) => c.id === row.conversation_id);
-                  let label = convo?.name || "Chat";
-                  if (convo?.type === "dm") {
-                    const other = members.find((m) => m.conversation_id === convo.id && m.user_id !== app.userId);
-                    label = other ? displayName(peopleMap[other.user_id]) : "Direct message";
-                  }
-                  return (
-                    <li key={row.conversation_id}>
-                      <Link href={`/chat?c=${row.conversation_id}`} className="block hover:text-teal">
-                        <span className="font-medium">{label}</span>
-                        <span className="ml-2 rounded-sm bg-teal-dim px-1.5 font-mono text-[10px] font-medium text-teal">{row.unread_count}</span>
-                        {row.last_body ? <span className="mt-0.5 block truncate text-xs text-muted">{inboxPreview(row.last_body)}</span> : null}
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+        <aside className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated xl:col-span-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[18px] leading-[26px] font-bold text-ink">Tagged you</h2>
+            <Link href="/notifications" className="text-[12px] font-semibold text-amber">
+              View all
+            </Link>
+          </div>
+          {waitingMentions.length === 0 ? (
+            <p className="mt-6 text-[13px] leading-5 text-muted">No tags waiting for a reply.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-border">
+              {waitingMentions.map((row) => (
+                <li key={row.commentId}>
+                  <Link href={row.href} className="flex gap-3 py-3">
+                    <Avatar name={displayName(peopleMap[row.authorId])} src={avatarSrc(peopleMap[row.authorId])} size="sm" />
+                    <span className="min-w-0">
+                      <span className="block text-[13px] leading-5 font-semibold text-ink">{displayName(peopleMap[row.authorId])} tagged you</span>
+                      <span className="mt-0.5 block truncate text-[12px] leading-[18px] text-muted">{row.taskTitle}</span>
+                      {row.body ? <span className="mt-0.5 block truncate text-[12px] leading-[18px] text-muted">{inboxPreview(row.body)}</span> : null}
+                      <span className="mt-1 block text-[11px] leading-4 text-faint">{formatRelative(row.createdAt)}</span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </aside>
       </div>
+
+      <div className="grid items-start gap-6 xl:grid-cols-12">
+        <div className="xl:col-span-7">
+          <Announcements operator={canPostAnnouncements(app.profile) || operator} userId={app.userId} />
+        </div>
+        <section className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated xl:col-span-5">
+          <h2 className="text-[18px] leading-[26px] font-bold text-ink">Coming up</h2>
+          {dueSoon.length === 0 ? (
+            <p className="mt-6 text-[13px] leading-5 text-muted">Nothing is due on your tasks.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-border">
+              {dueSoon.slice(0, 6).map((task) => {
+                const when = dueWhenLabel(task.due_date, task.status);
+                const due = formatWorkDate(task.due_date);
+                const late = isOverdue(task.due_date, task.status);
+                return (
+                  <li key={task.id}>
+                    <Link href={`/spaces/${task.space_id}/tasks/${task.id}`} className="flex items-center justify-between gap-3 py-3">
+                      <span className="min-w-0">
+                        <span className={cn("block text-[11px] leading-4 font-semibold", late ? "text-coral" : "text-amber")}>{when || "Scheduled"}</span>
+                        <span className="mt-0.5 block truncate text-[13px] leading-5 font-medium text-ink">{task.title}</span>
+                      </span>
+                      <span className="shrink-0 text-[12px] text-muted">{due}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <Link href="/reports?kind=weekly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
+          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
+          <h2 className="mt-2 text-[18px] leading-[26px] font-bold text-ink">Weekly report</h2>
+          <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("weekly")}</p>
+          <p className="mt-4 text-[13px] font-semibold text-amber">Open the week</p>
+        </Link>
+        <Link href="/reports?kind=monthly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
+          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
+          <h2 className="mt-2 text-[18px] leading-[26px] font-bold text-ink">Monthly report</h2>
+          <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("monthly")}</p>
+          <p className="mt-4 text-[13px] font-semibold text-amber">Open the month</p>
+        </Link>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Link href="/reports" className="flex h-12 items-center rounded-[8px] border border-border bg-surface px-4 text-[13px] font-medium shadow-card hover:bg-surface-2">
+          View reports
+        </Link>
+        <Link href="/chat" className="flex h-12 items-center justify-between rounded-[8px] border border-border bg-surface px-4 text-[13px] font-medium shadow-card hover:bg-surface-2">
+          Open chat
+          {unreadChats.length > 0 ? <span className="tabular text-amber">{unreadChats.reduce((n, r) => n + r.unread_count, 0)}</span> : null}
+        </Link>
+        <Link href={operator ? "/board" : "/my-attendance"} className="flex h-12 items-center justify-between gap-3 rounded-[8px] border border-border bg-surface px-4 text-[13px] font-medium shadow-card hover:bg-surface-2">
+          <span>My attendance</span>
+          <span className="truncate text-[12px] font-normal text-muted">
+            {operator
+              ? `Present ${present} · Absent ${absent}`
+              : today
+                ? `${today.status.replace("_", " ")}${today.hours_worked ? ` · ${hoursLabel(today.hours_worked)}` : ""}`
+                : employee
+                  ? "No punch yet"
+                  : "Not linked"}
+          </span>
+        </Link>
+        <Link href="/handbook" className="flex h-12 items-center gap-2 rounded-[8px] border border-border bg-surface px-4 text-[13px] font-medium shadow-card hover:bg-surface-2">
+          <BookOpen size={16} />
+          Read handbook
+        </Link>
+      </div>
+      {admin && wfhPending > 0 ? (
+        <Link href="/wfh" className="inline-flex text-[13px] font-semibold text-amber">
+          {wfhPending} WFH {wfhPending === 1 ? "request" : "requests"} waiting
+        </Link>
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { UploadSimple } from "@phosphor-icons/react/dist/ssr/UploadSimple";
+import { Upload as UploadSimple } from "lucide-react";
 import { fileFromClipboard } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 
@@ -53,7 +53,7 @@ export function FileDrop({
         take(e.dataTransfer.files?.[0]);
       }}
     >
-      <UploadSimple size={18} weight="light" className="text-muted" />
+      <UploadSimple size={18} className="text-muted" />
       <span className="text-sm font-medium text-ink">{label}</span>
       <span className="text-xs text-muted">{hint}</span>
       <input

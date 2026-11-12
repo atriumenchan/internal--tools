@@ -2,8 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { PencilSimple } from "@phosphor-icons/react/dist/ssr/PencilSimple";
-import { UserPlus } from "@phosphor-icons/react/dist/ssr/UserPlus";
+import { Pencil as PencilSimple } from "lucide-react";
+import { UserPlus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, ErrorText, Field, Input, PageHeader, Select } from "@/components/ui";
 import { ConfirmDelete } from "@/components/confirm-delete";
@@ -418,17 +418,17 @@ function ChatApp() {
     return [
       {
         label: "Change icon",
-        icon: <PencilSimple size={15} weight="light" className="shrink-0" />,
+        icon: <PencilSimple size={15} className="shrink-0" />,
         onSelect: () => void openManage(convo, "edit"),
       },
       {
         label: "Members",
-        icon: <UserPlus size={15} weight="light" className="shrink-0" />,
+        icon: <UserPlus size={15} className="shrink-0" />,
         onSelect: () => void openManage(convo, "members"),
       },
       {
         label: convo.type === "space" ? "Rename board" : "Rename group",
-        icon: <PencilSimple size={15} weight="light" className="shrink-0" />,
+        icon: <PencilSimple size={15} className="shrink-0" />,
         onSelect: () => void openManage(convo, "edit"),
       },
     ];

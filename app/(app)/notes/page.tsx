@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CaretLeft } from "@phosphor-icons/react/dist/ssr/CaretLeft";
-import { CaretRight } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import { ChevronLeft as CaretLeft } from "lucide-react";
+import { ChevronRight as CaretRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Field, Input, PageHeader } from "@/components/ui";
 import { DatePicker } from "@/components/date-picker";
@@ -100,7 +100,7 @@ export default function DailyNotesPage() {
           onClick={() => setDay((d) => addDaysKey(d, -1))}
           aria-label="Previous day"
         >
-          <CaretLeft size={18} weight="light" />
+          <CaretLeft size={18} />
         </button>
         <Field label="Day" className="min-w-[12rem]">
           <DatePicker value={day} onChange={(value) => value && setDay(value)} />
@@ -111,7 +111,7 @@ export default function DailyNotesPage() {
           onClick={() => setDay((d) => addDaysKey(d, 1))}
           aria-label="Next day"
         >
-          <CaretRight size={18} weight="light" />
+          <CaretRight size={18} />
         </button>
         {day !== kolkataTodayKey() ? (
           <Button type="button" variant="ghost" onClick={() => setDay(kolkataTodayKey())}>

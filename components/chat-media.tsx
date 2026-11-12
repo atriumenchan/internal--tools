@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { FileText } from "@phosphor-icons/react/dist/ssr/FileText";
-import { X } from "@phosphor-icons/react/dist/ssr/X";
+import { FileText } from "lucide-react";
+import { X } from "lucide-react";
 import { isChatImage, isPdfFile } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/lib/types";
@@ -33,7 +33,7 @@ export function ImagePreview({
         className="absolute top-4 right-4 grid h-9 w-9 place-items-center rounded-full bg-surface text-ink"
         onClick={onClose}
       >
-        <X size={18} weight="light" />
+        <X size={18} />
       </button>
       {kind === "pdf" ? (
         <iframe
@@ -68,7 +68,7 @@ export function StoredFilePreview({ href, name, type }: { href: string; name: st
         rel="noreferrer"
         className="flex min-w-0 flex-1 items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-sm transition duration-200 hover:border-border-strong"
       >
-        <FileText size={18} weight="light" className="shrink-0 text-teal" />
+        <FileText size={18} className="shrink-0 text-teal" />
         <span className="min-w-0 truncate">{name}</span>
       </a>
     );
@@ -113,7 +113,7 @@ export function ChatAttachment({ message, className }: { message: ChatMessage; c
         rel="noreferrer"
         className={cn("inline-flex max-w-full items-center gap-2 rounded-sm border border-border bg-surface px-3 py-2 text-left text-[13px] hover:border-border-strong", className)}
       >
-        <FileText size={16} weight="light" className="shrink-0 text-teal" />
+        <FileText size={16} className="shrink-0 text-teal" />
         <span className="truncate">{message.file_name || "File"}</span>
       </a>
     );
@@ -128,7 +128,7 @@ export function ChatAttachment({ message, className }: { message: ChatMessage; c
           <img src={href} alt={message.file_name || "Photo"} className="max-h-56 w-full object-cover" />
         ) : (
           <span className="inline-flex w-full items-center gap-2 bg-surface px-3 py-2 text-left text-[13px]">
-            <FileText size={16} weight="light" className="shrink-0 text-teal" />
+            <FileText size={16} className="shrink-0 text-teal" />
             <span className="truncate">{message.file_name || "PDF"}</span>
           </span>
         )}
@@ -160,14 +160,14 @@ export function PendingPhoto({ file, onClear }: { file: File; onClear: () => voi
             <img src={url} alt={file.name} className="max-h-36 w-full object-cover" />
           ) : (
             <span className="inline-flex max-w-[14rem] items-center gap-2 rounded-sm border border-border px-3 py-2 text-[13px]">
-              <FileText size={16} weight="light" className="shrink-0 text-teal" />
+              <FileText size={16} className="shrink-0 text-teal" />
               <span className="min-w-0 truncate">{file.name}</span>
             </span>
           )}
         </button>
       ) : (
         <span className="inline-flex max-w-[14rem] items-center gap-2 rounded-sm border border-border px-3 py-2 text-[13px]">
-          <FileText size={16} weight="light" className="shrink-0 text-teal" />
+          <FileText size={16} className="shrink-0 text-teal" />
           <span className="min-w-0 truncate">{file.name}</span>
         </span>
       )}
@@ -177,7 +177,7 @@ export function PendingPhoto({ file, onClear }: { file: File; onClear: () => voi
         onClick={onClear}
         className="absolute -top-2 -right-2 grid h-6 w-6 place-items-center rounded-full bg-surface text-ink shadow-card"
       >
-        <X size={12} weight="light" />
+        <X size={12} />
       </button>
       {open ? <ImagePreview src={url} alt={file.name} kind={pdf ? "pdf" : "image"} onClose={() => setOpen(false)} /> : null}
     </div>
