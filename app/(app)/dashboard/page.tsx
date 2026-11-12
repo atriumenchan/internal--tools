@@ -20,7 +20,8 @@ import { displayName, missingPriorityColumn } from "@/lib/spaces";
 import { dueDateKey, formatRelative, formatWorkDate, hoursLabel, isOverdue, kolkataTodayKey, compareDueSoon, dueWhenLabel } from "@/lib/datetime";
 import { unrepliedTaskMentions } from "@/lib/mentions";
 import { readDismissedMentions, writeDismissedMentions } from "@/lib/dismissed-mentions";
-import { reportPeriodLabel } from "@/lib/reports";
+import { Pager } from "@/components/pager";
+import { paginate } from "@/lib/task-overview";
 import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
@@ -127,6 +128,7 @@ export default function DashboardPage() {
   const [taggedComments, setTaggedComments] = useState<Pick<TaskComment, "id" | "task_id" | "author_id" | "body" | "created_at">[]>([]);
   const [myComments, setMyComments] = useState<Pick<TaskComment, "task_id" | "created_at">[]>([]);
   const [dismissedMentions, setDismissedMentions] = useState<string[]>([]);
+  const [tagPage, setTagPage] = useState(1);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -358,9 +360,9 @@ export default function DashboardPage() {
       people,
       tasks: tasks ?? [],
     })
-      .filter((row) => !helpTaskIds.has(row.taskId) && !dismissedMentions.includes(row.commentId))
-      .slice(0, 8);
+      .filter((row) => !helpTaskIds.has(row.taskId) && !dismissedMentions.includes(row.commentId));
   }, [app, taggedComments, myComments, people, tasks, helping, dismissedMentions]);
+  const mentionPage = useMemo(() => paginate(waitingMentions, tagPage, 5), [waitingMentions, tagPage]);
   const present = teamToday.filter((d) => d.status === "present" || d.status === "half_day").length;
   const absent = teamToday.filter((d) => d.status === "absent").length;
 
@@ -604,8 +606,9 @@ export default function DashboardPage() {
           {waitingMentions.length === 0 ? (
             <p className="mt-6 text-[13px] leading-5 text-muted">No tags waiting for a reply.</p>
           ) : (
+            <>
             <ul className="mt-4 divide-y divide-border">
-              {waitingMentions.map((row) => (
+              {mentionPage.rows.map((row) => (
                 <li key={row.commentId} className="relative">
                   <Link href={row.href} className="flex gap-3 py-3 pr-8">
                     <Avatar name={displayName(peopleMap[row.authorId])} src={avatarSrc(peopleMap[row.authorId])} size="sm" />
@@ -628,6 +631,17 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+            {waitingMentions.length > 5 ? (
+              <Pager
+                page={mentionPage.page}
+                pages={mentionPage.pages}
+                start={mentionPage.start}
+                end={mentionPage.end}
+                total={waitingMentions.length}
+                onChange={setTagPage}
+              />
+            ) : null}
+            </>
           )}
           </section>
 
@@ -743,20 +757,6 @@ export default function DashboardPage() {
         </aside>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Link href="/reports?kind=weekly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
-          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
-          <h2 className="mt-2 text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Weekly report</h2>
-          <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("weekly")}</p>
-          <p className="mt-4 text-[13px] font-semibold text-amber">Open the week</p>
-        </Link>
-        <Link href="/reports?kind=monthly" className="rounded-[14px] border border-border bg-surface p-5 shadow-elevated transition duration-150 hover:-translate-y-0.5 hover:shadow-float">
-          <p className="text-[11px] leading-4 font-semibold tracking-[0.08em] text-muted uppercase">Report</p>
-          <h2 className="mt-2 text-[20px] leading-7 font-semibold tracking-[-0.02em] text-ink">Monthly report</h2>
-          <p className="mt-1 text-[13px] leading-5 text-muted">{reportPeriodLabel("monthly")}</p>
-          <p className="mt-4 text-[13px] font-semibold text-amber">Open the month</p>
-        </Link>
-      </div>
     </div>
   );
 }
