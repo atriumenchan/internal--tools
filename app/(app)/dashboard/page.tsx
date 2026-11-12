@@ -12,7 +12,7 @@ import { useAppState } from "@/components/app-frame";
 import { Announcements } from "@/components/announcements";
 import { Avatar } from "@/components/avatar";
 import { avatarSrc } from "@/lib/avatar";
-import { TaskListRow } from "@/components/task-card";
+import { TaskListRow, TaskRowHeader } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { isAdminUser } from "@/lib/admin";
 import { canPostAnnouncements } from "@/lib/roles";
@@ -561,7 +561,11 @@ export default function DashboardPage() {
               No tasks yet
             </EmptyState>
           ) : (
-            <ul className="divide-y divide-border overflow-hidden rounded-[12px] border border-border">
+            <div className="overflow-hidden rounded-[12px] border border-border">
+            <div className="hidden border-b border-border bg-surface-2/60 md:block">
+              <TaskRowHeader />
+            </div>
+            <ul>
               {shown.map((task) => (
                 <li key={task.id}>
                   <TaskListRow
@@ -585,6 +589,7 @@ export default function DashboardPage() {
                 </li>
               ))}
             </ul>
+            </div>
           )}
         </section>
 

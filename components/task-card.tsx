@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { createPortal } from "react-dom";
-import { GripVertical as DotsSixVertical } from "lucide-react";
+import { ChevronDown, GripVertical as DotsSixVertical } from "lucide-react";
 import { Pencil as PencilSimple } from "lucide-react";
 import { PriorityMark, StatusMark } from "@/components/ui";
 import { OverflowStrip } from "@/components/overflow-strip";
@@ -114,7 +114,7 @@ function StatusMoveControl({
         aria-haspopup="listbox"
         title="Change status"
         className={cn(
-          "flex w-full min-w-0 items-center justify-between gap-2 rounded-sm px-2.5 py-1.5 text-left text-[12px] font-medium",
+          "flex h-7 w-full min-w-0 items-center justify-between gap-1 rounded-full px-2.5 text-left text-[12px] font-semibold",
           taskStatusClass(status, true)
         )}
         onClick={(e) => {
@@ -124,7 +124,7 @@ function StatusMoveControl({
         }}
       >
         <span className="min-w-0 truncate">{TASK_STATUS_LABELS[status]}</span>
-        <span className="shrink-0 text-[11px] opacity-70">More</span>
+        <ChevronDown size={12} className="shrink-0 opacity-70" />
       </button>
       {open && box && typeof document !== "undefined"
         ? createPortal(
@@ -326,14 +326,40 @@ export function TaskCard({
   );
 }
 
+export const taskRowGrid =
+  "grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,1fr)_5.5rem_minmax(7.5rem,10rem)_minmax(7.5rem,10rem)_6rem_6.75rem_2rem] md:gap-x-3";
+
+export function TaskRowHeader() {
+  return (
+    <div className={cn("hidden items-center px-4 py-2 text-[11px] font-semibold tracking-[0.06em] text-muted uppercase md:grid", taskRowGrid)}>
+      <span>Task</span>
+      <span>Priority</span>
+      <span>From</span>
+      <span>Assignee</span>
+      <span>Due</span>
+      <span>Status</span>
+      <span />
+    </div>
+  );
+}
+
 function PersonCell({ person, empty }: { person?: Profile | null; empty: string }) {
   const name = person ? displayName(person) : empty;
   return (
     <span title={name} className="pointer-events-none relative z-[1] hidden min-w-0 items-center gap-2 text-[13px] text-ink md:inline-flex">
-      <Avatar name={name} src={avatarSrc(person)} size="sm" />
+      <Avatar name={name} src={avatarSrc(person)} size="sm" className="shrink-0" />
       <span className="truncate font-medium">{person ? displayName(person) : "—"}</span>
     </span>
   );
+}
+
+function dueCellLabel(when: string | null, due: string | null, late: boolean) {
+  if (late) return "Overdue";
+  if (when === "Due today") return "Today";
+  if (when === "Due tomorrow") return "Tomorrow";
+  if (due) return due;
+  if (when?.startsWith("Due in ")) return when.replace("Due in ", "");
+  return "—";
 }
 
 export function TaskListRow({
@@ -384,10 +410,8 @@ export function TaskListRow({
   return (
     <div
       className={cn(
-        "relative grid min-h-[72px] grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border px-3 py-3 transition duration-150 hover:bg-surface-2",
-        spaceName
-          ? "md:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(9rem,12rem)_8rem_8.5rem_2.25rem]"
-          : "md:grid-cols-[minmax(0,1.4fr)_8rem_8rem_7rem_8.5rem_2.25rem]"
+        "relative grid min-h-[68px] items-center border-t border-border px-4 py-2.5 transition duration-150 hover:bg-surface-2",
+        taskRowGrid
       )}
     >
       <Link href={href} aria-label={task.title} className="absolute inset-0 z-0" />
@@ -395,27 +419,31 @@ export function TaskListRow({
         <p title={task.title} className="truncate text-[14px] leading-5 font-semibold tracking-[-0.01em] text-ink">
           {task.title}
         </p>
-        <span className="mt-1.5 inline-flex">
+        {spaceName ? (
+          <p title={spaceName} className="truncate text-[12px] leading-4 text-muted">
+            {spaceName}
+          </p>
+        ) : null}
+        <span className="mt-1.5 inline-flex md:hidden">
           <PriorityMark priority={taskPriority(task.priority)} />
         </span>
         <p className="mt-0.5 truncate text-[12px] text-muted md:hidden">
           {requester ? displayName(requester) : "Unknown"} → {assignee ? displayName(assignee) : "Unassigned"}
         </p>
-        {spaceName ? (
-          <p title={spaceName} className="mt-0.5 truncate text-[12px] text-muted">
-            {spaceName}
-          </p>
-        ) : null}
       </div>
+      <span className="pointer-events-none relative z-[1] hidden md:inline-flex">
+        <PriorityMark priority={taskPriority(task.priority)} />
+      </span>
       <PersonCell person={requester} empty="Unknown" />
       <PersonCell person={assignee} empty="Unassigned" />
-      {spaceName ? (
-        <span title={spaceName} className="pointer-events-none relative z-[1] hidden text-[12px] leading-snug text-muted md:block">
-          {spaceName}
-        </span>
-      ) : null}
-      <span className={cn("pointer-events-none relative z-[1] hidden text-[12px] font-medium md:block", late ? "text-coral" : "text-teal")}>
-        {when && due ? `${when} · ${due}` : when || due || "—"}
+      <span
+        title={when && due ? `${when} · ${due}` : when || due || "No due date"}
+        className={cn(
+          "pointer-events-none relative z-[1] hidden truncate text-[13px] font-medium md:block",
+          late ? "text-coral" : due || when ? "text-ink" : "text-muted"
+        )}
+      >
+        {dueCellLabel(when, due, late)}
       </span>
       <div className={cn("relative z-[2] hidden min-w-0 md:block", !onMove && "pointer-events-none")}>
         {onMove ? (

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { PageHeader, Select, Input } from "@/components/ui";
 import { PageFallback } from "@/components/app-nav";
 import { useAppState, useWorkspaceCache } from "@/components/app-frame";
-import { TaskListRow } from "@/components/task-card";
+import { TaskListRow, TaskRowHeader } from "@/components/task-card";
 import { type TaskDraft } from "@/components/task-form";
 import { Segmented } from "@/components/overflow-strip";
 import { DatePicker } from "@/components/date-picker";
@@ -285,14 +285,8 @@ function TasksPageInner() {
       </div>
 
       <section className="overflow-hidden rounded-md border border-border bg-surface shadow-card">
-        <div className="hidden border-b border-border px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted md:grid md:grid-cols-[minmax(12rem,1.4fr)_8rem_8rem_minmax(9rem,12rem)_8rem_8.5rem_2.25rem] md:gap-3">
-          <span>Task</span>
-          <span>Created by</span>
-          <span>Assignee</span>
-          <span>Space</span>
-          <span>Due</span>
-          <span>Status</span>
-          <span />
+        <div className="hidden border-b border-border md:block">
+          <TaskRowHeader />
         </div>
         {listed.length === 0 ? (
           <p className="px-4 py-10 text-center text-sm text-faint">
