@@ -55,6 +55,7 @@ describe("missingHelpersTable", () => {
     expect(missingHelpersTable("Could not find the table 'public.task_helpers' in the schema cache")).toBe(true);
     expect(missingHelpersTable('relation "public.task_helpers" does not exist')).toBe(true);
     expect(missingHelpersTable("Could not find the function public.set_task_help_done(p_done, p_task_id) in the schema cache")).toBe(true);
+    expect(missingHelpersTable("Could not find the function public.involve_on_task in the schema cache")).toBe(true);
   });
 
   it("ignores other errors", () => {

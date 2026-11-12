@@ -52,6 +52,8 @@ export default function TaskPage() {
   const [helpers, setHelpers] = useState<TaskHelper[]>([]);
   const [helpersMissing, setHelpersMissing] = useState(false);
   const [helpBusy, setHelpBusy] = useState(false);
+  const [involveId, setInvolveId] = useState("");
+  const [involveBusy, setInvolveBusy] = useState(false);
   const [profiles, setProfiles] = useState<Record<string, Profile>>({});
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
@@ -378,6 +380,24 @@ export default function TaskPage() {
     }
     await loadHelpers();
     if (done) void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
+  }
+
+  async function involvePerson() {
+    if (!task || !involveId) return;
+    setInvolveBusy(true);
+    setError(null);
+    const { error: err } = await createClient().rpc("involve_on_task", {
+      p_task_id: task.id,
+      p_user_id: involveId,
+    });
+    setInvolveBusy(false);
+    if (err) {
+      setError(missingHelpersTable(err.message) ? TASK_HELPERS_SQL_HINT : err.message);
+      return;
+    }
+    setInvolveId("");
+    await loadHelpers();
+    void pingWhatsApp(`/spaces/${id}/tasks/${task.id}`);
   }
 
   async function removeHelper(userId: string) {
@@ -741,9 +761,30 @@ export default function TaskPage() {
             </div>
             <div className="px-4 py-4">
               <p className="mb-2 text-[12px] font-medium text-muted">Involved</p>
+              <div className="mb-3 flex items-center gap-2">
+                <Select
+                  aria-label="Add a person to Involved"
+                  value={involveId}
+                  onChange={(e) => setInvolveId(e.target.value)}
+                  className="min-w-0 flex-1"
+                >
+                  <option value="">Add a person</option>
+                  {Object.values(profiles)
+                    .filter((person) => !helperIds.includes(person.id))
+                    .sort((a, b) => displayName(a).localeCompare(displayName(b)))
+                    .map((person) => (
+                      <option key={person.id} value={person.id}>
+                        {displayName(person)}
+                      </option>
+                    ))}
+                </Select>
+                <Button type="button" disabled={!involveId || involveBusy} onClick={() => void involvePerson()}>
+                  {involveBusy ? "Adding…" : "Add"}
+                </Button>
+              </div>
               {helpers.length === 0 ? (
-                <p className="text-[13px] text-faint">
-                  {helpersMissing ? TASK_HELPERS_SQL_HINT : "Mention someone in a comment to bring them in."}
+                <p className="text-[13px] text-muted">
+                  {helpersMissing ? TASK_HELPERS_SQL_HINT : "No one else is involved yet."}
                 </p>
               ) : (
                 <ul className="space-y-3">

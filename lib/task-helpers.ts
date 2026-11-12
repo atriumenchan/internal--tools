@@ -6,7 +6,7 @@ export const TASK_HELPERS_SQL_HINT =
 export function missingHelpersTable(message: string | null | undefined) {
   const m = (message || "").toLowerCase();
   return (
-    (m.includes("task_helpers") || m.includes("set_task_help_done")) &&
+    (m.includes("task_helpers") || m.includes("set_task_help_done") || m.includes("involve_on_task")) &&
     (m.includes("does not exist") || m.includes("schema cache") || m.includes("could not find"))
   );
 }

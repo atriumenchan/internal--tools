@@ -593,6 +593,55 @@ $$;
 grant execute on function public.set_task_help_done(uuid, boolean) to authenticated;
 revoke all on function public.set_task_help_done(uuid, boolean) from public, anon;
 
+-- Add someone to Involved from the task sidebar (same result as an @mention).
+create or replace function public.involve_on_task(p_task_id uuid, p_user_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  t public.tasks;
+  v_name text;
+  v_href text;
+begin
+  if auth.uid() is null then
+    raise exception 'Not signed in';
+  end if;
+  if not public.has_signed_handbook() or not public.can_see_task(p_task_id) then
+    raise exception 'You cannot change this task';
+  end if;
+  if not exists (select 1 from public.profiles where id = p_user_id) then
+    raise exception 'That person is not on the workspace';
+  end if;
+  select * into t from public.tasks where id = p_task_id;
+  if not found then
+    raise exception 'Task not found';
+  end if;
+
+  insert into public.task_helpers (task_id, user_id, added_by, ask)
+  values (p_task_id, p_user_id, auth.uid(), null)
+  on conflict (task_id, user_id) do update
+    set added_by = excluded.added_by,
+        status = 'open',
+        done_at = null;
+
+  v_name := public.actor_label(auth.uid());
+  v_href := '/spaces/' || t.space_id::text || '/tasks/' || t.id::text;
+  perform public.push_notification(
+    p_user_id,
+    auth.uid(),
+    'task_help',
+    v_name || ' involved you in ' || t.title,
+    null,
+    v_href
+  );
+end;
+$$;
+
+grant execute on function public.involve_on_task(uuid, uuid) to authenticated;
+revoke all on function public.involve_on_task(uuid, uuid) from public, anon;
+
 -- -----------------------------------------------------------------------------
 -- Someone who becomes the requester or assignee stops being a helper
 -- -----------------------------------------------------------------------------
