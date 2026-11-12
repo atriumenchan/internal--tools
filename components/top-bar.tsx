@@ -48,7 +48,7 @@ export function TopBar({
   }
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-[var(--app-background)] px-4 md:gap-4 md:px-8">
+    <header className="sticky top-0 z-40 flex h-16 items-center gap-3 overflow-visible border-b border-border bg-[var(--app-background)] px-4 md:gap-4 md:px-8">
       <button
         type="button"
         className="grid h-10 w-10 place-items-center rounded-[8px] text-ink hover:bg-surface-2 lg:hidden"
