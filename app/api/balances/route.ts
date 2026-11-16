@@ -1,14 +1,7 @@
 import { timingSafeEqual } from "crypto";
 import { NextResponse } from "next/server";
-import {
-  balanceHeadline,
-  balanceNeedsAttention,
-  balanceProviderKey,
-  balanceStatus,
-  seesApiBalances,
-  type ApiBalanceStatus,
-} from "@/lib/api-balances";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { balanceProviderKey, balanceStatus } from "@/lib/api-balances";
+import { recordApiBalance } from "@/lib/record-api-balance";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,61 +49,7 @@ export async function POST(request: Request) {
 
   const balance = body.balance == null || body.balance === "" ? null : String(body.balance).trim().slice(0, 80);
   const message = body.message == null || body.message === "" ? null : String(body.message).trim().slice(0, 280);
-  const admin = createAdminClient();
-
-  const { data: previous, error: readError } = await admin
-    .from("api_balances")
-    .select("status")
-    .eq("provider", provider)
-    .maybeSingle();
-  if (readError) {
-    const missing = /api_balances|schema cache|does not exist/i.test(readError.message);
-    return NextResponse.json(
-      {
-        error: missing
-          ? "Paste supabase/api-balances.sql in the Supabase SQL editor, then try again."
-          : readError.message,
-      },
-      { status: missing ? 503 : 500 }
-    );
-  }
-
-  const row = {
-    provider,
-    label,
-    status,
-    balance,
-    message,
-    updated_at: new Date().toISOString(),
-  };
-  const { error: writeError } = await admin.from("api_balances").upsert(row, { onConflict: "provider" });
-  if (writeError) {
-    return NextResponse.json({ error: writeError.message }, { status: 500 });
-  }
-
-  const previousStatus = (previous?.status as ApiBalanceStatus | undefined) ?? null;
-  const changed = previousStatus !== status;
-  let notified = 0;
-  if (changed && balanceNeedsAttention(status)) {
-    const { data: people } = await admin.from("profiles").select("id, full_name, email");
-    const owner = (people ?? []).find((person) => seesApiBalances(person));
-    if (owner) {
-      await admin.from("notifications").delete().eq("type", "api_balance").neq("user_id", owner.id);
-    }
-    const title = balanceHeadline(label, status);
-    const detail = [balance ? `Balance ${balance}` : null, message].filter(Boolean).join(" · ");
-    if (owner) {
-      const { error: noteError } = await admin.from("notifications").insert({
-        user_id: owner.id as string,
-        actor_id: null,
-        type: "api_balance",
-        title,
-        body: detail || null,
-        href: "/dashboard#api-balances",
-      });
-      if (!noteError) notified = 1;
-    }
-  }
-
-  return NextResponse.json({ ok: true, provider, status, notified });
+  const result = await recordApiBalance({ provider, label, status, balance, message });
+  if (!result.ok) return NextResponse.json({ error: result.error }, { status: result.status });
+  return NextResponse.json({ ok: true, provider, status, notified: result.notified });
 }

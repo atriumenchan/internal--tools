@@ -28,6 +28,12 @@ export function balanceStatus(value: unknown): ApiBalanceStatus | null {
   return null;
 }
 
+export function classifyCredit(amount: number, available = true): ApiBalanceStatus {
+  if (!available || !Number.isFinite(amount) || amount <= 0) return "depleted";
+  if (amount < 5) return "low";
+  return "ok";
+}
+
 export function balanceNeedsAttention(status: ApiBalanceStatus) {
   return status === "low" || status === "depleted";
 }

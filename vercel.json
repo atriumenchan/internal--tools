@@ -3,5 +3,8 @@
   "framework": "nextjs",
   "buildCommand": "npm run build",
   "regions": ["bom1"],
-  "crons": [{ "path": "/api/whatsapp/drain", "schedule": "0 3 * * *" }]
+  "crons": [
+    { "path": "/api/whatsapp/drain", "schedule": "0 3 * * *" },
+    { "path": "/api/balances/sync", "schedule": "30 2 * * *" }
+  ]
 }

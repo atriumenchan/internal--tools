@@ -157,6 +157,7 @@ export default function DashboardPage() {
       setBalances([]);
       return;
     }
+    await fetch("/api/balances/sync").catch(() => null);
     const { data } = await createClient().from("api_balances").select("*").order("updated_at", { ascending: false });
     if (data) setBalances(data as ApiBalance[]);
   }, [showBalances]);
@@ -164,7 +165,7 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadBalances();
     if (!showBalances) return;
-    const timer = window.setInterval(() => void loadBalances(), 60_000);
+    const timer = window.setInterval(() => void loadBalances(), 5 * 60_000);
     return () => window.clearInterval(timer);
   }, [loadBalances, showBalances]);
 
@@ -483,25 +484,37 @@ export default function DashboardPage() {
       </div>
       <ErrorText>{error}</ErrorText>
 
-      {showBalances && balances.some((row) => balanceNeedsAttention(row.status)) ? (
-        <section id="api-balances" className="rounded-[14px] border border-coral/30 bg-coral-dim px-5 py-4">
-          <h2 className="text-[16px] leading-6 font-semibold text-ink">API balances</h2>
-          <ul className="mt-3 space-y-3">
-            {balances
-              .filter((row) => balanceNeedsAttention(row.status))
-              .map((row) => (
-                <li key={row.provider} className="flex flex-wrap items-baseline justify-between gap-2">
-                  <span>
-                    <span className="text-[14px] font-bold text-ink">{balanceHeadline(row.label, row.status)}</span>
-                    {row.message ? <span className="mt-0.5 block text-[13px] text-muted">{row.message}</span> : null}
-                  </span>
-                  <span className="text-[13px] font-semibold text-coral">
-                    {row.status === "depleted" ? "Fill it up" : "Recharge soon"}
-                    {row.balance ? ` · ${row.balance}` : ""}
-                  </span>
-                </li>
-              ))}
-          </ul>
+      {showBalances ? (
+        <section id="api-balances" className="rounded-[14px] border border-border bg-surface px-5 py-4 shadow-card">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[16px] leading-6 font-semibold text-ink">API credits</h2>
+            <p className="text-[12px] text-muted">Read from fal.ai and DeepSeek</p>
+          </div>
+          {balances.length === 0 ? (
+            <p className="mt-3 text-[13px] text-muted">No credit reading yet. The server keys for fal.ai and DeepSeek still need to be set.</p>
+          ) : (
+            <ul className="mt-3 divide-y divide-border">
+              {[...balances]
+                .sort((a, b) => Number(balanceNeedsAttention(b.status)) - Number(balanceNeedsAttention(a.status)))
+                .map((row) => {
+                  const attention = balanceNeedsAttention(row.status);
+                  return (
+                    <li key={row.provider} className="flex flex-wrap items-baseline justify-between gap-3 py-3">
+                      <span>
+                        <span className="text-[14px] font-bold text-ink">{row.label}</span>
+                        <span className={cn("mt-0.5 block text-[13px]", attention ? "text-coral" : "text-muted")}>
+                          {attention ? balanceHeadline(row.label, row.status) : "Funded"}
+                          {row.updated_at ? ` · ${formatRelative(row.updated_at)}` : ""}
+                        </span>
+                      </span>
+                      <span className={cn("tabular text-[18px] font-semibold", attention ? "text-coral" : "text-ink")}>
+                        {row.balance || "—"}
+                      </span>
+                    </li>
+                  );
+                })}
+            </ul>
+          )}
         </section>
       ) : null}
 
