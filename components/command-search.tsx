@@ -104,10 +104,10 @@ export function CommandSearch({
   }
 
   return (
-    <div ref={box} className={cn("relative w-full max-w-[460px]", buttonClassName)}>
+    <div ref={box} className={cn("relative w-full max-w-[460px] items-center", buttonClassName)}>
       <div
         className={cn(
-          "flex h-10 items-center gap-2 rounded-[8px] border bg-surface px-3 shadow-card",
+          "flex h-10 w-full items-center gap-2 rounded-[8px] border bg-surface px-3 shadow-card",
           open ? "border-amber shadow-[0_0_0_3px_var(--brand-soft)]" : "border-border"
         )}
       >
@@ -118,14 +118,14 @@ export function CommandSearch({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search anything..."
-            className="h-full w-full bg-transparent text-[13px] text-ink outline-none placeholder:text-faint"
+            className="h-6 min-w-0 flex-1 bg-transparent text-[13px] leading-6 text-ink outline-none placeholder:text-faint"
           />
         ) : (
-          <button type="button" onClick={onOpen} className="h-full min-w-0 flex-1 truncate text-left text-[13px] text-faint">
+          <button type="button" onClick={onOpen} className="h-6 min-w-0 flex-1 truncate text-left text-[13px] leading-6 text-faint">
             Search anything...
           </button>
         )}
-        <kbd className="hidden rounded-[6px] border border-border bg-surface-2 px-1.5 py-0.5 font-sans text-[11px] leading-4 font-semibold text-muted sm:inline">
+        <kbd className="hidden h-6 shrink-0 items-center rounded-[6px] border border-border bg-surface-2 px-1.5 font-sans text-[11px] leading-none font-semibold text-muted sm:inline-flex">
           Ctrl K
         </kbd>
       </div>
