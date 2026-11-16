@@ -274,6 +274,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     async function loadBadges() {
+      if (state?.userId) {
+        await supabase.from("notifications").delete().eq("user_id", state.userId).eq("type", "whatsapp_delivery");
+      }
       const [chatCount, notifs] = await Promise.all([
         supabase.rpc("chat_unread_count"),
         supabase.rpc("unread_notification_count"),

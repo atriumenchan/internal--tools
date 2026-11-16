@@ -95,7 +95,6 @@ function ChatApp() {
   const [memberships, setMemberships] = useState<ConversationMember[]>(cache?.chat?.memberships ?? []);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [error, setError] = useState<string | null>(cache?.chatError ?? null);
-  const [waError, setWaError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [groupName, setGroupName] = useState("");
@@ -340,13 +339,7 @@ function ChatApp() {
     setMessages((prev) => (prev.some((m) => m.id === (data as ChatMessage).id) ? prev : [...prev, data as ChatMessage]));
     setBody("");
     setFile(null);
-    const drain = await pingWhatsApp(`/chat?c=${selectedId}`);
-    const bits = [drain.error, ...drain.errors].filter(Boolean);
-    if (!drain.ok || (drain.sent === 0 && bits.length)) {
-      setWaError(`WhatsApp did not send. ${bits.slice(0, 2).join(" · ")}`);
-    } else {
-      setWaError(null);
-    }
+    void pingWhatsApp(`/chat?c=${selectedId}`);
   }
 
   async function openDm(userId: string) {
@@ -905,10 +898,9 @@ function ChatApp() {
                 })}
                 <div ref={bottom} />
               </div>
-              {error || waError ? (
+              {error ? (
                 <div className="border-t border-border bg-page px-3 py-2">
                   <ErrorText className="mb-0 whitespace-pre-wrap break-words">{error}</ErrorText>
-                  {waError ? <ErrorText className="mt-1 mb-0 whitespace-pre-wrap break-words">{waError}</ErrorText> : null}
                 </div>
               ) : null}
               <ChatComposer

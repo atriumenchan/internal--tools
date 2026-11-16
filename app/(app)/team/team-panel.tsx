@@ -228,7 +228,7 @@ export function TeamPanel() {
         );
       } else {
         setPingNote(
-          `${waSent} accepted by Meta. ${who}${templateNote} If the phone stays empty, WhatsApp dropped it after accepting. Check Alerts for “WhatsApp did not deliver”.`
+          `${waSent} accepted by Meta. ${who}${templateNote}`
         );
       }
     } catch (e) {

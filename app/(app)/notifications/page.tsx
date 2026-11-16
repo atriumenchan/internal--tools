@@ -48,7 +48,7 @@ function noticeFace(type: string) {
   if (type === "announcement") {
     return { label: "Announcement", wash: "bg-surface-2 text-ink", Icon: Megaphone };
   }
-  if (type === "message" || type === "whatsapp_delivery") {
+  if (type === "message") {
     return { label: "Message", wash: "bg-teal-dim text-teal", Icon: MessageCircle };
   }
   if (type.includes("task")) {
@@ -62,7 +62,7 @@ function matches(row: NotificationItem, view: View) {
   if (view === "unread") return !row.read_at;
   if (view === "mention") return row.type === "mention" || row.type.includes("mention");
   if (view === "announcement") return row.type === "announcement";
-  if (view === "message") return row.type === "message" || row.type === "whatsapp_delivery";
+  if (view === "message") return row.type === "message";
   return row.type.includes("task");
 }
 
@@ -82,8 +82,9 @@ function NotificationsPageInner() {
 
   async function load() {
     const supabase = createClient();
+    await supabase.from("notifications").delete().eq("user_id", app?.userId ?? "").eq("type", "whatsapp_delivery");
     const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false });
-    setRows((data ?? []) as NotificationItem[]);
+    setRows(((data ?? []) as NotificationItem[]).filter((row) => row.type !== "whatsapp_delivery"));
   }
 
   useEffect(() => {
