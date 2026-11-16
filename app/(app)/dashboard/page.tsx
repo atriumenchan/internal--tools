@@ -131,6 +131,7 @@ export default function DashboardPage() {
   const [dismissedMentions, setDismissedMentions] = useState<string[]>([]);
   const [tagPage, setTagPage] = useState(1);
   const [balances, setBalances] = useState<ApiBalance[]>([]);
+  const [opsAlerts, setOpsAlerts] = useState<{ id: string; title: string; body: string | null; created_at: string }[]>([]);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -158,8 +159,13 @@ export default function DashboardPage() {
       return;
     }
     await fetch("/api/balances/sync").catch(() => null);
-    const { data } = await createClient().from("api_balances").select("*").order("updated_at", { ascending: false });
-    if (data) setBalances(data as ApiBalance[]);
+    const supabase = createClient();
+    const [balanceRes, alertRes] = await Promise.all([
+      supabase.from("api_balances").select("*").order("updated_at", { ascending: false }),
+      supabase.from("notifications").select("id, title, body, created_at").eq("type", "ops_alert").order("created_at", { ascending: false }).limit(8),
+    ]);
+    if (balanceRes.data) setBalances(balanceRes.data as ApiBalance[]);
+    if (alertRes.data) setOpsAlerts(alertRes.data);
   }, [showBalances]);
 
   useEffect(() => {
@@ -483,6 +489,24 @@ export default function DashboardPage() {
         </div>
       </div>
       <ErrorText>{error}</ErrorText>
+
+      {showBalances && opsAlerts.length > 0 ? (
+        <section id="ops-alerts" className="rounded-[14px] border border-coral/30 bg-coral-dim px-5 py-4">
+          <div className="flex items-baseline justify-between gap-3">
+            <h2 className="text-[16px] leading-6 font-semibold text-ink">Incoming alerts</h2>
+            <Link href="/notifications" className="text-[12px] font-semibold text-amber">Open alerts</Link>
+          </div>
+          <ul className="mt-3 space-y-3">
+            {opsAlerts.map((row) => (
+              <li key={row.id}>
+                <p className="text-[14px] font-bold text-ink">{row.title}</p>
+                {row.body ? <p className="mt-0.5 text-[13px] text-muted">{row.body}</p> : null}
+                <p className="mt-0.5 text-[12px] text-muted">{formatRelative(row.created_at)}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {showBalances ? (
         <section id="api-balances" className="rounded-[14px] border border-border bg-surface px-5 py-4 shadow-card">

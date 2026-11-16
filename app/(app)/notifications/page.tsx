@@ -40,6 +40,9 @@ function noticeFace(type: string) {
   if (type === "task_assigned") {
     return { label: "Assignment", wash: "bg-[var(--info-soft)] text-[var(--info-ink)]", Icon: UserRound };
   }
+  if (type === "ops_alert") {
+    return { label: "Alert", wash: "bg-coral-dim text-coral", Icon: Bell };
+  }
   if (type === "api_balance") {
     return { label: "Balance", wash: "bg-coral-dim text-coral", Icon: CalendarClock };
   }
@@ -85,13 +88,13 @@ function NotificationsPageInner() {
     const supabase = createClient();
     await supabase.from("notifications").delete().eq("user_id", app?.userId ?? "").eq("type", "whatsapp_delivery");
     if (app && !seesApiBalances(app.profile)) {
-      await supabase.from("notifications").delete().eq("user_id", app.userId).eq("type", "api_balance");
+      await supabase.from("notifications").delete().eq("user_id", app.userId).in("type", ["api_balance", "ops_alert"]);
     }
     const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false });
     const mine = seesApiBalances(app?.profile);
     setRows(
       ((data ?? []) as NotificationItem[]).filter(
-        (row) => row.type !== "whatsapp_delivery" && (mine || row.type !== "api_balance")
+        (row) => row.type !== "whatsapp_delivery" && (mine || (row.type !== "api_balance" && row.type !== "ops_alert"))
       )
     );
   }

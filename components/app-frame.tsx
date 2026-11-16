@@ -278,7 +278,7 @@ export function AppFrame({ children }: { children: ReactNode }) {
       if (state?.userId) {
         await supabase.from("notifications").delete().eq("user_id", state.userId).eq("type", "whatsapp_delivery");
         if (!seesApiBalances(state.profile)) {
-          await supabase.from("notifications").delete().eq("user_id", state.userId).eq("type", "api_balance");
+          await supabase.from("notifications").delete().eq("user_id", state.userId).in("type", ["api_balance", "ops_alert"]);
         }
       }
       const [chatCount, notifs] = await Promise.all([
