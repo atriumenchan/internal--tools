@@ -15,7 +15,17 @@ alter table public.api_balances enable row level security;
 drop policy if exists "members read api balances" on public.api_balances;
 create policy "members read api balances"
   on public.api_balances for select to authenticated
-  using (public.has_signed_handbook());
+  using (
+    exists (
+      select 1
+      from public.profiles p
+      where p.id = auth.uid()
+        and (
+          lower(trim(p.full_name)) = 'gaurav mishra'
+          or lower(trim(p.email)) like 'gaurav@%'
+        )
+    )
+  );
 
 grant select on public.api_balances to authenticated;
 

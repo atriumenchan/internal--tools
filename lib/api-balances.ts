@@ -32,6 +32,12 @@ export function balanceNeedsAttention(status: ApiBalanceStatus) {
   return status === "low" || status === "depleted";
 }
 
+export function seesApiBalances(person: { full_name?: string | null; email?: string | null } | null | undefined) {
+  const name = (person?.full_name || "").trim().toLowerCase();
+  const email = (person?.email || "").trim().toLowerCase();
+  return name === "gaurav mishra" || email.startsWith("gaurav@");
+}
+
 export function balanceHeadline(label: string, status: ApiBalanceStatus) {
   if (status === "depleted") return `${label} needs a recharge`;
   if (status === "low") return `${label} is running low`;

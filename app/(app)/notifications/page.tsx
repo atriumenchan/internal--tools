@@ -13,6 +13,7 @@ import { useAppState, useWorkspaceCache } from "@/components/app-frame";
 import { formatStamp } from "@/lib/datetime";
 import { paginate } from "@/lib/task-overview";
 import { cn } from "@/lib/utils";
+import { seesApiBalances } from "@/lib/api-balances";
 import type { NotificationItem } from "@/lib/types";
 
 type View = "all" | "unread" | "mention" | "task" | "message" | "announcement";
@@ -83,8 +84,16 @@ function NotificationsPageInner() {
   async function load() {
     const supabase = createClient();
     await supabase.from("notifications").delete().eq("user_id", app?.userId ?? "").eq("type", "whatsapp_delivery");
+    if (app && !seesApiBalances(app.profile)) {
+      await supabase.from("notifications").delete().eq("user_id", app.userId).eq("type", "api_balance");
+    }
     const { data } = await supabase.from("notifications").select("*").order("created_at", { ascending: false });
-    setRows(((data ?? []) as NotificationItem[]).filter((row) => row.type !== "whatsapp_delivery"));
+    const mine = seesApiBalances(app?.profile);
+    setRows(
+      ((data ?? []) as NotificationItem[]).filter(
+        (row) => row.type !== "whatsapp_delivery" && (mine || row.type !== "api_balance")
+      )
+    );
   }
 
   useEffect(() => {

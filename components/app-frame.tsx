@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { seesApiBalances } from "@/lib/api-balances";
 import { isAdminEmail, isAdminUser } from "@/lib/admin";
 import { AppNav, SidebarFallback } from "@/components/app-nav";
 import { TopBar } from "@/components/top-bar";
@@ -276,6 +277,9 @@ export function AppFrame({ children }: { children: ReactNode }) {
     async function loadBadges() {
       if (state?.userId) {
         await supabase.from("notifications").delete().eq("user_id", state.userId).eq("type", "whatsapp_delivery");
+        if (!seesApiBalances(state.profile)) {
+          await supabase.from("notifications").delete().eq("user_id", state.userId).eq("type", "api_balance");
+        }
       }
       const [chatCount, notifs] = await Promise.all([
         supabase.rpc("chat_unread_count"),

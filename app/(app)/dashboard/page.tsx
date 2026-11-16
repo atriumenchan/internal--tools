@@ -26,7 +26,7 @@ import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { missingHelpersTable, openHelpAsks, TASK_HELPERS_SQL_HINT } from "@/lib/task-helpers";
-import { balanceHeadline, balanceNeedsAttention, type ApiBalance } from "@/lib/api-balances";
+import { balanceHeadline, balanceNeedsAttention, seesApiBalances, type ApiBalance } from "@/lib/api-balances";
 import { inboxPreview } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 import type {
@@ -151,16 +151,22 @@ export default function DashboardPage() {
     void loadHelping();
   }, [loadHelping]);
 
+  const showBalances = Boolean(app && seesApiBalances(app.profile));
   const loadBalances = useCallback(async () => {
+    if (!showBalances) {
+      setBalances([]);
+      return;
+    }
     const { data } = await createClient().from("api_balances").select("*").order("updated_at", { ascending: false });
     if (data) setBalances(data as ApiBalance[]);
-  }, []);
+  }, [showBalances]);
 
   useEffect(() => {
     void loadBalances();
+    if (!showBalances) return;
     const timer = window.setInterval(() => void loadBalances(), 60_000);
     return () => window.clearInterval(timer);
-  }, [loadBalances]);
+  }, [loadBalances, showBalances]);
 
   useEffect(() => {
     if (!app) return;
@@ -477,7 +483,7 @@ export default function DashboardPage() {
       </div>
       <ErrorText>{error}</ErrorText>
 
-      {balances.some((row) => balanceNeedsAttention(row.status)) ? (
+      {showBalances && balances.some((row) => balanceNeedsAttention(row.status)) ? (
         <section id="api-balances" className="rounded-[14px] border border-coral/30 bg-coral-dim px-5 py-4">
           <h2 className="text-[16px] leading-6 font-semibold text-ink">API balances</h2>
           <ul className="mt-3 space-y-3">

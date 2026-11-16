@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { balanceHeadline, balanceProviderKey, balanceStatus } from "./api-balances";
+import { balanceHeadline, balanceProviderKey, balanceStatus, seesApiBalances } from "./api-balances";
 
 describe("balance reports", () => {
   it("keeps a stable key for a provider name", () => {
@@ -13,6 +13,11 @@ describe("balance reports", () => {
     expect(balanceStatus("low")).toBe("low");
     expect(balanceStatus("ok")).toBe("ok");
     expect(balanceStatus("maybe")).toBeNull();
+  });
+
+  it("shows balances only to Gaurav Mishra", () => {
+    expect(seesApiBalances({ full_name: "Gaurav Mishra", email: "g@admexo.com" })).toBe(true);
+    expect(seesApiBalances({ full_name: "Ryan Ritabrata", email: "ryan@admexo.com" })).toBe(false);
   });
 
   it("writes a recharge headline only when the credit is gone", () => {

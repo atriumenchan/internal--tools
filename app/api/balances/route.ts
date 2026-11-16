@@ -5,6 +5,7 @@ import {
   balanceNeedsAttention,
   balanceProviderKey,
   balanceStatus,
+  seesApiBalances,
   type ApiBalanceStatus,
 } from "@/lib/api-balances";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -91,20 +92,23 @@ export async function POST(request: Request) {
   const changed = previousStatus !== status;
   let notified = 0;
   if (changed && balanceNeedsAttention(status)) {
-    const { data: people } = await admin.from("profiles").select("id");
+    const { data: people } = await admin.from("profiles").select("id, full_name, email");
+    const owner = (people ?? []).find((person) => seesApiBalances(person));
+    if (owner) {
+      await admin.from("notifications").delete().eq("type", "api_balance").neq("user_id", owner.id);
+    }
     const title = balanceHeadline(label, status);
     const detail = [balance ? `Balance ${balance}` : null, message].filter(Boolean).join(" · ");
-    const notes = (people ?? []).map((person) => ({
-      user_id: person.id as string,
-      actor_id: null,
-      type: "api_balance",
-      title,
-      body: detail || null,
-      href: "/dashboard#api-balances",
-    }));
-    if (notes.length) {
-      const { error: noteError } = await admin.from("notifications").insert(notes);
-      if (!noteError) notified = notes.length;
+    if (owner) {
+      const { error: noteError } = await admin.from("notifications").insert({
+        user_id: owner.id as string,
+        actor_id: null,
+        type: "api_balance",
+        title,
+        body: detail || null,
+        href: "/dashboard#api-balances",
+      });
+      if (!noteError) notified = 1;
     }
   }
 
