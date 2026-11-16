@@ -39,6 +39,9 @@ function noticeFace(type: string) {
   if (type === "task_assigned") {
     return { label: "Assignment", wash: "bg-[var(--info-soft)] text-[var(--info-ink)]", Icon: UserRound };
   }
+  if (type === "api_balance") {
+    return { label: "Balance", wash: "bg-coral-dim text-coral", Icon: CalendarClock };
+  }
   if (type === "task_overdue") {
     return { label: "Deadline", wash: "bg-[var(--warning-soft)] text-[var(--prio-medium-fg)]", Icon: CalendarClock };
   }

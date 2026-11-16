@@ -26,6 +26,7 @@ import { pingTaskAssigned, pingWhatsApp } from "@/lib/ping-task";
 import { useSilentLive } from "@/lib/silent-live";
 import { canManageTask, canDeleteTask, effectiveReviewer, isAssignedByOther, missingWorkflowColumn } from "@/lib/task-workflow";
 import { missingHelpersTable, openHelpAsks, TASK_HELPERS_SQL_HINT } from "@/lib/task-helpers";
+import { balanceHeadline, balanceNeedsAttention, type ApiBalance } from "@/lib/api-balances";
 import { inboxPreview } from "@/lib/chat-thread";
 import { cn } from "@/lib/utils";
 import type {
@@ -129,6 +130,7 @@ export default function DashboardPage() {
   const [myComments, setMyComments] = useState<Pick<TaskComment, "task_id" | "created_at">[]>([]);
   const [dismissedMentions, setDismissedMentions] = useState<string[]>([]);
   const [tagPage, setTagPage] = useState(1);
+  const [balances, setBalances] = useState<ApiBalance[]>([]);
 
   const loadTasks = useCallback(async () => {
     const supabase = createClient();
@@ -148,6 +150,17 @@ export default function DashboardPage() {
   useEffect(() => {
     void loadHelping();
   }, [loadHelping]);
+
+  const loadBalances = useCallback(async () => {
+    const { data } = await createClient().from("api_balances").select("*").order("updated_at", { ascending: false });
+    if (data) setBalances(data as ApiBalance[]);
+  }, []);
+
+  useEffect(() => {
+    void loadBalances();
+    const timer = window.setInterval(() => void loadBalances(), 60_000);
+    return () => window.clearInterval(timer);
+  }, [loadBalances]);
 
   useEffect(() => {
     if (!app) return;
@@ -463,6 +476,28 @@ export default function DashboardPage() {
         </div>
       </div>
       <ErrorText>{error}</ErrorText>
+
+      {balances.some((row) => balanceNeedsAttention(row.status)) ? (
+        <section id="api-balances" className="rounded-[14px] border border-coral/30 bg-coral-dim px-5 py-4">
+          <h2 className="text-[16px] leading-6 font-semibold text-ink">API balances</h2>
+          <ul className="mt-3 space-y-3">
+            {balances
+              .filter((row) => balanceNeedsAttention(row.status))
+              .map((row) => (
+                <li key={row.provider} className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span>
+                    <span className="text-[14px] font-bold text-ink">{balanceHeadline(row.label, row.status)}</span>
+                    {row.message ? <span className="mt-0.5 block text-[13px] text-muted">{row.message}</span> : null}
+                  </span>
+                  <span className="text-[13px] font-semibold text-coral">
+                    {row.status === "depleted" ? "Fill it up" : "Recharge soon"}
+                    {row.balance ? ` · ${row.balance}` : ""}
+                  </span>
+                </li>
+              ))}
+          </ul>
+        </section>
+      ) : null}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="My tasks" value={mine.length} href={firstTaskHref(mine, "/tasks?slice=left&person=me")} icon={ClipboardList} accent="brand" />
